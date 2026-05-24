@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getNetworkSnapshot } from "@/lib/network";
 import { formatPoints } from "@/lib/money";
-import { BinaryTreeGraph, type TreePerson } from "@/components/binary-tree-graph";
+import { type TreePerson } from "@/components/binary-tree-graph";
+import { BinaryTreeZoomable } from "@/components/binary-tree-zoomable";
 import { ArrowLeft, Users, UserCheck, Coins, Layers } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -152,7 +153,7 @@ export default async function AdminUserDetailPage({ params }: { params: { userId
         </div>
       )}
 
-      <BinaryTreeGraph people={treePeople} />
+      <BinaryTreeZoomable people={treePeople} />
     </div>
   );
 }
