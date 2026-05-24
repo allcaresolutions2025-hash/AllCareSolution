@@ -6,6 +6,7 @@ export type TreePerson = {
   email: string;
   referralCode: string;
   referrerId: string | null;
+  slot?: "LEFT" | "RIGHT" | null;
   depth: number; // 0 = root being viewed
   isActive: boolean;
   pointsPaise: number;
@@ -21,6 +22,7 @@ type LaidOutNode = {
   email: string;
   referralCode: string;
   referrerId: string | null;
+  slot?: "LEFT" | "RIGHT" | null;
   depth: number;
   isActive: boolean;
   pointsPaise: number;
@@ -66,29 +68,24 @@ function buildTree(people: TreePerson[]): LaidOutNode | null {
   }
   if (!root) return null;
 
-  // Sort children by createdAt (1st = LEFT, 2nd = RIGHT).
-  function sortRec(n: LaidOutNode) {
-    n.children.sort((a, b) => {
-      const at = (a as TreePerson).createdAt ? new Date((a as TreePerson).createdAt!).getTime() : 0;
-      const bt = (b as TreePerson).createdAt ? new Date((b as TreePerson).createdAt!).getTime() : 0;
-      if (at !== bt) return at - bt;
-      return a.name.localeCompare(b.name);
-    });
-    n.children.forEach(sortRec);
-  }
-  sortRec(root);
-
   // For each real node, fill missing L/R slots with placeholders.
+  // Uses the DB `slot` field (LEFT/RIGHT) — not creation order — so the
+  // visual position always matches what the API will check on placement.
   function injectPlaceholders(n: LaidOutNode) {
-    const slots: ("LEFT" | "RIGHT")[] = ["LEFT", "RIGHT"];
-    // First map children to slot positions by order.
-    const ordered: { LEFT?: LaidOutNode; RIGHT?: LaidOutNode } = {};
-    if (n.children[0]) ordered.LEFT = n.children[0];
-    if (n.children[1]) ordered.RIGHT = n.children[1];
+    const bySlot: { LEFT?: LaidOutNode; RIGHT?: LaidOutNode } = {};
+    for (const c of n.children) {
+      if (c.slot === "LEFT") bySlot.LEFT = c;
+      else if (c.slot === "RIGHT") bySlot.RIGHT = c;
+      else {
+        // No slot field — fall back to creation order for legacy/root node.
+        if (!bySlot.LEFT) bySlot.LEFT = c;
+        else if (!bySlot.RIGHT) bySlot.RIGHT = c;
+      }
+    }
 
     const nextChildren: LaidOutNode[] = [];
-    for (const s of slots) {
-      const real = ordered[s];
+    for (const s of ["LEFT", "RIGHT"] as const) {
+      const real = bySlot[s];
       if (real) {
         nextChildren.push(real);
       } else {

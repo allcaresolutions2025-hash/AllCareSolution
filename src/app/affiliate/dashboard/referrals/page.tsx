@@ -90,6 +90,7 @@ export default async function GenealogyPage() {
       email: n.email,
       referralCode: n.referralCode,
       referrerId: n.referrerId,
+      slot: n.slot,
       depth: n.depth,
       isActive: n.isActive,
       gender: n.gender,

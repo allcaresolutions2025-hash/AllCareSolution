@@ -8,6 +8,7 @@ export type DownlineNode = {
   email: string;
   referralCode: string;
   referrerId: string | null;
+  slot: "LEFT" | "RIGHT" | null;
   createdAt: Date;
   isActive: boolean;
   depth: number;
@@ -24,6 +25,7 @@ type RawRow = {
   email: string;
   referralCode: string;
   referrerId: string | null;
+  slot: "LEFT" | "RIGHT" | null;
   createdAt: Date;
   isActive: boolean;
   depth: number;
@@ -37,11 +39,11 @@ type RawRow = {
 export async function getDownline(rootUserId: string, maxDepth = MAX_DOWNLINE_DEPTH): Promise<DownlineNode[]> {
   const rows = await prisma.$queryRaw<RawRow[]>`
     WITH RECURSIVE downline AS (
-      SELECT id, name, email, "referralCode", "referrerId", "createdAt", "isActive", gender, 1 AS depth
+      SELECT id, name, email, "referralCode", "referrerId", slot, "createdAt", "isActive", gender, 1 AS depth
       FROM "User"
       WHERE "referrerId" = ${rootUserId}
       UNION ALL
-      SELECT u.id, u.name, u.email, u."referralCode", u."referrerId", u."createdAt", u."isActive", u.gender, d.depth + 1
+      SELECT u.id, u.name, u.email, u."referralCode", u."referrerId", u.slot, u."createdAt", u."isActive", u.gender, d.depth + 1
       FROM "User" u
       JOIN downline d ON u."referrerId" = d.id
       WHERE d.depth < ${maxDepth}
@@ -50,6 +52,7 @@ export async function getDownline(rootUserId: string, maxDepth = MAX_DOWNLINE_DE
   `;
   return rows.map((r) => ({
     ...r,
+    slot: (r.slot as "LEFT" | "RIGHT" | null) ?? null,
     salesPaise: 0,
     orderCount: 0,
     commissionToRootPaise: 0,
