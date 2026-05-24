@@ -1,10 +1,10 @@
 // Money helpers — all internal storage is paise (Int). Display layer shows points.
-// Points are an abstract loyalty unit, NOT money. 1 internal paise-unit = 1 point
-// (i.e. a product stored as 100,000 paise displays as "1,00,000 pts"). No INR
+// Points are an abstract loyalty unit. 100 paise = 1 point
+// (i.e. a product stored as 100,000 paise displays as "1,000 pts"). No INR
 // conversion is implied for the customer-facing surface.
 
 export const PAISE_PER_RUPEE = 100;
-export const PAISE_PER_POINT = 1;
+export const PAISE_PER_POINT = 100;
 
 export function toPaise(rupees: number | string): number {
   const n = typeof rupees === "string" ? parseFloat(rupees) : rupees;

@@ -102,7 +102,7 @@ export default function CartPage() {
           Proceed to Checkout
         </button>
         <p className="text-xs text-muted-foreground text-center mt-3">
-          Secure payment via Razorpay · 30-day buyback guarantee
+          Cash on Delivery · 30-day buyback guarantee
         </p>
       </aside>
     </div>

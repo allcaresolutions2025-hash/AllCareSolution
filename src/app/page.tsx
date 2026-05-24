@@ -146,7 +146,7 @@ export default async function HomePage() {
       <section className="bg-white border-b">
         <div className="container py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           <Metric value="100%" label="Authentic herbs" />
-          <Metric value="6+" label="Wellness products" />
+          <Metric value="100+" label="Products" />
           <Metric value="30 day" label="Buyback policy" />
           <Metric value="500 pts" label="Min payout" />
         </div>
