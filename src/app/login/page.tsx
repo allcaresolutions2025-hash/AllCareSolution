@@ -1,7 +1,6 @@
 "use client";
 
 import { signIn, getSession } from "next-auth/react";
-import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, Suspense } from "react";
 import toast from "react-hot-toast";

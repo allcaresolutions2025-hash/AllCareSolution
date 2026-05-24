@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { BadgeIndianRupee, Clock, CheckCircle2, FileCheck2 } from "lucide-react";
+import { BadgeIndianRupee, Clock, FileCheck2 } from "lucide-react";
 import { formatRupees, tierByKey } from "@/lib/loan";
 import { LoanApprovalRow } from "./loan-approval-row";
 import { ReceiptReviewRow } from "./receipt-review-row";

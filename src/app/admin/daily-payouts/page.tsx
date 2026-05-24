@@ -40,7 +40,7 @@ export default async function AdminDailyPayoutsPage() {
       <div>
         <h1 className="text-2xl font-bold">Daily Points Payouts</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Every night at 00:00 IST the cron job pays out 90% of each user's available points
+          Every night at 00:00 IST the cron job pays out 90% of each user&apos;s available points
           and resets their balance to 0 — but only for users with at least 500 pts.
           Sub-500 balances keep accumulating until they cross the threshold. Disburse offline, then mark as paid.
         </p>
