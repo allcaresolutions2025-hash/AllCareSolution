@@ -130,7 +130,7 @@ export default async function AdminGenealogyPage() {
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs uppercase tracking-wider text-brand-200">Leader's points</div>
+            <div className="text-xs uppercase tracking-wider text-brand-200">Leader&apos;s points</div>
             <div className="text-2xl font-bold tabular-nums">{formatPoints(leader.wallet?.balanceAvailable ?? 0)}</div>
           </div>
         </div>
