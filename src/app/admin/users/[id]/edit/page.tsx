@@ -47,7 +47,7 @@ export default async function AdminEditUserPage({ params }: { params: { id: stri
         <div className="text-xs text-muted-foreground">Member ID</div>
         <div className="font-mono font-semibold">{user.referralCode}</div>
         <div className="text-xs text-muted-foreground mt-2">
-          Email: <span className="font-mono">{user.email}</span> · Role: {user.role} · Joined {user.createdAt.toLocaleDateString("en-IN")}
+          Email: <span className="font-mono">{user.email}</span> · Role: {user.role} · Joined {user.createdAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
         </div>
       </div>
 

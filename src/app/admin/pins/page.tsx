@@ -106,7 +106,7 @@ export default async function AdminPinsPage() {
                 {recent.map((r) => (
                   <tr key={r.id} className="border-t">
                     <td className="px-4 py-2 text-muted-foreground text-xs">
-                      {r.reviewedAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) ?? "—"}
+                      {r.reviewedAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }) ?? "—"}
                     </td>
                     <td className="px-4 py-2">
                       <div className="font-medium">{r.user.name}</div>

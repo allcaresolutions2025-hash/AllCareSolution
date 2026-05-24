@@ -107,7 +107,7 @@ export default async function AdminDailyPayoutsPage() {
                 {paid.map((p) => (
                   <tr key={p.id} className="border-t">
                     <td className="px-4 py-2 text-muted-foreground text-xs">
-                      {p.paidAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) ?? "—"}
+                      {p.paidAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }) ?? "—"}
                     </td>
                     <td className="px-4 py-2 text-xs font-mono">{p.runDate}</td>
                     <td className="px-4 py-2">
@@ -150,7 +150,7 @@ export default async function AdminDailyPayoutsPage() {
                 {unpaid.map((p) => (
                   <tr key={p.id} className="border-t">
                     <td className="px-4 py-2 text-muted-foreground text-xs">
-                      {p.updatedAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                      {p.updatedAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
                     </td>
                     <td className="px-4 py-2 text-xs font-mono">{p.runDate}</td>
                     <td className="px-4 py-2">

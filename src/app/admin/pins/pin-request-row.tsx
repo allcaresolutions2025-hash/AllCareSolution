@@ -48,7 +48,7 @@ export function PinRequestRow({
   return (
     <tr className="border-t">
       <td className="px-4 py-2 text-xs text-muted-foreground">
-        {new Date(createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+        {new Date(createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
       </td>
       <td className="px-4 py-2">
         <div className="font-medium">{userName}</div>

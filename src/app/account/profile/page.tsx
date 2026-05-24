@@ -18,7 +18,7 @@ export default async function ProfilePage() {
         <Row label="Email" value={user.email} />
         <Row label="Phone" value={user.phone || "—"} />
         <Row label="Referral code" value={user.referralCode} mono />
-        <Row label="Joined" value={new Date(user.createdAt).toLocaleDateString("en-IN")} />
+        <Row label="Joined" value={new Date(user.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} />
         <p className="text-xs text-muted-foreground">
           To change your name, phone, or password, please contact achtmarts2026@gmail.com.
         </p>

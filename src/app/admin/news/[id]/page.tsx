@@ -18,7 +18,7 @@ export default async function EditNewsPage({ params }: { params: { id: string } 
         </Link>
         <h1 className="text-2xl font-bold">Edit Post</h1>
         <p className="text-xs text-muted-foreground mt-1">
-          Posted {new Date(post.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+          Posted {new Date(post.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" })}
         </p>
       </div>
       <div className="card p-6">

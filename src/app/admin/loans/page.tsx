@@ -155,7 +155,7 @@ export default async function AdminLoansPage() {
                 {recentLoans.map((l) => (
                   <tr key={l.id} className="border-t">
                     <td className="px-4 py-2 text-muted-foreground text-xs">
-                      {l.updatedAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                      {l.updatedAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
                     </td>
                     <td className="px-4 py-2">
                       <div className="font-medium">{l.user.name}</div>

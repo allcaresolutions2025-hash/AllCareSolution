@@ -57,11 +57,11 @@ export default async function MyLoanPage() {
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {tier?.label ?? loan.tierKey} · {loan.totalWeeks} weeks ·
-                  {" "}Applied {loan.requestedAt.toLocaleDateString("en-IN", { dateStyle: "medium" })}
+                  {" "}Applied {loan.requestedAt.toLocaleDateString("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" })}
                 </div>
                 {loan.dueDate && (
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    Final due: {loan.dueDate.toLocaleDateString("en-IN", { dateStyle: "medium" })}
+                    Final due: {loan.dueDate.toLocaleDateString("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" })}
                   </div>
                 )}
                 {loan.reviewerNotes && (

@@ -71,7 +71,7 @@ export default async function AdminNewsPage() {
                 </p>
                 <p className="text-xs text-slate-400 mt-2">
                   {new Date(post.createdAt).toLocaleDateString("en-IN", {
-                    day: "numeric", month: "short", year: "numeric",
+                    day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata",
                   })}
                   {post.updatedAt > post.createdAt && " · edited"}
                 </p>

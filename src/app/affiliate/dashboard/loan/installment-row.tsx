@@ -72,7 +72,7 @@ export function InstallmentRow({
     <tr className="border-t">
       <td className="px-4 py-3 font-medium">Week {weekNumber}</td>
       <td className="px-4 py-3 text-xs">
-        <div>{due.toLocaleDateString("en-IN", { dateStyle: "medium" })}</div>
+        <div>{due.toLocaleDateString("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" })}</div>
         {isOverdue && <div className="text-red-600 font-semibold mt-0.5">Overdue</div>}
       </td>
       <td className="px-4 py-3 text-right font-bold tabular-nums">{formatRupees(amount)}</td>
@@ -114,7 +114,7 @@ export function InstallmentRow({
             </button>
             {uploadedAt && (
               <div className="text-[10px] text-muted-foreground mt-1">
-                Last sent: {new Date(uploadedAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                Last sent: {new Date(uploadedAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Kolkata" })}
               </div>
             )}
           </>

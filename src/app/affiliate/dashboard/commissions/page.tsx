@@ -47,7 +47,7 @@ export default async function CommissionsPage() {
               {commissions.map((c) => (
                 <tr key={c.id} className="border-t">
                   <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
-                    {new Date(c.createdAt).toLocaleDateString("en-IN")}
+                    {new Date(c.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                   </td>
                   <td className="px-4 py-2 font-mono text-xs">{c.order.orderNumber}</td>
                   <td className="px-4 py-2">L{c.level} · {c.ratePercent}%</td>
@@ -55,9 +55,9 @@ export default async function CommissionsPage() {
                   <td className="px-4 py-2 text-right font-semibold">{formatINR(c.commissionAmount)}</td>
                   <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
                     {c.order.buybackUntil
-                      ? new Date(c.order.buybackUntil).toLocaleDateString("en-IN")
+                      ? new Date(c.order.buybackUntil).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })
                       : c.availableAt
-                        ? new Date(c.availableAt).toLocaleDateString("en-IN")
+                        ? new Date(c.availableAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })
                         : "After delivery + 30 days"}
                   </td>
                   <td className="px-4 py-2">

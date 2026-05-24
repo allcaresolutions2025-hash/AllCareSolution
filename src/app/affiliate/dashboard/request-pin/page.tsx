@@ -80,7 +80,7 @@ export default async function RequestPinPage() {
               {requests.map((r) => (
                 <tr key={r.id} className="border-t">
                   <td className="px-4 py-2 text-muted-foreground">
-                    {r.createdAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                    {r.createdAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
                   </td>
                   <td className="px-4 py-2 font-medium tabular-nums">{r.quantity}</td>
                   <td className="px-4 py-2 text-xs font-mono">{r.mobileNumber}</td>
@@ -89,7 +89,7 @@ export default async function RequestPinPage() {
                   </td>
                   <td className="px-4 py-2 tabular-nums">{r._count.pins}</td>
                   <td className="px-4 py-2 text-xs text-muted-foreground">
-                    {r.reviewedAt ? r.reviewedAt.toLocaleDateString("en-IN") : "—"}
+                    {r.reviewedAt ? r.reviewedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) : "—"}
                   </td>
                 </tr>
               ))}

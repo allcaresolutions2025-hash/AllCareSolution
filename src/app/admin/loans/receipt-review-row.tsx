@@ -81,12 +81,12 @@ export function ReceiptReviewRow({
             {userName} <span className="text-xs font-mono text-muted-foreground">({userCode})</span>
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
-            Week {weekNumber} · {formatRupees(amount)} · Due {new Date(dueDate).toLocaleDateString("en-IN", { dateStyle: "medium" })}
+            Week {weekNumber} · {formatRupees(amount)} · Due {new Date(dueDate).toLocaleDateString("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" })}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
             {tierLabel} ·{" "}
             {uploadedAt && (
-              <>Uploaded {new Date(uploadedAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</>
+              <>Uploaded {new Date(uploadedAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Kolkata" })}</>
             )}
           </div>
         </div>

@@ -55,7 +55,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                   <div className="text-xs text-muted-foreground">{o.user.email}</div>
                 </td>
                 <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                  {new Date(o.createdAt).toLocaleDateString("en-IN")}
+                  {new Date(o.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                 </td>
                 <td className="px-4 py-2 text-right font-medium">{formatINR(o.totalAmount)}</td>
                 <td className="px-4 py-2"><OrderStatusBadge status={o.status} /></td>

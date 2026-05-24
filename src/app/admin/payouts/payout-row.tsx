@@ -74,7 +74,7 @@ export function PayoutRow({
         <div className="text-xs text-muted-foreground">{user.email}</div>
       </td>
       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-        {new Date(requestedAt).toLocaleDateString("en-IN")}
+        {new Date(requestedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
       </td>
       <td className="px-4 py-3 text-right">{formatINR(amountGross)}</td>
       <td className="px-4 py-3 text-right text-muted-foreground">

@@ -99,7 +99,7 @@ export function KycRow({
         )}
       </td>
       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-        {submittedAt ? new Date(submittedAt).toLocaleString("en-IN") : "—"}
+        {submittedAt ? new Date(submittedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "—"}
       </td>
       <td className="px-4 py-3">
         <span

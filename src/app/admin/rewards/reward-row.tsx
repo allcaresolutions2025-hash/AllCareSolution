@@ -36,7 +36,7 @@ export function RewardRow({ id, user, level, rewardName, status, adminNote, requ
   const [showReject, setShowReject] = useState(false);
 
   const badge = STATUS_BADGE[status];
-  const date = new Date(requestedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const date = new Date(requestedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 
   async function updateStatus(newStatus: RewardClaimStatus, note?: string) {
     setLoading(true);

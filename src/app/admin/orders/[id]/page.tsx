@@ -26,7 +26,7 @@ export default async function AdminOrderDetail({ params }: { params: { id: strin
           <h1 className="text-2xl font-bold">Order {order.orderNumber}</h1>
           <OrderStatusBadge status={order.status} />
         </div>
-        <p className="text-sm text-muted-foreground mt-1">Placed {new Date(order.placedAt).toLocaleString("en-IN")}</p>
+        <p className="text-sm text-muted-foreground mt-1">Placed {new Date(order.placedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
       </div>
 
       <OrderActions orderId={order.id} status={order.status} />

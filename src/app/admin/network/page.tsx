@@ -240,7 +240,7 @@ export default async function AdminNetworkPage() {
                       )}
                     </td>
                     <td className="text-right px-5 py-2 text-xs text-muted-foreground">
-                      {u.createdAt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}
+                      {u.createdAt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit", timeZone: "Asia/Kolkata" })}
                     </td>
                   </tr>
                 ))}

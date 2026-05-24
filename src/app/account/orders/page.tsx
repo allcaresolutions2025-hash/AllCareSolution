@@ -43,7 +43,7 @@ export default async function OrdersPage() {
                   {o.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Placed {new Date(o.placedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  Placed {new Date(o.placedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}
                 </p>
               </div>
               <div className="text-right">

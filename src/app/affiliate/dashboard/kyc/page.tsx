@@ -32,7 +32,7 @@ export default async function KycPage() {
 
       {kyc?.status === "APPROVED" && (
         <div className="badge-green mt-4 inline-block">
-          KYC verified · approved {kyc.reviewedAt ? new Date(kyc.reviewedAt).toLocaleDateString("en-IN") : ""}
+          KYC verified · approved {kyc.reviewedAt ? new Date(kyc.reviewedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) : ""}
         </div>
       )}
       {kyc?.status === "PENDING" && (

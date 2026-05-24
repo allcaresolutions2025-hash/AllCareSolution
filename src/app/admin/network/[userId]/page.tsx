@@ -105,7 +105,7 @@ export default async function AdminUserDetailPage({ params }: { params: { userId
               )}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              Joined {user.createdAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              Joined {user.createdAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}
             </div>
           </div>
         </div>

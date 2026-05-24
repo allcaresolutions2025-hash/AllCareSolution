@@ -101,7 +101,7 @@ async function UnusedPanel({ userId }: { userId: string }) {
                 <tr key={p.id} className="border-t">
                   <td className="px-4 py-2 font-mono">{p.code}</td>
                   <td className="px-4 py-2 text-xs text-muted-foreground">
-                    {p.createdAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                    {p.createdAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
                   </td>
                   <td className="px-4 py-2">
                     <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
@@ -154,7 +154,7 @@ async function UsedPanel({ userId }: { userId: string }) {
                 <tr key={p.id} className="border-t">
                   <td className="px-4 py-2 font-mono">{p.code}</td>
                   <td className="px-4 py-2 text-xs text-muted-foreground">
-                    {p.usedAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) ?? "—"}
+                    {p.usedAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }) ?? "—"}
                   </td>
                   <td className="px-4 py-2">
                     {p.usedForUser ? (

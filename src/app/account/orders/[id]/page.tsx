@@ -64,7 +64,7 @@ export default async function OrderDetailPage({
         <div>
           <h1 className="text-2xl font-bold">Order {order.orderNumber}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Placed on {new Date(order.placedAt).toLocaleString("en-IN")}
+            Placed on {new Date(order.placedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
           </p>
         </div>
         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide ${
@@ -187,7 +187,7 @@ export default async function OrderDetailPage({
             <div className="card p-5 bg-brand-50 border-brand-200">
               <h2 className="font-semibold text-brand-900">30-day buyback</h2>
               <p className="text-sm text-brand-800 mt-1">
-                Eligible for return until {new Date(order.buybackUntil).toLocaleDateString("en-IN")}.
+                Eligible for return until {new Date(order.buybackUntil).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}.
               </p>
             </div>
           )}
