@@ -79,7 +79,7 @@ export function DashboardShell({
   );
 
   return (
-    <div className="container-page grid md:grid-cols-[220px_1fr] gap-6">
+    <div className="container-page md:grid md:grid-cols-[220px_1fr] md:gap-6">
       {/* Desktop sidebar */}
       <aside className="hidden md:block md:sticky md:top-20 h-fit">
         <h2 className="font-bold text-lg mb-1">{title}</h2>
@@ -92,7 +92,7 @@ export function DashboardShell({
       </aside>
 
       {/* Mobile: sticky top bar + slide-down drawer */}
-      <div className="md:hidden col-span-full">
+      <div className="md:hidden">
         {/* Sticky trigger bar */}
         <div className="sticky top-16 z-30 -mx-4 px-4 py-3 bg-white/95 backdrop-blur border-b border-slate-100 flex items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -149,7 +149,7 @@ export function DashboardShell({
       </div>
 
       {/* Content */}
-      <div className="min-w-0 col-span-full md:col-span-1">{children}</div>
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }

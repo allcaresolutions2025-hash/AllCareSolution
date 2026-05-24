@@ -249,7 +249,7 @@ export default async function AffiliateDashboardPage() {
       </div>
 
       {/* Team counters */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <TeamCounter color="teal" icon={<Users className="h-5 w-5" />} label="DIRECT TEAM" value={directTeam} />
         <TeamCounter color="pink" icon={<UserSquare2 className="h-5 w-5" />} label="TEAM L" value={teamLCount} />
         <TeamCounter color="blue" icon={<UserSquare2 className="h-5 w-5" />} label="TEAM R" value={teamRCount} />
@@ -404,12 +404,12 @@ function TeamCounter({
     blue: { iconBg: "bg-blue-100 text-blue-700", value: "text-blue-700" },
   }[color];
   return (
-    <div className="card p-5 flex items-center justify-between gap-3">
+    <div className="card p-3 sm:p-5 flex flex-col items-center text-center gap-1 sm:flex-row sm:items-center sm:text-left sm:justify-between sm:gap-3">
       <div>
-        <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{label}</div>
-        <div className={`mt-1 text-4xl font-bold tabular-nums ${tone.value}`}>{value}</div>
+        <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider font-semibold leading-tight">{label}</div>
+        <div className={`text-3xl sm:text-4xl font-bold tabular-nums ${tone.value}`}>{value}</div>
       </div>
-      <div className={`h-12 w-12 rounded-xl grid place-items-center ${tone.iconBg}`}>{icon}</div>
+      <div className={`hidden sm:grid h-12 w-12 rounded-xl place-items-center ${tone.iconBg}`}>{icon}</div>
     </div>
   );
 }
