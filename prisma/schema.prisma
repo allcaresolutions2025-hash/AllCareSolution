@@ -84,6 +84,9 @@ model User {
   // Nightly 10% payouts (90% paid, 10% forfeit, balance resets to 0)
   dailyPayouts  DailyPayout[]
 
+  // Reward claims
+  rewardClaims  RewardClaim[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -500,6 +503,33 @@ model AuditLog {
 }
 
 // ---------- NEWS / ANNOUNCEMENTS ----------
+
+// ---------- REWARDS ----------
+
+enum RewardClaimStatus {
+  PENDING
+  APPROVED
+  DISPATCHED
+  DELIVERED
+  REJECTED
+}
+
+model RewardClaim {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id])
+  level       Int               // 1-15
+  rewardName  String
+  status      RewardClaimStatus @default(PENDING)
+  adminNote   String?           @db.Text
+  requestedAt DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([userId, level])
+  @@index([status, requestedAt])
+}
+
+// ---------- NEWS ----------
 
 model NewsPost {
   id          String   @id @default(cuid())

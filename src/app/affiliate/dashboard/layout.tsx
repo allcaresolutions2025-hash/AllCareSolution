@@ -1,9 +1,10 @@
 import { DashboardShell } from "@/components/dashboard-shell";
-import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone } from "lucide-react";
+import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy } from "lucide-react";
 
 const nav = [
   { href: "/affiliate/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/news", label: "News", icon: <Megaphone className="h-4 w-4" /> },
+  { href: "/affiliate/dashboard/rewards", label: "My Rewards", icon: <Trophy className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/referrals", label: "Genealogy", icon: <Network className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/request-pin", label: "Request Pin", icon: <KeyRound className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/pin-status", label: "Pin Status", icon: <ListChecks className="h-4 w-4" /> },
