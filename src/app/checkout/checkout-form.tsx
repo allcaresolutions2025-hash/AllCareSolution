@@ -20,7 +20,6 @@ export type SavedAddress = {
 export function CheckoutForm({
   savedAddress,
   userName,
-  userEmail: _userEmail,
   userPhone,
 }: {
   savedAddress: SavedAddress | null;
