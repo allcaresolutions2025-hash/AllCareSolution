@@ -17,7 +17,7 @@
 
 @layer components {
   .container-page {
-    @apply container py-4 md:py-8;
+    @apply container py-4 md:py-8 overflow-x-hidden;
   }
   .card {
     @apply bg-white border border-border rounded-lg shadow-sm;
