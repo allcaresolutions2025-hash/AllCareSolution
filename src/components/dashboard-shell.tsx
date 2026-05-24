@@ -52,7 +52,7 @@ export function DashboardShell({
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  const NavLinks = ({ onClick }: { onClick?: () => void }) => (
+  const NavLinks = ({ onClick, mobile }: { onClick?: () => void; mobile?: boolean }) => (
     <>
       {nav.map((n) => {
         const active = pathname === n.href || pathname.startsWith(n.href + "/");
@@ -62,15 +62,16 @@ export function DashboardShell({
             href={n.href}
             onClick={onClick}
             className={cn(
-              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
+              "flex items-center gap-3 rounded-xl transition-colors",
+              mobile ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm rounded-lg",
               active
                 ? "bg-brand-100 text-brand-800 font-semibold"
                 : "hover:bg-muted text-foreground"
             )}
           >
-            {n.icon}
+            <span className={cn("shrink-0", mobile && "scale-125")}>{n.icon}</span>
             <span className="flex-1">{n.label}</span>
-            {active && <ChevronRight className="h-3.5 w-3.5 opacity-50" />}
+            {active && <ChevronRight className={cn("opacity-50", mobile ? "h-4 w-4" : "h-3.5 w-3.5")} />}
           </Link>
         );
       })}
@@ -85,7 +86,7 @@ export function DashboardShell({
         {description && (
           <p className="text-xs text-muted-foreground mb-4">{description}</p>
         )}
-        <nav className="space-y-1">
+        <nav className="space-y-0.5">
           <NavLinks />
         </nav>
       </aside>
@@ -93,21 +94,21 @@ export function DashboardShell({
       {/* Mobile: sticky top bar + slide-down drawer */}
       <div className="md:hidden col-span-full">
         {/* Sticky trigger bar */}
-        <div className="sticky top-16 z-30 -mx-4 px-4 py-2 bg-white/95 backdrop-blur border-b border-slate-100 flex items-center justify-between gap-3 shadow-sm">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="sticky top-16 z-30 -mx-4 px-4 py-3 bg-white/95 backdrop-blur border-b border-slate-100 flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
             {activeItem && (
-              <span className="text-brand-700 shrink-0">{activeItem.icon}</span>
+              <span className="text-brand-700 shrink-0 scale-125">{activeItem.icon}</span>
             )}
-            <span className="font-semibold text-sm truncate">
+            <span className="font-bold text-base truncate">
               {activeItem?.label ?? title}
             </span>
           </div>
           <button
             onClick={() => setOpen((v) => !v)}
-            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-muted transition-colors shrink-0"
+            className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border-2 border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors shrink-0"
             aria-label="Toggle navigation"
           >
-            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             <span>{open ? "Close" : "Menu"}</span>
           </button>
         </div>
@@ -136,8 +137,8 @@ export function DashboardShell({
               </div>
 
               {/* Nav items */}
-              <nav className="p-3 space-y-0.5">
-                <NavLinks onClick={() => setOpen(false)} />
+              <nav className="p-3 space-y-1">
+                <NavLinks onClick={() => setOpen(false)} mobile />
               </nav>
 
               {/* Bottom safe area */}

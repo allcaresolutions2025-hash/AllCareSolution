@@ -160,8 +160,8 @@ export default async function AffiliateDashboardPage() {
         {/* Earnings doughnut */}
         <div className="card p-5">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-brand-700">My Earnings</h2>
-            <span className="text-lg font-bold tabular-nums text-brand-700">
+            <h2 className="font-bold text-lg text-brand-700">My Earnings</h2>
+            <span className="text-xl font-bold tabular-nums text-brand-700">
               {formatPoints(personalPts)}
             </span>
           </div>
@@ -207,13 +207,13 @@ export default async function AffiliateDashboardPage() {
             <div className="mt-3 grid grid-cols-2 gap-2 text-center">
               <div>
                 <div className="text-2xl font-bold tabular-nums">{teamLCount}</div>
-                <div className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
                   Team L Balance
                 </div>
               </div>
               <div className="border-l">
                 <div className="text-2xl font-bold tabular-nums">{teamRCount}</div>
-                <div className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
                   Team R Balance
                 </div>
               </div>
@@ -249,7 +249,7 @@ export default async function AffiliateDashboardPage() {
       </div>
 
       {/* Team counters */}
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <TeamCounter color="teal" icon={<Users className="h-5 w-5" />} label="DIRECT TEAM" value={directTeam} />
         <TeamCounter color="pink" icon={<UserSquare2 className="h-5 w-5" />} label="TEAM L" value={teamLCount} />
         <TeamCounter color="blue" icon={<UserSquare2 className="h-5 w-5" />} label="TEAM R" value={teamRCount} />
@@ -265,7 +265,7 @@ function ReferralRow({ side, label, url, accent }: { side: "L" | "R"; label: str
       : { ring: "border-sky-200", chip: "bg-sky-100 text-sky-700", btn: "bg-sky-500 hover:bg-sky-600" };
   return (
     <div>
-      <div className={`text-[10px] font-semibold inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${tone.chip}`}>
+      <div className={`text-xs font-semibold inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${tone.chip}`}>
         <span className="font-mono">{side}</span> {label}
       </div>
       <div className={`mt-1 flex items-stretch rounded-lg border ${tone.ring} bg-white overflow-hidden`}>
@@ -339,20 +339,20 @@ function IncomeRow({
     orange: "bg-orange-50 text-orange-700 border-orange-200",
   };
   return (
-    <div className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${map[tone]}`}>
-      <div className="flex items-center gap-2 text-sm font-medium">
+    <div className={`flex items-center justify-between gap-2 rounded-xl border px-4 py-3 ${map[tone]}`}>
+      <div className="flex items-center gap-2 text-base font-semibold">
         {icon} {label}
       </div>
-      <div className="text-sm font-bold tabular-nums">{value}</div>
+      <div className="text-base font-bold tabular-nums">{value}</div>
     </div>
   );
 }
 
 function BvCell({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-200 px-3 py-3 text-center">
-      <div className="text-3xl font-bold tabular-nums text-brand-700">{value}</div>
-      <div className="text-[11px] text-muted-foreground mt-0.5">{label}</div>
+    <div className="rounded-xl border border-slate-200 px-3 py-4 text-center">
+      <div className="text-4xl font-bold tabular-nums text-brand-700">{value}</div>
+      <div className="text-xs font-medium text-muted-foreground mt-1">{label}</div>
     </div>
   );
 }
@@ -375,13 +375,13 @@ function BigStat({
   }[color];
   return (
     <div className="card overflow-hidden relative">
-      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${tone.bar}`} />
-      <div className="p-5 pl-6 flex items-center justify-between gap-3">
+      <div className={`absolute left-0 top-0 bottom-0 w-2 ${tone.bar}`} />
+      <div className="p-5 pl-7 flex items-center justify-between gap-3">
         <div>
-          <div className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">{label}</div>
-          <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{label}</div>
+          <div className="mt-1 text-3xl font-bold tabular-nums">{value}</div>
         </div>
-        <div className={`h-10 w-10 rounded-lg grid place-items-center ${tone.iconBg}`}>{icon}</div>
+        <div className={`h-12 w-12 rounded-xl grid place-items-center ${tone.iconBg}`}>{icon}</div>
       </div>
     </div>
   );
@@ -406,10 +406,10 @@ function TeamCounter({
   return (
     <div className="card p-5 flex items-center justify-between gap-3">
       <div>
-        <div className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">{label}</div>
-        <div className={`mt-1 text-3xl font-bold tabular-nums ${tone.value}`}>{value}</div>
+        <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{label}</div>
+        <div className={`mt-1 text-4xl font-bold tabular-nums ${tone.value}`}>{value}</div>
       </div>
-      <div className={`h-10 w-10 rounded-lg grid place-items-center ${tone.iconBg}`}>{icon}</div>
+      <div className={`h-12 w-12 rounded-xl grid place-items-center ${tone.iconBg}`}>{icon}</div>
     </div>
   );
 }
