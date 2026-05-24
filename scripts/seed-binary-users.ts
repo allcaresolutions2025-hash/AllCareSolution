@@ -14,24 +14,10 @@ const prisma = new PrismaClient();
 const digits = customAlphabet("0123456789", 8);
 const genCode = () => "AM" + digits();
 
-// Tree layout (1-indexed): parent[i] = index of i's parent, null for root.
-// Layout (binary):
-//   1 (Priya, F) ── ROOT
-//   ├─ 2 (Rahul, M)   LEFT
-//   │  ├─ 4 (Vikram, M)   LEFT
-//   │  │  └─ 8 (Rohan, M)   LEFT
-//   │  └─ 5 (Neha, F)   RIGHT
-//   │     └─ 9 (Sneha, F)   LEFT
-//   └─ 3 (Anjali, F)  RIGHT
-//      ├─ 6 (Arjun, M)   LEFT
-//      └─ 7 (Kavya, F)   RIGHT
-//         └─ 10 (Karan, M)   LEFT
-const TOTAL = 10;
+// Tree layout: only Priya as root member.
+const TOTAL = 1;
 const PARENT: (number | null)[] = [
-  null, // 1
-  1, 1, // 2, 3
-  2, 2, 3, 3, // 4, 5, 6, 7
-  4, 5, 7, // 8, 9, 10
+  null, // 1 — Priya (ROOT)
 ];
 
 type Profile = {
@@ -53,60 +39,6 @@ const PROFILES: Profile[] = [
     pan: "PRYAS1234A",
     bankAccountName: "Priya Sharma", bankAccountNumber: "501234567811", bankIfsc: "HDFC0001234", bankName: "HDFC Bank",
     nominee: "Aarav Sharma", address: "12 Brigade Road, Bengaluru, Karnataka 560001", mobile: "9000000001",
-  },
-  {
-    name: "Rahul Patel", gender: "MALE",
-    pan: "RAHUP5678B",
-    bankAccountName: "Rahul Patel", bankAccountNumber: "300456789012", bankIfsc: "SBIN0005678", bankName: "State Bank of India",
-    nominee: "Meera Patel", address: "45 SG Highway, Ahmedabad, Gujarat 380015", mobile: "9000000002",
-  },
-  {
-    name: "Anjali Verma", gender: "FEMALE",
-    pan: "ANJVS9012C",
-    bankAccountName: "Anjali Verma", bankAccountNumber: "022501234567", bankIfsc: "ICIC0002233", bankName: "ICICI Bank",
-    nominee: "Suresh Verma", address: "9/3 Hazratganj, Lucknow, Uttar Pradesh 226001", mobile: "9000000003",
-  },
-  {
-    name: "Vikram Singh", gender: "MALE",
-    pan: "VIKMS3456D",
-    bankAccountName: "Vikram Singh", bankAccountNumber: "910123456789", bankIfsc: "UTIB0003344", bankName: "Axis Bank",
-    nominee: "Radha Singh", address: "22 MI Road, Jaipur, Rajasthan 302001", mobile: "9000000004",
-  },
-  {
-    name: "Neha Gupta", gender: "FEMALE",
-    pan: "NEHGP7890E",
-    bankAccountName: "Neha Gupta", bankAccountNumber: "615012345678", bankIfsc: "KKBK0004455", bankName: "Kotak Mahindra Bank",
-    nominee: "Manish Gupta", address: "5/8 Sector 18, Noida, Uttar Pradesh 201301", mobile: "9000000005",
-  },
-  {
-    name: "Arjun Reddy", gender: "MALE",
-    pan: "ARJRR2345F",
-    bankAccountName: "Arjun Reddy", bankAccountNumber: "200012345678", bankIfsc: "HDFC0005566", bankName: "HDFC Bank",
-    nominee: "Sita Reddy", address: "23 Banjara Hills, Hyderabad, Telangana 500034", mobile: "9000000006",
-  },
-  {
-    name: "Kavya Iyer", gender: "FEMALE",
-    pan: "KAVII6789G",
-    bankAccountName: "Kavya Iyer", bankAccountNumber: "302145678901", bankIfsc: "SBIN0006677", bankName: "State Bank of India",
-    nominee: "Lakshmi Iyer", address: "Flat 4B, T Nagar, Chennai, Tamil Nadu 600017", mobile: "9000000007",
-  },
-  {
-    name: "Rohan Mehta", gender: "MALE",
-    pan: "ROHMS0123H",
-    bankAccountName: "Rohan Mehta", bankAccountNumber: "061201234567", bankIfsc: "ICIC0007788", bankName: "ICICI Bank",
-    nominee: "Asha Mehta", address: "104 Linking Road, Mumbai, Maharashtra 400050", mobile: "9000000008",
-  },
-  {
-    name: "Sneha Joshi", gender: "FEMALE",
-    pan: "SNHJO4567J",
-    bankAccountName: "Sneha Joshi", bankAccountNumber: "910087654321", bankIfsc: "UTIB0008899", bankName: "Axis Bank",
-    nominee: "Aditya Joshi", address: "FC Road, Pune, Maharashtra 411005", mobile: "9000000009",
-  },
-  {
-    name: "Karan Malhotra", gender: "MALE",
-    pan: "KARMA8901K",
-    bankAccountName: "Karan Malhotra", bankAccountNumber: "616098765432", bankIfsc: "KKBK0009900", bankName: "Kotak Mahindra Bank",
-    nominee: "Pooja Malhotra", address: "GK-1, New Delhi, Delhi 110048", mobile: "9000000010",
   },
 ];
 
