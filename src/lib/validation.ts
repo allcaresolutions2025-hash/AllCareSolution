@@ -45,13 +45,8 @@ export const kycSchema = z.object({
     .toUpperCase()
     .regex(/^[A-Z]{5}\d{4}[A-Z]$/, "Invalid PAN format"),
   panName: z.string().min(2).max(80),
-  bankAccount: z.string().regex(/^\d{9,18}$/, "Invalid account number"),
-  ifsc: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code"),
-  bankHolderName: z.string().min(2).max(80),
+  // base64 data URL of the signed product-receipt document (max ~5 MB)
+  productReceiptUrl: z.string().min(1, "Please upload your product acknowledgement form").optional(),
 });
 
 export const productSchema = z.object({

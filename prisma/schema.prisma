@@ -122,19 +122,20 @@ enum KycStatus {
 }
 
 model KycDetail {
-  id             String    @id @default(cuid())
-  userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  panNumber      String?
-  panName        String?
-  bankAccount    String?
-  ifsc           String?
-  bankHolderName String?
-  status         KycStatus @default(NOT_SUBMITTED)
-  reviewerNotes  String?
-  submittedAt    DateTime?
-  reviewedAt     DateTime?
-  updatedAt      DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  panNumber          String?
+  panName            String?
+  bankAccount        String?
+  ifsc               String?
+  bankHolderName     String?
+  productReceiptUrl  String?   @db.Text
+  status             KycStatus @default(NOT_SUBMITTED)
+  reviewerNotes      String?
+  submittedAt        DateTime?
+  reviewedAt         DateTime?
+  updatedAt          DateTime  @updatedAt
 }
 
 model Wallet {

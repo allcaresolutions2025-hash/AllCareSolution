@@ -10,17 +10,30 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
 
   try {
-    const data = kycSchema.parse(await req.json());
+    const body = await req.json();
+
+    // Enforce 5 MB cap on base64 payload (base64 overhead ~33%)
+    const receiptStr: string = body.productReceiptUrl ?? "";
+    if (receiptStr.length > 7 * 1024 * 1024) {
+      return NextResponse.json({ error: "File too large — max 5 MB" }, { status: 400 });
+    }
+
+    const data = kycSchema.parse(body);
+
     await prisma.kycDetail.upsert({
       where: { userId: session.user.id },
       create: {
         userId: session.user.id,
-        ...data,
+        panNumber: data.panNumber,
+        panName: data.panName,
+        productReceiptUrl: data.productReceiptUrl ?? null,
         status: "PENDING",
         submittedAt: new Date(),
       },
       update: {
-        ...data,
+        panNumber: data.panNumber,
+        panName: data.panName,
+        productReceiptUrl: data.productReceiptUrl ?? null,
         status: "PENDING",
         submittedAt: new Date(),
         reviewerNotes: null,
