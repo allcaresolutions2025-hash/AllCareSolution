@@ -21,18 +21,28 @@ export type SiteBrand = {
 };
 
 export async function getSiteBrand(): Promise<SiteBrand> {
-  const rows = await prisma.setting.findMany({
-    where: { key: { in: [LOGO_KEY, SITE_NAME_KEY, SITE_TAGLINE_KEY] } },
-    select: { key: true, value: true },
-  });
-  const byKey = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-  const uploaded = byKey[LOGO_KEY] || "";
-  return {
-    logoUrl: uploaded || DEFAULT_LOGO_URL,
-    isCustomLogo: !!uploaded,
-    siteName: byKey[SITE_NAME_KEY] || "ACHT MART",
-    tagline: byKey[SITE_TAGLINE_KEY] || "Pure Nature, Pure Wellness",
-  };
+  try {
+    const rows = await prisma.setting.findMany({
+      where: { key: { in: [LOGO_KEY, SITE_NAME_KEY, SITE_TAGLINE_KEY] } },
+      select: { key: true, value: true },
+    });
+    const byKey = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    const uploaded = byKey[LOGO_KEY] || "";
+    return {
+      logoUrl: uploaded || DEFAULT_LOGO_URL,
+      isCustomLogo: !!uploaded,
+      siteName: byKey[SITE_NAME_KEY] || "ACHT MART",
+      tagline: byKey[SITE_TAGLINE_KEY] || "Pure Nature, Pure Wellness",
+    };
+  } catch {
+    // DB not ready yet (e.g. migrations pending) — return safe defaults.
+    return {
+      logoUrl: DEFAULT_LOGO_URL,
+      isCustomLogo: false,
+      siteName: "ACHT MART",
+      tagline: "Pure Nature, Pure Wellness",
+    };
+  }
 }
 
 // Updates are nullable strings: null/"" clears the override and reverts to
