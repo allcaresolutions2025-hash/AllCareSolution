@@ -114,7 +114,7 @@ export default async function AdminUserDetailPage({ params }: { params: { userId
         <Kpi icon={<Coins className="h-5 w-5" />} label="Points (available)" value={formatPoints(user.wallet?.balanceAvailable ?? 0)} />
         <Kpi icon={<Users className="h-5 w-5" />} label="Total downline" value={String(snapshot.totalMembers)} sub={`${activeMembers} active`} />
         <Kpi icon={<UserCheck className="h-5 w-5" />} label="Direct referrals" value={String(directs)} sub="L1 pair" />
-        <Kpi icon={<Layers className="h-5 w-5" />} label="Tree depth" value={`${maxDepth} ${maxDepth === 1 ? "level" : "levels"}`} sub={`max 15`} />
+        <Kpi icon={<Layers className="h-5 w-5" />} label="Tree depth" value={`${maxDepth} ${maxDepth === 1 ? "level" : "levels"}`} sub={`max 50`} />
       </div>
 
       {snapshot.summary.length > 0 && (

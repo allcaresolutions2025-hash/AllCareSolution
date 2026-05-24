@@ -1,6 +1,6 @@
 import { prisma } from "./db";
 
-export const MAX_DOWNLINE_DEPTH = 15;
+export const MAX_DOWNLINE_DEPTH = 50;
 
 export type DownlineNode = {
   id: string;
