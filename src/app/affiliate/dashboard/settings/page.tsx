@@ -72,7 +72,7 @@ export default async function SettingsPage() {
           <div>
             <div className="font-semibold">Locked fields</div>
             <div className="text-xs text-muted-foreground">
-              Name, Mobile, and Bank details can only be changed by admin. Contact support@achtmart.com to request a change.
+              Name, Mobile, and Bank details can only be changed by admin. Contact achtmarts2026@gmail.com to request a change.
             </div>
           </div>
         </div>

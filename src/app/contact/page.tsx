@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin, Clock } from "lucide-react";
+import { Mail, MapPin, Clock } from "lucide-react";
 
 export const metadata = { title: "Contact" };
 
@@ -8,8 +8,7 @@ export default function ContactPage() {
       <h1 className="text-3xl font-bold">Contact us</h1>
       <p className="text-muted-foreground mt-1">We&apos;re here to help with orders, returns, and affiliate questions.</p>
       <div className="mt-8 grid sm:grid-cols-2 gap-4">
-        <Card icon={<Mail />} title="Email" body={<a href="mailto:support@achtmart.com">support@achtmart.com</a>} />
-        <Card icon={<Phone />} title="Phone" body={<a href="tel:+919952293131">+91 9952293131</a>} />
+        <Card icon={<Mail />} title="Email" body={<a href="mailto:achtmarts2026@gmail.com">achtmarts2026@gmail.com</a>} />
         <Card icon={<MapPin />} title="Address" body={<>12/20, Soosainagar 3rd Street,<br />Vilangudi, Madurai 625018,<br />Tamil Nadu, India</>} />
         <Card icon={<Clock />} title="Hours" body={<>Mon-Sat: 10am-7pm IST<br />Sun: Closed</>} />
       </div>

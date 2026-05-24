@@ -20,7 +20,7 @@ export default async function ProfilePage() {
         <Row label="Referral code" value={user.referralCode} mono />
         <Row label="Joined" value={new Date(user.createdAt).toLocaleDateString("en-IN")} />
         <p className="text-xs text-muted-foreground">
-          To change your name, phone, or password, please contact support@achtmart.com.
+          To change your name, phone, or password, please contact achtmarts2026@gmail.com.
         </p>
       </div>
     </div>

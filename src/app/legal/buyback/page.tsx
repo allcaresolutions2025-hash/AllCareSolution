@@ -15,7 +15,7 @@ export default function BuybackPage() {
 
       <h2>How to return</h2>
       <ol>
-        <li>Email <a href="mailto:support@achtmart.com">support@achtmart.com</a> with your order number and reason.</li>
+        <li>Email <a href="mailto:achtmarts2026@gmail.com">achtmarts2026@gmail.com</a> with your order number and reason.</li>
         <li>We&apos;ll send you a return shipping label (free for buyback returns).</li>
         <li>Pack the item and drop with the courier within 7 days.</li>
         <li>Once received and inspected, we refund to your original payment method within 5-7 business days.</li>

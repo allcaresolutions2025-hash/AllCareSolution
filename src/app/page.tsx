@@ -14,7 +14,6 @@ import {
   Heart,
   Star,
   BadgeCheck,
-  Phone,
   Mail,
   MapPin,
   ShoppingBag,
@@ -45,11 +44,8 @@ export default async function HomePage() {
             Authentic Ayurveda · <span className="text-amber-300">Made in India</span>
           </span>
           <div className="flex items-center gap-5">
-            <a href="tel:+919952293131" className="inline-flex items-center gap-1.5 hover:text-white">
-              <Phone className="h-3 w-3" /> +91 9952293131
-            </a>
-            <a href="mailto:support@achtmart.com" className="hidden sm:inline-flex items-center gap-1.5 hover:text-white">
-              <Mail className="h-3 w-3" /> support@achtmart.com
+            <a href="mailto:achtmarts2026@gmail.com" className="inline-flex items-center gap-1.5 hover:text-white">
+              <Mail className="h-3 w-3" /> achtmarts2026@gmail.com
             </a>
           </div>
         </div>
@@ -134,8 +130,7 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="p-6 space-y-3 text-sm">
-              <ContactRow icon={<Phone className="h-4 w-4" />} label="Call us" value="+91 9952293131" href="tel:+919952293131" />
-              <ContactRow icon={<Mail className="h-4 w-4" />} label="Email" value="support@achtmart.com" href="mailto:support@achtmart.com" />
+              <ContactRow icon={<Mail className="h-4 w-4" />} label="Email" value="achtmarts2026@gmail.com" href="mailto:achtmarts2026@gmail.com" />
               <ContactRow icon={<MapPin className="h-4 w-4" />} label="Visit" value="12/20, Soosainagar 3rd St, Vilangudi, Madurai 625018" />
             </div>
           </aside>

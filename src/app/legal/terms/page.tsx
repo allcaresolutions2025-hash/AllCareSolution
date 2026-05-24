@@ -94,8 +94,7 @@ export default function TermsPage() {
 
       <h2>11. Contact</h2>
       <p>
-        Email: <a href="mailto:support@achtmart.com">support@achtmart.com</a><br />
-        Phone: +91 9952293131
+        Email: <a href="mailto:achtmarts2026@gmail.com">achtmarts2026@gmail.com</a>
       </p>
     </div>
   );

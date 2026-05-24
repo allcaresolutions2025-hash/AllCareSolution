@@ -24,7 +24,7 @@ export default function PrivacyPage() {
       <p>Order and financial records are retained for 8 years to satisfy income-tax and GST requirements.</p>
 
       <h2>Your rights</h2>
-      <p>Under the Digital Personal Data Protection Act, 2023, you may request access, correction, or erasure of your personal data by writing to support@achtmart.com.</p>
+      <p>Under the Digital Personal Data Protection Act, 2023, you may request access, correction, or erasure of your personal data by writing to achtmarts2026@gmail.com.</p>
 
       <h2>Security</h2>
       <p>Passwords are hashed using bcrypt. All traffic is encrypted with TLS. Sensitive financial data is encrypted at rest.</p>
@@ -33,7 +33,7 @@ export default function PrivacyPage() {
       <p>We use a session cookie to keep you signed in. We do not use third-party tracking cookies.</p>
 
       <h2>Contact</h2>
-      <p>Data Protection Officer: <a href="mailto:support@achtmart.com">support@achtmart.com</a></p>
+      <p>Data Protection Officer: <a href="mailto:achtmarts2026@gmail.com">achtmarts2026@gmail.com</a></p>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
 import { AchtMartLogo } from "./acht-mart-logo";
 import type { SiteBrand } from "@/lib/brand";
 
@@ -46,10 +46,7 @@ export function SiteFooter({ brand }: { brand: SiteBrand }) {
               <span>12/20, Soosainagar 3rd Street, Vilangudi, Madurai 625018, Tamil Nadu</span>
             </li>
             <li className="flex items-center gap-2">
-              <Phone className="h-4 w-4" /> <a href="tel:+919952293131">+91 9952293131</a>
-            </li>
-            <li className="flex items-center gap-2">
-              <Mail className="h-4 w-4" /> <a href="mailto:support@achtmart.com">support@achtmart.com</a>
+              <Mail className="h-4 w-4" /> <a href="mailto:achtmarts2026@gmail.com">achtmarts2026@gmail.com</a>
             </li>
           </ul>
         </div>
