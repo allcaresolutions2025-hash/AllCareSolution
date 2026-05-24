@@ -9,7 +9,6 @@ import {
   BadgeCheck,
   TrendingUp,
   Wallet,
-  IndianRupee,
   Users,
   UserSquare2,
   ArrowLeftRight,
@@ -83,8 +82,6 @@ export default async function AffiliateDashboardPage() {
   const directTeam = directs.length;
 
   const personalPts = me.wallet?.balanceAvailable ?? 0;
-  const totalPts = personalPts + leftPts + rightPts;
-
   // Note: public self-signup is disabled. New members are placed by their
   // upline via /affiliate/dashboard/add-member using this Refer ID and a pin.
   const addLeft = `/affiliate/dashboard/add-member?referId=${me.referralCode}&side=LEFT`;
@@ -242,18 +239,12 @@ export default async function AffiliateDashboardPage() {
       </div>
 
       {/* Wallet stats */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-1 gap-4">
         <BigStat
           color="emerald"
           icon={<Wallet className="h-5 w-5" />}
           label="E-WALLET BALANCE"
           value={formatPoints(personalPts)}
-        />
-        <BigStat
-          color="orange"
-          icon={<IndianRupee className="h-5 w-5" />}
-          label="MY EARNING"
-          value={formatPoints(totalPts)}
         />
       </div>
 
