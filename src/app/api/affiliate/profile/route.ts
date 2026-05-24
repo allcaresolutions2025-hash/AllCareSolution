@@ -28,28 +28,25 @@ export async function PATCH(req: Request) {
   }
   const { email, nominee, gender, address, panNumber } = parsed.data;
 
-  // Email uniqueness if changed.
   const current = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { email: true, panNumber: true },
   });
   if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Email: allow up to 15 member IDs to share the same email.
   if (email !== current.email) {
-    const taken = await prisma.user.findUnique({ where: { email } });
-    if (taken && taken.email !== current.email) {
-      return NextResponse.json({ error: "Email already in use" }, { status: 400 });
+    const emailCount = await prisma.user.count({ where: { email } });
+    if (emailCount >= PAN_MAX_USES) {
+      return NextResponse.json({ error: `This email has already been used for ${PAN_MAX_USES} member IDs.` }, { status: 400 });
     }
   }
 
-  // PAN max-15 if the user is changing PAN to a new one.
+  // PAN: allow up to 15 member IDs to share the same PAN.
   if (panNumber && panNumber !== current.panNumber) {
     const count = await prisma.user.count({ where: { panNumber } });
     if (count >= PAN_MAX_USES) {
-      return NextResponse.json(
-        { error: `The PAN used more than ${PAN_MAX_USES} times. Cannot save.` },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: `This PAN has already been used for ${PAN_MAX_USES} member IDs.` }, { status: 400 });
     }
   }
 

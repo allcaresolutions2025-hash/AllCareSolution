@@ -99,41 +99,46 @@ export async function POST(req: Request) {
   const passwordHash = await bcrypt.hash(mobile, 12);
   const memberCode = await generateUniqueReferralCode();
 
-  const newUser = await prisma.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: {
-        email,
-        phone: mobile,
-        name,
-        nominee,
-        gender,
-        address,
-        panNumber,
-        bankAccountName,
-        bankAccountNumber,
-        bankIfsc,
-        bankName,
-        passwordHash,
-        mustChangePassword: true,
-        referralCode: memberCode,
-        referrerId: placementParentId,
-        slot: side,
-        agreedToTermsAt: new Date(),
-        wallet: { create: {} },
-      },
+  let newUser;
+  try {
+    newUser = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email,
+          phone: mobile,
+          name,
+          nominee,
+          gender,
+          address,
+          panNumber,
+          bankAccountName,
+          bankAccountNumber,
+          bankIfsc,
+          bankName,
+          passwordHash,
+          mustChangePassword: true,
+          referralCode: memberCode,
+          referrerId: placementParentId,
+          slot: side,
+          agreedToTermsAt: new Date(),
+          wallet: { create: {} },
+        },
+      });
+      await tx.pin.update({
+        where: { id: pin.id },
+        data: { status: "USED", usedAt: new Date(), usedForUserId: created.id },
+      });
+      await awardUplinePoints(tx, created.id);
+      await tx.user.update({
+        where: { id: session.user.id },
+        data: { mustOnboard: false },
+      });
+      return created;
     });
-    await tx.pin.update({
-      where: { id: pin.id },
-      data: { status: "USED", usedAt: new Date(), usedForUserId: created.id },
-    });
-    await awardUplinePoints(tx, created.id);
-    // Clear fresher onboarding flag for the submitting user.
-    await tx.user.update({
-      where: { id: session.user.id },
-      data: { mustOnboard: false },
-    });
-    return created;
-  });
+  } catch (err) {
+    console.error("[MEMBER_CREATE]", err);
+    return NextResponse.json({ error: "Could not create member. Please try again." }, { status: 500 });
+  }
 
   const placementParent = await prisma.user.findUnique({
     where: { id: placementParentId },

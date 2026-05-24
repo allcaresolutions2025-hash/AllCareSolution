@@ -55,28 +55,25 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     isActive: data.isActive,
   };
 
-  // Phone uniqueness check if changed.
   const target = await prisma.user.findUnique({
     where: { id: params.id },
     select: { phone: true, panNumber: true },
   });
   if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Phone: allow up to 15 member IDs to share the same mobile.
   if (cleaned.phone && cleaned.phone !== target.phone) {
-    const phoneTaken = await prisma.user.findUnique({ where: { phone: cleaned.phone } });
-    if (phoneTaken && phoneTaken.phone !== target.phone) {
-      return NextResponse.json({ error: "Mobile already in use" }, { status: 400 });
+    const phoneCount = await prisma.user.count({ where: { phone: cleaned.phone } });
+    if (phoneCount >= PAN_MAX_USES) {
+      return NextResponse.json({ error: `This mobile has already been used for ${PAN_MAX_USES} member IDs.` }, { status: 400 });
     }
   }
 
-  // PAN max-15 if changed.
+  // PAN: allow up to 15 member IDs to share the same PAN.
   if (cleaned.panNumber && cleaned.panNumber !== target.panNumber) {
     const count = await prisma.user.count({ where: { panNumber: cleaned.panNumber } });
     if (count >= PAN_MAX_USES) {
-      return NextResponse.json(
-        { error: `The PAN used more than ${PAN_MAX_USES} times. Cannot save.` },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: `This PAN has already been used for ${PAN_MAX_USES} member IDs.` }, { status: 400 });
     }
   }
 
