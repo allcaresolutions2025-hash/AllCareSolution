@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
+import { BreakingNewsTicker } from "@/components/breaking-news-ticker";
 import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy } from "lucide-react";
 
 const nav = [
@@ -20,8 +21,11 @@ const nav = [
 
 export default function AffiliateLayout({ children }: { children: React.ReactNode }) {
   return (
-    <DashboardShell title="Affiliate Center" description="Track your earnings & payouts" nav={nav}>
-      {children}
-    </DashboardShell>
+    <>
+      <BreakingNewsTicker />
+      <DashboardShell title="Affiliate Center" description="Track your earnings & payouts" nav={nav}>
+        {children}
+      </DashboardShell>
+    </>
   );
 }
