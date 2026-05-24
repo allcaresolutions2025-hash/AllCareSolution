@@ -14,19 +14,20 @@ async function main() {
   const adminName = process.env.SEED_ADMIN_NAME || "ACHT MART Admin";
   const passwordHash = await bcrypt.hash(adminPassword, 12);
 
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
-    create: {
-      email: adminEmail,
-      name: adminName,
-      passwordHash,
-      role: "ADMIN",
-      referralCode: generate(),
-      agreedToTermsAt: new Date(),
-      wallet: { create: {} },
-    },
-    update: {},
-  });
+  let admin = await prisma.user.findFirst({ where: { email: adminEmail, role: "ADMIN" } });
+  if (!admin) {
+    admin = await prisma.user.create({
+      data: {
+        email: adminEmail,
+        name: adminName,
+        passwordHash,
+        role: "ADMIN",
+        referralCode: generate(),
+        agreedToTermsAt: new Date(),
+        wallet: { create: {} },
+      },
+    });
+  }
   console.log(`✅ Admin: ${admin.email}  (password: ${adminPassword})`);
 
   // Default business settings
