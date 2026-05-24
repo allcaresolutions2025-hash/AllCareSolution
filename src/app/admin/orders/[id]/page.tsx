@@ -77,10 +77,18 @@ export default async function AdminOrderDetail({ params }: { params: { id: strin
           </div>
           <div className="card p-5">
             <h2 className="font-semibold">Payment</h2>
-            <p className="text-xs mt-2 font-mono break-all text-muted-foreground">
-              Razorpay order: {order.razorpayOrderId || "—"}<br />
-              Payment ID: {order.razorpayPaymentId || "—"}
-            </p>
+            <div className="mt-2 text-sm">
+              {order.razorpayOrderId ? (
+                <p className="font-mono text-xs break-all text-muted-foreground">
+                  Razorpay: {order.razorpayOrderId}<br />
+                  Payment ID: {order.razorpayPaymentId || "—"}
+                </p>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full text-xs">
+                  Cash on Delivery
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

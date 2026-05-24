@@ -3,10 +3,25 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatINR } from "@/lib/money";
-import { OrderStatusBadge } from "@/components/order-status-badge";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Circle, Package, Truck, Home, BadgeCheck } from "lucide-react";
+import type { OrderStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
+
+const STEPS: { key: OrderStatus | "PLACED"; label: string; desc: string; icon: React.ReactNode }[] = [
+  { key: "PLACED", label: "Order Placed", desc: "Your COD order is confirmed", icon: <BadgeCheck className="h-5 w-5" /> },
+  { key: "PAID", label: "Processing", desc: "Admin is preparing your order", icon: <Package className="h-5 w-5" /> },
+  { key: "SHIPPED", label: "Shipped", desc: "On its way to you", icon: <Truck className="h-5 w-5" /> },
+  { key: "DELIVERED", label: "Delivered", desc: "Enjoy your order!", icon: <Home className="h-5 w-5" /> },
+];
+
+function stepIndex(status: OrderStatus): number {
+  if (status === "PENDING_PAYMENT") return 0;
+  if (status === "PAID") return 1;
+  if (status === "SHIPPED") return 2;
+  if (status === "DELIVERED") return 3;
+  return -1; // CANCELLED / RETURNED / REFUNDED
+}
 
 export default async function OrderDetailPage({
   params,
@@ -17,38 +32,116 @@ export default async function OrderDetailPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session) return null;
+
   const order = await prisma.order.findUnique({
     where: { id: params.id },
     include: { items: true },
   });
   if (!order || order.userId !== session.user.id) notFound();
 
+  const currentStep = stepIndex(order.status);
+  const isCancelled = ["CANCELLED", "RETURNED", "REFUNDED"].includes(order.status);
+
   return (
-    <div>
+    <div className="max-w-3xl mx-auto space-y-5 px-4 py-6">
+      {/* Success banner */}
       {searchParams.ok === "1" && (
-        <div className="card border-brand-200 bg-brand-50 p-4 mb-6 flex items-start gap-3">
-          <CheckCircle2 className="h-5 w-5 text-brand-700 mt-0.5 shrink-0" />
+        <div className="rounded-2xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 to-emerald-50 p-5 flex items-start gap-3">
+          <div className="h-10 w-10 rounded-full bg-brand-100 grid place-items-center shrink-0">
+            <CheckCircle2 className="h-5 w-5 text-brand-700" />
+          </div>
           <div>
-            <p className="font-semibold text-brand-900">Order placed successfully!</p>
-            <p className="text-sm text-brand-800">
-              Your order is now with our admin team. The delivery date will be updated here shortly —
-              you can track this order on the same page.
+            <p className="font-bold text-brand-900">Order placed successfully!</p>
+            <p className="text-sm text-brand-700 mt-0.5">
+              Your COD order is confirmed. Admin will process and dispatch it — track progress below.
             </p>
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">Order {order.orderNumber}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Placed on {new Date(order.placedAt).toLocaleString("en-IN")}
           </p>
         </div>
-        <OrderStatusBadge status={order.status} />
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide ${
+          isCancelled ? "bg-red-100 text-red-700" :
+          order.status === "DELIVERED" ? "bg-emerald-100 text-emerald-700" :
+          order.status === "SHIPPED" ? "bg-sky-100 text-sky-700" :
+          "bg-amber-100 text-amber-700"
+        }`}>
+          {order.status.replace("_", " ")}
+        </span>
       </div>
 
+      {/* Step tracker */}
+      {!isCancelled && (
+        <div className="card p-5">
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-5">
+            Order Progress
+          </h2>
+          <div className="relative">
+            {/* Connector line */}
+            <div className="absolute top-5 left-5 right-5 h-0.5 bg-slate-100" style={{ zIndex: 0 }}>
+              <div
+                className="h-full bg-brand-500 transition-all duration-500"
+                style={{ width: currentStep === 0 ? "0%" : currentStep === 1 ? "33%" : currentStep === 2 ? "66%" : "100%" }}
+              />
+            </div>
+            <div className="relative flex justify-between" style={{ zIndex: 1 }}>
+              {STEPS.map((step, idx) => {
+                const done = idx <= currentStep;
+                const active = idx === currentStep;
+                return (
+                  <div key={step.key} className="flex flex-col items-center text-center w-1/4">
+                    <div className={`h-10 w-10 rounded-full grid place-items-center border-2 transition-all ${
+                      done
+                        ? "bg-brand-600 border-brand-600 text-white shadow-md shadow-brand-300"
+                        : "bg-white border-slate-200 text-slate-300"
+                    } ${active ? "ring-4 ring-brand-200" : ""}`}>
+                      {done ? (idx < currentStep ? <CheckCircle2 className="h-5 w-5" /> : step.icon) : <Circle className="h-5 w-5" />}
+                    </div>
+                    <p className={`mt-2 text-xs font-semibold ${done ? "text-brand-700" : "text-slate-400"}`}>{step.label}</p>
+                    {active && <p className="text-[11px] text-muted-foreground mt-0.5 hidden sm:block">{step.desc}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tracking info */}
+          {order.trackingNumber && (
+            <div className="mt-5 pt-4 border-t flex items-center gap-3 flex-wrap">
+              <Truck className="h-4 w-4 text-sky-600 shrink-0" />
+              <div className="text-sm">
+                <span className="font-medium">{order.courier || "Courier"}</span>
+                <span className="mx-2 text-muted-foreground">·</span>
+                <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">{order.trackingNumber}</span>
+              </div>
+            </div>
+          )}
+
+          {/* COD reminder */}
+          <div className="mt-4 flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg">
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            Cash on Delivery — pay when your order arrives at your door
+          </div>
+        </div>
+      )}
+
+      {/* Cancelled state */}
+      {isCancelled && (
+        <div className="card p-5 border-red-200 bg-red-50/50 text-center">
+          <p className="font-semibold text-red-700">This order has been {order.status.toLowerCase()}.</p>
+          <p className="text-sm text-red-600 mt-1">Contact support if you have any questions.</p>
+        </div>
+      )}
+
       <div className="grid md:grid-cols-3 gap-4">
+        {/* Items */}
         <div className="card p-5 md:col-span-2 space-y-4">
           <h2 className="font-semibold">Items</h2>
           <div className="space-y-3">
@@ -75,7 +168,9 @@ export default async function OrderDetailPage({
             </div>
           </div>
         </div>
+
         <div className="space-y-4">
+          {/* Shipping address */}
           <div className="card p-5">
             <h2 className="font-semibold">Shipping address</h2>
             <div className="mt-2 text-sm text-muted-foreground">
@@ -86,13 +181,8 @@ export default async function OrderDetailPage({
               <div className="mt-1">📞 {order.shipPhone}</div>
             </div>
           </div>
-          {order.trackingNumber && (
-            <div className="card p-5">
-              <h2 className="font-semibold">Tracking</h2>
-              <p className="text-sm mt-2">{order.courier}</p>
-              <p className="text-xs font-mono mt-1">{order.trackingNumber}</p>
-            </div>
-          )}
+
+          {/* Buyback window */}
           {order.buybackUntil && (
             <div className="card p-5 bg-brand-50 border-brand-200">
               <h2 className="font-semibold text-brand-900">30-day buyback</h2>

@@ -498,3 +498,17 @@ model AuditLog {
   @@index([actorId])
   @@index([createdAt])
 }
+
+// ---------- NEWS / ANNOUNCEMENTS ----------
+
+model NewsPost {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @db.Text
+  isPublished Boolean  @default(true)
+  pinned      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, createdAt])
+}

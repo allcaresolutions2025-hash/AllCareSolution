@@ -2,7 +2,7 @@ import type { OrderStatus } from "@prisma/client";
 
 const map: Record<OrderStatus, { label: string; className: string }> = {
   PENDING_PAYMENT: { label: "Pending Payment", className: "badge-amber" },
-  PAID: { label: "Paid", className: "badge-blue" },
+  PAID: { label: "Confirmed", className: "badge-blue" },
   SHIPPED: { label: "Shipped", className: "badge-blue" },
   DELIVERED: { label: "Delivered", className: "badge-green" },
   CANCELLED: { label: "Cancelled", className: "badge-gray" },
