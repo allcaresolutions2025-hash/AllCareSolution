@@ -29,8 +29,8 @@ enum Gender {
 
 model User {
   id           String   @id @default(cuid())
-  email        String   @unique
-  phone        String?  @unique
+  email        String
+  phone        String?
   name         String
   passwordHash String
   transactionPasswordHash String?  // separate password required for sensitive ops (pin transfer)
@@ -90,6 +90,8 @@ model User {
   @@index([referrerId])
   @@index([referrerId, slot])
   @@index([panNumber])
+  @@index([email])
+  @@index([phone])
 }
 
 model Address {

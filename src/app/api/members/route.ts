@@ -7,7 +7,7 @@ import { awardUplinePoints } from "@/lib/points";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
-const PAN_MAX_USES = 15;
+const MAX_USES = 15; // email, phone, and PAN can each be shared across up to 15 member IDs
 
 const bodySchema = z.object({
   pinCode: z.string().regex(/^AM[0-9]{8}$/, "Invalid pin format"),
@@ -80,20 +80,18 @@ export async function POST(req: Request) {
     spillover++;
   }
 
-  // 4. Uniqueness checks.
-  const [emailTaken, phoneTaken, panCount] = await Promise.all([
-    prisma.user.findUnique({ where: { email } }),
-    prisma.user.findUnique({ where: { phone: mobile } }),
+  // 4. Usage-limit checks — each detail can be shared across up to 15 member IDs.
+  const [emailCount, phoneCount, panCount] = await Promise.all([
+    prisma.user.count({ where: { email } }),
+    prisma.user.count({ where: { phone: mobile } }),
     prisma.user.count({ where: { panNumber } }),
   ]);
-  if (emailTaken) return NextResponse.json({ error: "Email already in use" }, { status: 400 });
-  if (phoneTaken) return NextResponse.json({ error: "Mobile already in use" }, { status: 400 });
-  if (panCount >= PAN_MAX_USES) {
-    return NextResponse.json(
-      { error: `The PAN used more than ${PAN_MAX_USES} times. Cannot register with this PAN.` },
-      { status: 400 }
-    );
-  }
+  if (emailCount >= MAX_USES)
+    return NextResponse.json({ error: `This email has already been used for ${MAX_USES} member IDs.` }, { status: 400 });
+  if (phoneCount >= MAX_USES)
+    return NextResponse.json({ error: `This mobile number has already been used for ${MAX_USES} member IDs.` }, { status: 400 });
+  if (panCount >= MAX_USES)
+    return NextResponse.json({ error: `This PAN has already been used for ${MAX_USES} member IDs.` }, { status: 400 });
 
   // 5. Create user, consume pin, award upline points — single transaction.
   // Default password = the member's own mobile number. They will be prompted
