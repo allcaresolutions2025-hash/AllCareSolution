@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { Upload, X } from "lucide-react";
 
 type Initial = {
   id?: string;
@@ -23,6 +24,7 @@ type Initial = {
 export function ProductForm({ initial }: { initial?: Initial }) {
   const router = useRouter();
   const isEdit = !!initial?.id;
+  const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     slug: initial?.slug || "",
     name: initial?.name || "",
@@ -38,6 +40,34 @@ export function ProductForm({ initial }: { initial?: Initial }) {
     isActive: initial?.isActive ?? true,
   });
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    setUploading(true);
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      img.src = ev.target?.result as string;
+      img.onload = () => {
+        const MAX = 800;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+        setForm((f) => ({ ...f, imageUrl: dataUrl }));
+        setUploading(false);
+      };
+    };
+    reader.readAsDataURL(file);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -120,7 +150,62 @@ export function ProductForm({ initial }: { initial?: Initial }) {
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label="SKU" value={form.sku} onChange={(v) => setForm({ ...form, sku: v })} required />
-        <Field label="Image URL" value={form.imageUrl} onChange={(v) => setForm({ ...form, imageUrl: v })} required />
+      </div>
+
+      {/* Image upload */}
+      <div>
+        <label className="label">Product Image</label>
+        <div className="flex flex-col sm:flex-row gap-4 items-start">
+          {/* Preview */}
+          <div className="relative h-32 w-32 shrink-0 rounded-lg border-2 border-dashed border-border overflow-hidden bg-muted/30 flex items-center justify-center">
+            {form.imageUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.imageUrl} alt="Preview" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => { setForm((f) => ({ ...f, imageUrl: "" })); if (fileRef.current) fileRef.current.value = ""; }}
+                  className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground text-center px-2">No image</span>
+            )}
+          </div>
+
+          <div className="flex-1 space-y-2">
+            {/* File picker */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="btn-secondary w-full sm:w-auto"
+            >
+              <Upload className="h-4 w-4" />
+              {uploading ? "Processing…" : "Upload image"}
+            </button>
+            <p className="text-xs text-muted-foreground">
+              JPG, PNG or WEBP. Auto-resized to 800px. Or paste a URL below.
+            </p>
+            {/* Fallback URL input */}
+            <input
+              type="url"
+              className="input text-xs"
+              placeholder="https://example.com/image.jpg"
+              value={form.imageUrl.startsWith("data:") ? "" : form.imageUrl}
+              onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+            />
+          </div>
+        </div>
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />

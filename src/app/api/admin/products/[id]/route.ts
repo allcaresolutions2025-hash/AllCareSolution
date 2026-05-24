@@ -23,7 +23,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
-  // Soft-delete: hide the product but keep it so historical orders still resolve.
-  await prisma.product.update({ where: { id: params.id }, data: { isActive: false } });
+  // Hard-delete if no orders reference this product; otherwise soft-delete to
+  // preserve order history.
+  const hasOrders = await prisma.orderItem.findFirst({ where: { productId: params.id } });
+  if (hasOrders) {
+    await prisma.product.update({ where: { id: params.id }, data: { isActive: false } });
+  } else {
+    await prisma.cartItem.deleteMany({ where: { productId: params.id } });
+    await prisma.product.delete({ where: { id: params.id } });
+  }
   return NextResponse.json({ ok: true });
 }
