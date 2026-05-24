@@ -1,0 +1,90 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { KeyRound } from "lucide-react";
+
+export function RequestPinForm() {
+  const router = useRouter();
+  const [quantity, setQuantity] = useState("1");
+  const [mobile, setMobile] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const q = parseInt(quantity, 10);
+    if (!Number.isFinite(q) || q <= 0) {
+      toast.error("Enter a valid number of pins");
+      return;
+    }
+    if (q > 100) {
+      toast.error("Max 100 pins per request");
+      return;
+    }
+    if (!/^[0-9]{10}$/.test(mobile)) {
+      toast.error("Enter a valid 10-digit mobile number");
+      return;
+    }
+    setLoading(true);
+    const res = await fetch("/api/pin-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quantity: q, mobileNumber: mobile }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) {
+      toast.error(data.error || "Request failed");
+      return;
+    }
+    toast.success("Pin request submitted for admin review");
+    setQuantity("1");
+    setMobile("");
+    router.refresh();
+  }
+
+  return (
+    <form onSubmit={submit} className="card p-6 space-y-4">
+      <div className="flex items-center gap-2 text-brand-700">
+        <KeyRound className="h-4 w-4" /> <h2 className="font-semibold">New pin request</h2>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="label">Number of pins</label>
+          <input
+            type="number"
+            inputMode="numeric"
+            min="1"
+            max="100"
+            className="input"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value.replace(/[^0-9]/g, ""))}
+            required
+          />
+          <p className="text-xs text-muted-foreground mt-1">How many pins do you need? Max 100 per request.</p>
+        </div>
+        <div>
+          <label className="label">Mobile number <span className="text-red-600">*</span></label>
+          <input
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9]{10}"
+            maxLength={10}
+            className="input font-mono"
+            value={mobile}
+            onChange={(e) => setMobile(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="10-digit mobile"
+            required
+          />
+          <p className="text-xs text-muted-foreground mt-1">Pins will be sent to this number once approved.</p>
+        </div>
+      </div>
+
+      <button type="submit" disabled={loading} className="btn-primary">
+        {loading ? "Submitting…" : "Generate Pin"}
+      </button>
+    </form>
+  );
+}

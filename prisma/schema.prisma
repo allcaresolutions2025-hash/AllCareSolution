@@ -1,0 +1,498 @@
+// AchtMart — Prisma schema
+// All monetary fields are stored as Int in paise (1 INR = 100 paise) to avoid floating point error.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- USERS ----------
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum Slot {
+  LEFT
+  RIGHT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?  @unique
+  name         String
+  passwordHash String
+  transactionPasswordHash String?  // separate password required for sensitive ops (pin transfer)
+  mustChangePassword Boolean  @default(false) // true when account was created with a default password (mobile)
+  mustOnboard        Boolean  @default(false) // true for fresher accounts — forced through the Add Member form on first login
+  role         Role     @default(CUSTOMER)
+  isActive     Boolean  @default(true)
+
+  referralCode String   @unique
+  referrerId   String?
+  referrer     User?    @relation("Referrals", fields: [referrerId], references: [id])
+  referrals    User[]   @relation("Referrals")
+
+  // Binary placement
+  slot              Slot?    // L or R under referrer; null for root or legacy
+  pairBonusAwarded  Boolean  @default(false) // tracks one-time +5 first-pair bonus
+  leftLegCount      Int      @default(0)     // descendants in LEFT leg (cached for points engine)
+  rightLegCount     Int      @default(0)     // descendants in RIGHT leg (cached for points engine)
+  gatedPointsEarned Int      @default(0)     // running total of gated +1 credits, used to compute deltas
+
+  // Registration profile (captured at signup; some are admin-edit-only)
+  nominee           String?
+  gender            Gender?
+  address           String?
+  panNumber         String?  // NOT unique: one PAN may be used up to 15 times
+  bankAccountName   String?
+  bankAccountNumber String?
+  bankIfsc          String?
+  bankName          String?
+
+  agreedToTermsAt DateTime?
+
+  addresses     Address[]
+  kyc           KycDetail?
+  wallet        Wallet?
+  orders        Order[]
+  commissions   Commission[]   @relation("CommissionBeneficiary")
+  payoutRequests PayoutRequest[]
+
+  ordersAsL1Ref Order[] @relation("OrderL1Ref")
+  ordersAsL2Ref Order[] @relation("OrderL2Ref")
+
+  // Pin system
+  pinRequests   PinRequest[]
+  pinsOwned     Pin[]          @relation("PinOwner")
+  pinUsedToJoin Pin?           @relation("PinUsedFor")
+
+  // Loans
+  loans         Loan[]
+
+  // Nightly 10% payouts (90% paid, 10% forfeit, balance resets to 0)
+  dailyPayouts  DailyPayout[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([referrerId])
+  @@index([referrerId, slot])
+  @@index([panNumber])
+}
+
+model Address {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName  String
+  phone     String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  pincode   String
+  isDefault Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum KycStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model KycDetail {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  panNumber      String?
+  panName        String?
+  bankAccount    String?
+  ifsc           String?
+  bankHolderName String?
+  status         KycStatus @default(NOT_SUBMITTED)
+  reviewerNotes  String?
+  submittedAt    DateTime?
+  reviewedAt     DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
+model Wallet {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balancePending      Int      @default(0) // commission accrued, in 30-day cooling-off window (paise)
+  balanceAvailable    Int      @default(0) // eligible for payout (paise)
+  balancePaidLifetime Int      @default(0) // total paid out historically (paise)
+  updatedAt           DateTime @updatedAt
+}
+
+// ---------- CATALOG ----------
+
+model Product {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  shortDesc    String
+  description  String   @db.Text
+  ingredients  String?  @db.Text
+  mrp          Int      // MRP in paise (e.g., Rs 1299 = 129900)
+  price        Int      // selling price in paise
+  stock        Int      @default(0)
+  sku          String   @unique
+  imageUrl     String
+  gallery      String[] @default([])
+  gstRate      Int      @default(18) // GST percent (12 for some ayurvedic, 18 for most wellness)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+// ---------- ORDERS ----------
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+  REFUNDED
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  orderNumber    String      @unique
+  userId         String
+  user           User        @relation(fields: [userId], references: [id])
+
+  status         OrderStatus @default(PENDING_PAYMENT)
+
+  subtotal       Int // sum of (item price * qty) in paise, exclusive of GST
+  gstAmount      Int // total GST in paise
+  shippingCost   Int @default(0)
+  discount       Int @default(0)
+  totalAmount    Int // grand total in paise
+
+  razorpayOrderId    String? @unique
+  razorpayPaymentId  String?
+  razorpaySignature  String?
+
+  // shipping address snapshot
+  shipName    String
+  shipPhone   String
+  shipLine1   String
+  shipLine2   String?
+  shipCity    String
+  shipState   String
+  shipPincode String
+
+  trackingNumber String?
+  courier        String?
+
+  // referral attribution snapshot at order time
+  l1ReferrerId String?
+  l1Referrer   User?   @relation("OrderL1Ref", fields: [l1ReferrerId], references: [id])
+  l2ReferrerId String?
+  l2Referrer   User?   @relation("OrderL2Ref", fields: [l2ReferrerId], references: [id])
+
+  placedAt    DateTime  @default(now())
+  paidAt      DateTime?
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  cancelledAt DateTime?
+  returnedAt  DateTime?
+
+  // 2021 Direct Selling Rules: buyback window
+  buybackUntil DateTime?
+
+  items       OrderItem[]
+  commissions Commission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([l1ReferrerId])
+  @@index([l2ReferrerId])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  name      String // snapshot
+  sku       String // snapshot
+  unitPrice Int    // snapshot, in paise
+  quantity  Int
+  gstRate   Int    // snapshot
+  lineTotal Int    // unitPrice * quantity (pre-GST), in paise
+  gstTotal  Int    // GST on lineTotal, in paise
+
+  @@index([orderId])
+}
+
+// ---------- AFFILIATE / COMMISSIONS ----------
+
+enum CommissionStatus {
+  PENDING    // accrued, still in 30-day cooling window
+  AVAILABLE  // eligible for payout
+  REQUESTED  // attached to a payout request
+  PAID
+  REVERSED   // order was returned/refunded
+}
+
+model Commission {
+  id              String           @id @default(cuid())
+  orderId         String
+  order           Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  beneficiaryId   String
+  beneficiary     User             @relation("CommissionBeneficiary", fields: [beneficiaryId], references: [id])
+  level           Int              // 1 or 2
+  ratePercent     Int              // rate at time of accrual (e.g., 20 or 5)
+  baseAmount      Int              // base on which commission was calculated (paise) — uses pre-GST subtotal
+  commissionAmount Int             // gross commission in paise
+  status          CommissionStatus @default(PENDING)
+  availableAt     DateTime?        // when status flips to AVAILABLE
+  payoutRequestId String?
+  payoutRequest   PayoutRequest?   @relation(fields: [payoutRequestId], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([beneficiaryId, status])
+  @@index([orderId])
+}
+
+enum PayoutStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PAID
+  FAILED
+}
+
+model PayoutRequest {
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id])
+  amountGross     Int          // sum of commissions requested (paise)
+  tdsRate         Int          @default(0) // basis points-ish; we'll store percent*100
+  tdsAmount       Int          @default(0) // TDS deducted on this payout (paise)
+  amountNet       Int          // amount actually paid out (paise)
+  status          PayoutStatus @default(REQUESTED)
+  bankSnapshot    String?      // JSON snapshot of KYC bank details at time of request
+  utr             String?      // bank reference once paid
+  reviewerNotes   String?
+  requestedAt     DateTime     @default(now())
+  processedAt     DateTime?
+  commissions     Commission[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ---------- SETTINGS / MISC ----------
+
+model Setting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model Banner {
+  id        String  @id @default(cuid())
+  title     String
+  imageUrl  String
+  linkUrl   String?
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+}
+
+// ---------- PIN GENERATION SYSTEM ----------
+
+enum PinStatus {
+  ACTIVE   // unused, ready to use
+  USED     // consumed when creating a downline member
+  REVOKED  // admin revoked
+}
+
+enum PinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model PinRequest {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quantity      Int
+  mobileNumber  String
+  status        PinRequestStatus @default(PENDING)
+  reviewerNotes String?
+  createdAt     DateTime         @default(now())
+  reviewedAt    DateTime?
+  pins          Pin[]
+
+  @@index([userId])
+  @@index([status, createdAt])
+}
+
+model Pin {
+  id            String      @id @default(cuid())
+  code          String      @unique // e.g. AM12345678
+  ownerId       String
+  owner         User        @relation("PinOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  requestId     String?
+  request       PinRequest? @relation(fields: [requestId], references: [id])
+  status        PinStatus   @default(ACTIVE)
+  usedForUserId String?     @unique
+  usedForUser   User?       @relation("PinUsedFor", fields: [usedForUserId], references: [id])
+  createdAt     DateTime    @default(now())
+  usedAt        DateTime?
+
+  @@index([ownerId, status])
+}
+
+// ---------- DAILY POINTS PAYOUT ----------
+// Every night at 00:00 IST, each wallet with balanceAvailable > 0 gets a
+// DailyPayout row created: 90% of the balance is paid out (admin disburses
+// offline), 10% is forfeited, and the wallet's balanceAvailable resets to 0.
+// The unique [userId, runDate] index makes the cron job idempotent.
+
+enum DailyPayoutStatus {
+  PENDING   // generated by cron, admin needs to disburse offline
+  PAID      // admin disbursed and marked paid
+  CANCELLED
+}
+
+model DailyPayout {
+  id            String            @id @default(cuid())
+  userId        String
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  runDate       String            // YYYY-MM-DD in Asia/Kolkata
+  startBalance  Int               // balanceAvailable at the moment of the run (paise)
+  paidAmount    Int               // 90% (floor)
+  forfeitAmount Int               // remainder = startBalance - paidAmount
+  status        DailyPayoutStatus @default(PENDING)
+  reviewerNotes String?
+  paidAt        DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@unique([userId, runDate])
+  @@index([status])
+  @@index([runDate])
+}
+
+// ---------- LOANS ----------
+
+enum LoanStatus {
+  REQUESTED   // applied, awaiting admin review
+  APPROVED    // admin verified & disbursed offline
+  REJECTED
+  CLOSED      // all installments verified
+}
+
+enum LoanInstallmentStatus {
+  PENDING            // not yet paid
+  RECEIPT_UPLOADED   // user uploaded a receipt, awaiting admin verify
+  VERIFIED           // admin accepted the receipt
+}
+
+model Loan {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tierKey       String        // e.g. "DIRECTS_1_1", "LEG_7", "LEG_31"
+  amount        Int           // total loan principal, paise
+  totalWeeks    Int           // repayment period
+  status        LoanStatus    @default(REQUESTED)
+
+  reviewerNotes String?
+  requestedAt   DateTime      @default(now())
+  approvedAt    DateTime?
+  rejectedAt    DateTime?
+  closedAt      DateTime?
+  dueDate       DateTime?     // overall due date = approvedAt + totalWeeks * 7d
+
+  installments  LoanInstallment[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model LoanInstallment {
+  id            String                @id @default(cuid())
+  loanId        String
+  loan          Loan                  @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  weekNumber    Int                   // 1..totalWeeks
+  amount        Int                   // paise
+  dueDate       DateTime
+  status        LoanInstallmentStatus @default(PENDING)
+
+  receiptMime   String?
+  receiptBase64 String?               @db.Text
+  uploadedAt    DateTime?
+
+  verifiedAt    DateTime?
+  reviewerNotes String?
+
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([loanId])
+  @@unique([loanId, weekNumber])
+}
+
+// Audit log for sensitive admin actions
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String   // e.g., "PAYOUT_PROCESSED", "KYC_APPROVED", "ORDER_CANCELLED"
+  target    String?  // ID of the entity affected
+  metadata  String?  @db.Text // JSON blob
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+}
