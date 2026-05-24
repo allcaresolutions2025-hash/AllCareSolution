@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Save } from "lucide-react";
+import { Save, KeyRound, Eye, EyeOff } from "lucide-react";
 
 type Initial = {
   name: string;
@@ -23,9 +23,28 @@ export function AdminUserEditForm({ userId, initial }: { userId: string; initial
   const router = useRouter();
   const [form, setForm] = useState(initial);
   const [loading, setLoading] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
 
   function set<K extends keyof Initial>(k: K, v: Initial[K]) {
     setForm({ ...form, [k]: v });
+  }
+
+  async function setPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPassword) return;
+    setPwLoading(true);
+    const res = await fetch(`/api/admin/users/${userId}/set-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: newPassword }),
+    });
+    const data = await res.json();
+    setPwLoading(false);
+    if (!res.ok) { toast.error(data.error || "Failed"); return; }
+    toast.success("Password updated");
+    setNewPassword("");
   }
 
   async function submit(e: React.FormEvent) {
@@ -47,6 +66,7 @@ export function AdminUserEditForm({ userId, initial }: { userId: string; initial
   }
 
   return (
+    <>
     <form onSubmit={submit} className="card p-6 space-y-6">
       <Section title="Identity & contact">
         <div className="grid sm:grid-cols-2 gap-4">
@@ -99,6 +119,42 @@ export function AdminUserEditForm({ userId, initial }: { userId: string; initial
         <Save className="h-4 w-4" /> {loading ? "Saving…" : "Save changes"}
       </button>
     </form>
+
+    {/* Set password card — separate form so it doesn't accidentally submit with the profile */}
+    <form onSubmit={setPassword} className="card p-6 space-y-4 mt-5">
+      <div className="flex items-center gap-2">
+        <KeyRound className="h-4 w-4 text-brand-700" />
+        <h3 className="font-semibold text-sm text-brand-700">Set Password</h3>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Passwords are stored encrypted and cannot be viewed. Use this to set a new login password for this member.
+      </p>
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <input
+            type={showPw ? "text" : "password"}
+            className="input pr-10"
+            placeholder="Enter new password…"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            minLength={4}
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPw((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            tabIndex={-1}
+          >
+            {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        <button type="submit" disabled={pwLoading || !newPassword} className="btn-primary shrink-0">
+          {pwLoading ? "Saving…" : "Set Password"}
+        </button>
+      </div>
+    </form>
+    </>
   );
 }
 
