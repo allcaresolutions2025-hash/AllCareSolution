@@ -3,10 +3,11 @@
 // Rules (in order applied when a new joiner N is inserted):
 //
 //   RULE 1 — Direct referral bonus (+200)
-//     Credited to the PIN owner — the user who bought the PIN consumed to
-//     create N. Paid immediately, regardless of whether N is placed
-//     directly below the PIN owner or deeper (e.g., as a grandchild via
-//     spillover or explicit selection).
+//     Credited to the owner of the Refer ID typed at signup — i.e., the
+//     user whose referralCode was used as the placement starting point.
+//     This is independent of the PIN owner (who paid for the slot) and
+//     of the actual placement parent (which can be deeper in the chain
+//     when spillover happens). Paid immediately.
 //
 //   RULE 2 — First-pair bonus (+500)
 //     The placement parent (the user immediately above N in the tree) gets
@@ -44,14 +45,16 @@ type Tx = Prisma.TransactionClient | PrismaClient;
  * Award points triggered by a newly-added user.
  * Caller is responsible for opening the transaction.
  *
- * @param pinOwnerId - The user who bought the PIN used to create newUserId.
- *   Receives the +200 direct-referral bonus (Rule 1). Defaults to the
- *   placement parent when omitted (back-compat for callers without a PIN).
+ * @param referralBeneficiaryId - The user who owns the Refer ID typed at
+ *   signup (the placement starting point — may differ from the placement
+ *   parent when spillover happens, and from the PIN owner who paid). They
+ *   receive the +200 direct-referral bonus (Rule 1). Defaults to the
+ *   placement parent when omitted (back-compat).
  */
 export async function awardUplinePoints(
   tx: Tx,
   newUserId: string,
-  pinOwnerId?: string,
+  referralBeneficiaryId?: string,
 ): Promise<void> {
   const newUser = await tx.user.findUnique({
     where: { id: newUserId },
@@ -64,10 +67,11 @@ export async function awardUplinePoints(
   const nearPaise = PAIR_MATCH_POINTS_NEAR * PAISE_PER_POINT;
   const farPaise = PAIR_MATCH_POINTS_FAR * PAISE_PER_POINT;
 
-  // RULE 1 — PIN owner gets +200 immediately for every PIN-sponsored signup,
-  // whether the new joiner is placed directly below the PIN owner or deeper
-  // (e.g., as a grandchild).
-  const directBeneficiaryId = pinOwnerId ?? newUser.referrerId;
+  // RULE 1 — Refer ID owner gets +200 immediately, regardless of whether
+  // they're the placement parent or sit higher in the chain. If spillover
+  // pushed the new joiner deeper than the typed Refer ID, the bonus still
+  // follows the Refer ID owner, not the actual placement parent.
+  const directBeneficiaryId = referralBeneficiaryId ?? newUser.referrerId;
   await tx.wallet.upsert({
     where: { userId: directBeneficiaryId },
     create: { userId: directBeneficiaryId, balanceAvailable: directPaise },

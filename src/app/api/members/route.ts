@@ -128,7 +128,11 @@ export async function POST(req: Request) {
         where: { id: pin.id },
         data: { status: "USED", usedAt: new Date(), usedForUserId: created.id },
       });
-      await awardUplinePoints(tx, created.id, pin.ownerId);
+      // +200 direct-referral bonus goes to the typed Refer ID's owner
+      // (parent.id) — NOT the PIN owner, and NOT the spillover placement
+      // parent. This matches member expectation that "the referral code's
+      // owner gets the money."
+      await awardUplinePoints(tx, created.id, parent.id);
       await tx.user.update({
         where: { id: session.user.id },
         data: { mustOnboard: false },
