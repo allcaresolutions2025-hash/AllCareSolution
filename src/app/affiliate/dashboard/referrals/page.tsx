@@ -29,12 +29,11 @@ export default async function GenealogyPage() {
 
   const snapshot = await getNetworkSnapshot(me.id);
 
-  // Identify Left and Right directs (chronological first vs second).
-  const directs = snapshot.nodes
-    .filter((n) => n.depth === 1)
-    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-  const leftRoot: DownlineNode | undefined = directs[0];
-  const rightRoot: DownlineNode | undefined = directs[1];
+  // Identify Left and Right directs by the actual slot field — not creation
+  // order, which would swap the cards whenever the right slot was filled first.
+  const directs = snapshot.nodes.filter((n) => n.depth === 1);
+  const leftRoot: DownlineNode | undefined = directs.find((n) => n.slot === "LEFT");
+  const rightRoot: DownlineNode | undefined = directs.find((n) => n.slot === "RIGHT");
 
   // Compute subtree sizes for Team L and Team R.
   const childrenByParent = new Map<string, DownlineNode[]>();
