@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
+import { verifyImpersonationToken } from "./impersonation";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 30 },
@@ -39,15 +40,62 @@ export const authOptions: NextAuthOptions = {
         } as never;
       },
     }),
+    // Admin impersonation: signs in as `targetUserId` after the admin server
+    // action issued a short-lived HMAC token. The token alone is sufficient —
+    // we don't need a password — because issuing it already required an
+    // authenticated ADMIN session.
+    CredentialsProvider({
+      id: "impersonate",
+      name: "Admin Impersonation",
+      credentials: { token: { label: "Token", type: "text" } },
+      async authorize(credentials) {
+        if (!credentials?.token) return null;
+        const payload = verifyImpersonationToken(credentials.token);
+        if (!payload) return null;
+        const [admin, target] = await Promise.all([
+          prisma.user.findUnique({ where: { id: payload.adminId } }),
+          prisma.user.findUnique({ where: { id: payload.targetUserId } }),
+        ]);
+        // The user who created the token must still exist. We allow the token
+        // both ways: admin → user (admin must currently be ADMIN) and the
+        // implicit return-to-admin call uses a token where targetUserId is
+        // the admin themselves, which is also fine.
+        if (!admin || !target) return null;
+        if (admin.role !== "ADMIN") return null;
+        if (!target.isActive && target.id !== admin.id) return null;
+        // impersonatedBy is set only when admin is logging in AS someone else.
+        // When the admin returns to themselves (target === admin), clear it.
+        const impersonating = admin.id !== target.id;
+        return {
+          id: target.id,
+          email: target.email,
+          name: target.name,
+          role: target.role,
+          referralCode: target.referralCode,
+          mustOnboard: false,
+          impersonatedBy: impersonating ? admin.id : null,
+          impersonatedByName: impersonating ? admin.name : null,
+        } as never;
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user, trigger }) {
       if (user) {
-        const u = user as unknown as { id: string; role: string; referralCode: string; mustOnboard: boolean };
+        const u = user as unknown as {
+          id: string;
+          role: string;
+          referralCode: string;
+          mustOnboard: boolean;
+          impersonatedBy?: string | null;
+          impersonatedByName?: string | null;
+        };
         token.id = u.id;
         token.role = u.role;
         token.referralCode = u.referralCode;
         token.mustOnboard = u.mustOnboard;
+        token.impersonatedBy = u.impersonatedBy ?? null;
+        token.impersonatedByName = u.impersonatedByName ?? null;
       }
       // When the client calls session.update() (e.g. after completing onboarding)
       // we re-pull mustOnboard from the DB so middleware stops redirecting.
@@ -62,11 +110,20 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        const u = session.user as { id?: string; role?: string; referralCode?: string; mustOnboard?: boolean };
+        const u = session.user as {
+          id?: string;
+          role?: string;
+          referralCode?: string;
+          mustOnboard?: boolean;
+          impersonatedBy?: string | null;
+          impersonatedByName?: string | null;
+        };
         u.id = token.id as string;
         u.role = token.role as string;
         u.referralCode = token.referralCode as string;
         u.mustOnboard = (token.mustOnboard as boolean) ?? false;
+        u.impersonatedBy = (token.impersonatedBy as string | null) ?? null;
+        u.impersonatedByName = (token.impersonatedByName as string | null) ?? null;
       }
       return session;
     },
@@ -83,6 +140,8 @@ declare module "next-auth" {
       role: "CUSTOMER" | "ADMIN";
       referralCode: string;
       mustOnboard: boolean;
+      impersonatedBy: string | null;
+      impersonatedByName: string | null;
     };
   }
 }
@@ -93,5 +152,7 @@ declare module "next-auth/jwt" {
     role?: string;
     referralCode?: string;
     mustOnboard?: boolean;
+    impersonatedBy?: string | null;
+    impersonatedByName?: string | null;
   }
 }

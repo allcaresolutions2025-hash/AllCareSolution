@@ -5,6 +5,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { getSiteBrand } from "@/lib/brand";
 
 const geistSans = localFont({
@@ -42,6 +43,7 @@ export default async function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} min-h-screen flex flex-col`}>
         <Providers>
+          <ImpersonationBanner />
           <SiteHeader brand={brand} />
           <main className="flex-1">{children}</main>
           <SiteFooter brand={brand} />
