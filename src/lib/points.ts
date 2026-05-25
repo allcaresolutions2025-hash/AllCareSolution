@@ -2,36 +2,35 @@
 //
 // Rules (in order applied when a new joiner N is inserted):
 //
-//   RULE 1 — Direct referral bonus
-//     The PIN owner — i.e., the user who bought the PIN that was consumed to
-//     create N — gets +2 pts for every new joiner. This is usually the same
-//     person as the placement parent, but when the PIN owner places N under
-//     one of their own downline (e.g., as a grandchild), the +2 still goes
-//     to the PIN owner, NOT to the immediate placement parent.
+//   RULE 1 — Direct referral bonus (+200)
+//     Credited to the PIN owner — the user who bought the PIN consumed to
+//     create N. Two sub-cases:
 //
-//   RULE 2 — First-pair bonus
-//     The placement parent (the user immediately above N in the tree) gets a
-//     one-time +5 pts the moment their LEFT and RIGHT direct slots are first
-//     both filled. Tracked via User.pairBonusAwarded so it pays exactly once
-//     per user. This always goes to the placement parent regardless of who
-//     bought the PIN.
+//     1a. PIN owner == placement parent (the most common case: signup goes
+//         directly under the PIN owner). The +200 is paid immediately.
 //
-//   RULE 3 — Pair-match cascade (uplines)
-//     For every ancestor strictly ABOVE the placement parent, N adds 1 to that
-//     ancestor's leftLegCount or rightLegCount (depending on which side of the
-//     ancestor N's branch sits on). If this increment grows the ancestor's
-//     pair-count — that is, the new min(leftLegCount, rightLegCount) is higher
-//     than the old min — the ancestor earns one pair match:
-//        - 2 pts when the ancestor sits within 15 levels of N (depth ≤ 15)
-//        - 1 pt when the ancestor is 16+ levels above N
+//     1b. PIN owner != placement parent (PIN owner placed N as a grandchild
+//         or deeper). The +200 is HELD on the PIN owner's pinSponsorHeldLeft
+//         or pinSponsorHeldRight counter, depending on which side of the
+//         PIN owner N descends from. Once the PIN owner first has at least
+//         one PIN-sponsored descendant on BOTH sides, all held bonuses are
+//         paid out at once, pinSponsorPairFormed flips to true, and from
+//         then on every subsequent PIN-sponsored placement pays +200 to
+//         the PIN owner immediately.
 //
-// Examples (matches the spec):
-//   • Leader refers 2 (L + R themselves) → 2 + 2 directs + 5 first-pair = 9 pts.
-//   • Leader's LEFT child refers 1 → LEFT child gets 2 (Rule 1). Leader's L
-//     leg grows by 1 but R stays at 1, so min is unchanged → leader gets 0.
-//   • Once leader's RIGHT child also refers 1, leader's R leg goes from 1 → 2.
-//     min(2,2) > min(2,1) → leader gets +2 (pair match, depth 2).
-//   • If each child refers 2 more, leader gets +4 (2 new pair matches × 2 pts).
+//   RULE 2 — First-pair bonus (+500)
+//     The placement parent (the user immediately above N in the tree) gets
+//     a one-time +500 the moment their LEFT and RIGHT direct slots are
+//     first both filled. Tracked via User.pairBonusAwarded so it pays once
+//     per user, regardless of who bought the PIN.
+//
+//   RULE 3 — Pair-match cascade (uplines, +200 / +100)
+//     For every ancestor strictly ABOVE the placement parent, N adds 1 to
+//     that ancestor's leftLegCount or rightLegCount (depending on which
+//     side of the ancestor N's branch sits on). If this increment grows
+//     the ancestor's min(L, R), the ancestor earns one pair match:
+//        - +200 when the ancestor sits within 15 levels of N (depth ≤ 15)
+//        - +100 when the ancestor is 16+ levels above N
 //
 // All points are stored as paise in Wallet.balanceAvailable
 // (1 point = PAISE_PER_POINT from src/lib/money.ts).
@@ -56,8 +55,9 @@ type Tx = Prisma.TransactionClient | PrismaClient;
  * Caller is responsible for opening the transaction.
  *
  * @param pinOwnerId - The user who bought the PIN used to create newUserId.
- *   Receives the +2 direct-referral bonus (Rule 1). Defaults to the placement
- *   parent when omitted (back-compat for callers without a PIN context).
+ *   Receives the +200 direct-referral bonus (Rule 1). When omitted, the
+ *   placement parent is treated as the PIN owner (back-compat for callers
+ *   without a PIN context).
  */
 export async function awardUplinePoints(
   tx: Tx,
@@ -75,20 +75,26 @@ export async function awardUplinePoints(
   const nearPaise = PAIR_MATCH_POINTS_NEAR * PAISE_PER_POINT;
   const farPaise = PAIR_MATCH_POINTS_FAR * PAISE_PER_POINT;
 
-  // RULE 1 — PIN owner gets +2. When the PIN owner places the new joiner
-  // somewhere deeper in their own downline (e.g., as a grandchild), the
-  // bonus still goes to the PIN owner, not to the immediate placement parent.
-  const directBeneficiaryId = pinOwnerId ?? newUser.referrerId;
-  await tx.wallet.upsert({
-    where: { userId: directBeneficiaryId },
-    create: { userId: directBeneficiaryId, balanceAvailable: directPaise },
-    update: { balanceAvailable: { increment: directPaise } },
-  });
+  const effectivePinOwnerId = pinOwnerId ?? newUser.referrerId;
+  const pinOwnerIsPlacementParent = effectivePinOwnerId === newUser.referrerId;
+
+  // RULE 1a — PIN owner is the placement parent: pay +200 immediately.
+  // The deeper case (1b) is handled inside the upline walk when we reach
+  // the PIN-owner ancestor, because that's where we know which side of
+  // the PIN owner the new joiner descends from.
+  if (pinOwnerIsPlacementParent) {
+    await tx.wallet.upsert({
+      where: { userId: effectivePinOwnerId },
+      create: { userId: effectivePinOwnerId, balanceAvailable: directPaise },
+      update: { balanceAvailable: { increment: directPaise } },
+    });
+  }
 
   // Walk up the upline chain. For each ancestor:
   //   - bump leg counts based on which side of the ancestor the joiner is on,
   //   - direct parent: check Rule 2 (first-pair bonus),
-  //   - indirect ancestor: check Rule 3 (pair-match cascade).
+  //   - indirect ancestor: check Rule 3 (pair-match cascade),
+  //   - PIN-owner ancestor (deep-placement case): check Rule 1b held/pair logic.
   let ancestorId: string | null = newUser.referrerId;
   let slotFromBelow: Slot = newUser.slot;
   let isDirectParent = true;
@@ -105,6 +111,9 @@ export async function awardUplinePoints(
       leftLegCount: number;
       rightLegCount: number;
       pairBonusAwarded: boolean;
+      pinSponsorPairFormed: boolean;
+      pinSponsorHeldLeft: number;
+      pinSponsorHeldRight: number;
     } | null = await tx.user.findUnique({
       where: { id: ancestorId },
       select: {
@@ -114,6 +123,9 @@ export async function awardUplinePoints(
         leftLegCount: true,
         rightLegCount: true,
         pairBonusAwarded: true,
+        pinSponsorPairFormed: true,
+        pinSponsorHeldLeft: true,
+        pinSponsorHeldRight: true,
       },
     });
     if (!ancestor) break;
@@ -148,7 +160,6 @@ export async function awardUplinePoints(
       }
     } else {
       // RULE 3 — pair-match cascade. Only triggers when the SHORTER leg grew.
-      // delta is 0 or 1 because a single insertion bumps exactly one leg by 1.
       const delta = newMin - oldMin;
       if (delta > 0) {
         const matchPaise = depth <= PAIR_MATCH_DEPTH_THRESHOLD ? nearPaise : farPaise;
@@ -157,6 +168,47 @@ export async function awardUplinePoints(
           create: { userId: ancestor.id, balanceAvailable: delta * matchPaise },
           update: { balanceAvailable: { increment: delta * matchPaise } },
         });
+      }
+    }
+
+    // RULE 1b — PIN owner is somewhere up the chain (not the placement parent).
+    // This ancestor IS the PIN owner: handle held/pair logic for the +200.
+    if (!pinOwnerIsPlacementParent && ancestor.id === effectivePinOwnerId) {
+      if (ancestor.pinSponsorPairFormed) {
+        // Pair already formed in the past — pay +200 immediately.
+        await tx.wallet.upsert({
+          where: { userId: ancestor.id },
+          create: { userId: ancestor.id, balanceAvailable: directPaise },
+          update: { balanceAvailable: { increment: directPaise } },
+        });
+      } else {
+        const newHeldLeft = ancestor.pinSponsorHeldLeft + (isLeftSide ? 1 : 0);
+        const newHeldRight = ancestor.pinSponsorHeldRight + (isLeftSide ? 0 : 1);
+        if (newHeldLeft > 0 && newHeldRight > 0) {
+          // First pair just formed — release all held bonuses at once.
+          const payout = (newHeldLeft + newHeldRight) * directPaise;
+          await tx.wallet.upsert({
+            where: { userId: ancestor.id },
+            create: { userId: ancestor.id, balanceAvailable: payout },
+            update: { balanceAvailable: { increment: payout } },
+          });
+          await tx.user.update({
+            where: { id: ancestor.id },
+            data: {
+              pinSponsorPairFormed: true,
+              pinSponsorHeldLeft: 0,
+              pinSponsorHeldRight: 0,
+            },
+          });
+        } else {
+          // Still waiting on the other side — just bump the held counter.
+          await tx.user.update({
+            where: { id: ancestor.id },
+            data: isLeftSide
+              ? { pinSponsorHeldLeft: { increment: 1 } }
+              : { pinSponsorHeldRight: { increment: 1 } },
+          });
+        }
       }
     }
 

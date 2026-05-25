@@ -51,6 +51,16 @@ model User {
   rightLegCount     Int      @default(0)     // descendants in RIGHT leg (cached for points engine)
   gatedPointsEarned Int      @default(0)     // running total of gated +1 credits, used to compute deltas
 
+  // PIN-owner direct-referral routing: when this user buys a PIN and places
+  // the new member somewhere deeper in their downline (grandchild or below),
+  // the +200 direct bonus is held until BOTH sides of this user have a
+  // PIN-sponsored descendant. Once that first pair forms, all held bonuses
+  // are paid out, the pair-formed flag flips on, and every subsequent
+  // PIN-sponsored placement pays +200 to this user immediately.
+  pinSponsorPairFormed Boolean @default(false)
+  pinSponsorHeldLeft   Int     @default(0)
+  pinSponsorHeldRight  Int     @default(0)
+
   // Registration profile (captured at signup; some are admin-edit-only)
   nominee           String?
   gender            Gender?
