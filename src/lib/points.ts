@@ -3,12 +3,18 @@
 // Rules (in order applied when a new joiner N is inserted):
 //
 //   RULE 1 — Direct referral bonus
-//     The direct referrer (placement parent) gets +2 pts for every new joiner.
+//     The PIN owner — i.e., the user who bought the PIN that was consumed to
+//     create N — gets +2 pts for every new joiner. This is usually the same
+//     person as the placement parent, but when the PIN owner places N under
+//     one of their own downline (e.g., as a grandchild), the +2 still goes
+//     to the PIN owner, NOT to the immediate placement parent.
 //
 //   RULE 2 — First-pair bonus
-//     The placement parent gets a one-time +5 pts the moment their LEFT and
-//     RIGHT direct slots are first both filled. Tracked via
-//     User.pairBonusAwarded so it pays exactly once per user.
+//     The placement parent (the user immediately above N in the tree) gets a
+//     one-time +5 pts the moment their LEFT and RIGHT direct slots are first
+//     both filled. Tracked via User.pairBonusAwarded so it pays exactly once
+//     per user. This always goes to the placement parent regardless of who
+//     bought the PIN.
 //
 //   RULE 3 — Pair-match cascade (uplines)
 //     For every ancestor strictly ABOVE the placement parent, N adds 1 to that
@@ -48,8 +54,16 @@ type Tx = Prisma.TransactionClient | PrismaClient;
 /**
  * Award points triggered by a newly-added user.
  * Caller is responsible for opening the transaction.
+ *
+ * @param pinOwnerId - The user who bought the PIN used to create newUserId.
+ *   Receives the +2 direct-referral bonus (Rule 1). Defaults to the placement
+ *   parent when omitted (back-compat for callers without a PIN context).
  */
-export async function awardUplinePoints(tx: Tx, newUserId: string): Promise<void> {
+export async function awardUplinePoints(
+  tx: Tx,
+  newUserId: string,
+  pinOwnerId?: string,
+): Promise<void> {
   const newUser = await tx.user.findUnique({
     where: { id: newUserId },
     select: { referrerId: true, slot: true },
@@ -61,10 +75,13 @@ export async function awardUplinePoints(tx: Tx, newUserId: string): Promise<void
   const nearPaise = PAIR_MATCH_POINTS_NEAR * PAISE_PER_POINT;
   const farPaise = PAIR_MATCH_POINTS_FAR * PAISE_PER_POINT;
 
-  // RULE 1 — Direct referrer (placement parent) gets +2.
+  // RULE 1 — PIN owner gets +2. When the PIN owner places the new joiner
+  // somewhere deeper in their own downline (e.g., as a grandchild), the
+  // bonus still goes to the PIN owner, not to the immediate placement parent.
+  const directBeneficiaryId = pinOwnerId ?? newUser.referrerId;
   await tx.wallet.upsert({
-    where: { userId: newUser.referrerId },
-    create: { userId: newUser.referrerId, balanceAvailable: directPaise },
+    where: { userId: directBeneficiaryId },
+    create: { userId: directBeneficiaryId, balanceAvailable: directPaise },
     update: { balanceAvailable: { increment: directPaise } },
   });
 

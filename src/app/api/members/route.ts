@@ -128,7 +128,7 @@ export async function POST(req: Request) {
         where: { id: pin.id },
         data: { status: "USED", usedAt: new Date(), usedForUserId: created.id },
       });
-      await awardUplinePoints(tx, created.id);
+      await awardUplinePoints(tx, created.id, pin.ownerId);
       await tx.user.update({
         where: { id: session.user.id },
         data: { mustOnboard: false },
