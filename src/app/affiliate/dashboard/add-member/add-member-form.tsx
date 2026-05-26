@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
-import { UserPlus, User, Mail, IdCard, Landmark, MapPin } from "lucide-react";
+import { UserPlus, User, Mail, IdCard, Landmark, MapPin, CheckCircle2 } from "lucide-react";
 
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 
@@ -49,6 +49,13 @@ export function AddMemberForm({
   const [side, setSide] = useState<"LEFT" | "RIGHT" | "">(defaultSide);
 
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<{
+    name: string;
+    memberCode: string;
+    side: "LEFT" | "RIGHT";
+    spillover: number;
+    placementName?: string;
+  } | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -94,21 +101,26 @@ export function AddMemberForm({
       toast.error(data.error || "Could not add member");
       return;
     }
-    if (data.spillover > 0) {
-      toast.success(
-        `Added ${name}. Slot was taken near the top — placed ${data.spillover} level${data.spillover === 1 ? "" : "s"} down under ${data.placement?.name ?? "downline"} (${data.memberCode}).`,
-        { duration: 6000 }
-      );
-    } else {
-      toast.success(`Registered ${name} as ${side}. New member ID: ${data.memberCode}`);
-    }
     // Refresh session so middleware re-reads mustOnboard (now false) from DB.
     await updateSession();
+    setSuccess({
+      name,
+      memberCode: data.memberCode,
+      side: side as "LEFT" | "RIGHT",
+      spillover: data.spillover ?? 0,
+      placementName: data.placement?.name,
+    });
+  }
+
+  function dismissSuccess() {
+    setSuccess(null);
     router.push("/affiliate/dashboard/referrals");
     router.refresh();
   }
 
   return (
+    <>
+    {success && <SuccessModal data={success} onClose={dismissSuccess} />}
     <form onSubmit={submit} className="card p-6 space-y-6">
       <div className="flex items-center gap-2 text-brand-700">
         <UserPlus className="h-4 w-4" /> <h2 className="font-semibold">Registration form</h2>
@@ -245,6 +257,63 @@ export function AddMemberForm({
         {loading ? "Registering…" : "Register member"}
       </button>
     </form>
+    </>
+  );
+}
+
+function SuccessModal({
+  data,
+  onClose,
+}: {
+  data: { name: string; memberCode: string; side: "LEFT" | "RIGHT"; spillover: number; placementName?: string };
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl border-t-8 border-emerald-500 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 px-6 pt-8 pb-6 text-center">
+          <div className="h-16 w-16 rounded-full bg-emerald-500 grid place-items-center mx-auto shadow-lg shadow-emerald-500/30">
+            <CheckCircle2 className="h-9 w-9 text-white" strokeWidth={2.5} />
+          </div>
+          <h2 className="text-2xl font-bold text-emerald-900 mt-4">Registration successful</h2>
+          <p className="text-sm text-emerald-800 mt-1">
+            <strong>{data.name}</strong> has been added to your network.
+          </p>
+        </div>
+        <div className="px-6 py-5 space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Member ID</span>
+            <code className="font-mono font-semibold bg-emerald-50 text-emerald-900 px-2.5 py-1 rounded">
+              {data.memberCode}
+            </code>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Slot</span>
+            <span className={`font-semibold ${data.side === "LEFT" ? "text-emerald-700" : "text-sky-700"}`}>
+              {data.side}
+            </span>
+          </div>
+          {data.spillover > 0 && (
+            <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              Slot near the top was taken — placed <strong>{data.spillover}</strong> level
+              {data.spillover === 1 ? "" : "s"} down{data.placementName ? <> under <strong>{data.placementName}</strong></> : ""}.
+            </div>
+          )}
+          <div className="text-xs text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
+            Default login password is the member&apos;s <strong>mobile number</strong>. They&apos;ll be asked to change it on first login.
+          </div>
+        </div>
+        <div className="px-6 pb-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
