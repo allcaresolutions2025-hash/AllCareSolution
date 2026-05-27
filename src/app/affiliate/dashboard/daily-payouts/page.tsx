@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
-import { Coins, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Coins, Clock, CheckCircle2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +10,11 @@ export default async function MyDailyPayoutsPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
+  // Members only see PAID payouts in their history — pending and unpaid
+  // (admin-restored) rows are an internal/admin concern.
   const [payouts, totals] = await Promise.all([
     prisma.dailyPayout.findMany({
-      where: { userId: session.user.id },
+      where: { userId: session.user.id, status: "PAID" },
       orderBy: { runDate: "desc" },
       take: 60,
     }),
@@ -46,10 +48,13 @@ export default async function MyDailyPayoutsPage() {
       <div className="card overflow-hidden">
         <div className="p-5 border-b">
           <h2 className="font-semibold">History</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Only finalized (paid) payouts are listed here.
+          </p>
         </div>
         {payouts.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            No payouts yet — they appear the morning after you accumulate points.
+            No paid payouts yet — they appear here once admin marks the disbursal complete.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -77,19 +82,9 @@ export default async function MyDailyPayoutsPage() {
                       {formatPoints(p.forfeitAmount)}
                     </td>
                     <td className="px-4 py-2">
-                      {p.status === "PAID" ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-200">
-                          <CheckCircle2 className="h-3 w-3" /> Paid
-                        </span>
-                      ) : p.status === "PENDING" ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border bg-amber-100 text-amber-800 border-amber-200">
-                          <Clock className="h-3 w-3" /> Pending
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border bg-amber-100 text-amber-800 border-amber-200">
-                          <XCircle className="h-3 w-3" /> Unpaid (restored)
-                        </span>
-                      )}
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-200">
+                        <CheckCircle2 className="h-3 w-3" /> Paid
+                      </span>
                     </td>
                   </tr>
                 ))}
