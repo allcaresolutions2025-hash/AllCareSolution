@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
+import { istDateString } from "@/lib/daily-payout";
 import { Clock, CheckCircle2, Coins, Download, RotateCcw } from "lucide-react";
 import { PendingPayoutsTable } from "./pending-payouts-table";
 import { SimulateMidnightButton } from "./simulate-midnight-button";
@@ -7,6 +8,13 @@ import { SimulateMidnightButton } from "./simulate-midnight-button";
 export const dynamic = "force-dynamic";
 
 export default async function AdminDailyPayoutsPage() {
+  // Unpaid is a *today only* view: the moment the next IST day's cron runs,
+  // restored users get re-evaluated for fresh pending payouts, so yesterday's
+  // unpaid rows should fall off this page (they remain in the DB for audit).
+  // Match by runDate prefix so synthetic test runs like "2026-05-27-test-1"
+  // also count as "today".
+  const todayIst = istDateString();
+
   const [pending, totalsPending, paid, unpaid, paidTotals] = await Promise.all([
     prisma.dailyPayout.findMany({
       where: { status: "PENDING" },
@@ -24,7 +32,10 @@ export default async function AdminDailyPayoutsPage() {
       include: { user: { select: { name: true, email: true, referralCode: true } } },
     }),
     prisma.dailyPayout.findMany({
-      where: { status: "CANCELLED" },
+      where: {
+        status: "CANCELLED",
+        runDate: { startsWith: todayIst },
+      },
       orderBy: { updatedAt: "desc" },
       take: 50,
       include: { user: { select: { name: true, email: true, referralCode: true } } },
@@ -130,10 +141,12 @@ export default async function AdminDailyPayoutsPage() {
         <div className="card overflow-hidden">
           <div className="p-5 border-b">
             <h2 className="font-semibold flex items-center gap-2">
-              <RotateCcw className="h-4 w-4 text-amber-700" /> Unpaid ({unpaid.length})
+              <RotateCcw className="h-4 w-4 text-amber-700" /> Unpaid today ({unpaid.length})
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Balances were restored back to the users. Excluded from the Excel register.
+              Balances were restored back to the users. This list clears at the
+              next midnight IST run — restored users will be re-evaluated for
+              fresh pending payouts. Excluded from the Excel register.
             </p>
           </div>
           <div className="overflow-x-auto">
