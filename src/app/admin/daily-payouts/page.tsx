@@ -66,8 +66,21 @@ export default async function AdminDailyPayoutsPage() {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="p-5 border-b">
-          <h2 className="font-semibold">Pending ({pending.length})</h2>
+        <div className="p-5 border-b flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="font-semibold">Pending ({pending.length})</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Download this list before disbursing — send the money offline using the bank details, then return here and mark each row paid.
+            </p>
+          </div>
+          {pending.length > 0 && (
+            <a
+              href="/api/admin/daily-payouts/export-pending"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 shrink-0"
+            >
+              <Download className="h-3.5 w-3.5" /> Download Excel (pending)
+            </a>
+          )}
         </div>
         <PendingPayoutsTable
           payouts={pending.map((p) => ({
