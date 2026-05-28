@@ -102,7 +102,7 @@ export function BinaryTreeZoomable({ people, allowNodeClick = true }: Props) {
         }}
       >
         <div style={{ zoom, width: "fit-content" }}>
-          <BinaryTreeGraph people={people} allowNodeClick={allowNodeClick} />
+          <BinaryTreeGraph people={people} allowNodeClick={allowNodeClick} embedded />
         </div>
       </div>
 

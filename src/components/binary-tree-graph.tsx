@@ -291,11 +291,23 @@ function genderVariant(gender?: "MALE" | "FEMALE" | null): "MALE" | "FEMALE" | "
   return "UNKNOWN";
 }
 
-export function BinaryTreeGraph({ people, allowNodeClick = true }: { people: TreePerson[]; allowNodeClick?: boolean }) {
+export function BinaryTreeGraph({
+  people,
+  allowNodeClick = true,
+  embedded = false,
+}: {
+  people: TreePerson[];
+  allowNodeClick?: boolean;
+  // When true, render only the raw SVG (no card, header, or inner
+  // overflow-x-auto). Used by BinaryTreeZoomable, which supplies its own
+  // scroll/zoom container — the inner wrapper would otherwise cap the SVG
+  // width and block panning to the right edge of the tree.
+  embedded?: boolean;
+}) {
   const root = buildTree(people);
   if (!root) {
     return (
-      <div className="card p-8 text-center text-sm text-muted-foreground">
+      <div className={embedded ? "p-8 text-center text-sm text-muted-foreground" : "card p-8 text-center text-sm text-muted-foreground"}>
         No downline yet. As people sign up under this user, they appear here.
       </div>
     );
@@ -325,23 +337,16 @@ export function BinaryTreeGraph({ people, allowNodeClick = true }: { people: Tre
   }
 
   const realPeople = nodes.filter((n) => !n.isPlaceholder).length;
-  return (
-    <div className="card p-5">
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h2 className="font-semibold">Binary tree</h2>
-        <span className="text-xs text-muted-foreground">
-          {realPeople - 1} downline · {maxDepth} {maxDepth === 1 ? "level" : "levels"} · click <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px]">L+</span> / <span className="inline-block px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-mono text-[10px]">R+</span> on an open slot to register
-        </span>
-      </div>
-      <div className="overflow-x-auto bg-gradient-to-b from-brand-50/40 via-transparent to-transparent rounded-xl">
-        <svg
-          width={totalWidth}
-          height={totalHeight}
-          viewBox={`0 0 ${totalWidth} ${totalHeight}`}
-          className="block"
-          role="img"
-          aria-label="Binary referral tree"
-        >
+
+  const svg = (
+    <svg
+      width={totalWidth}
+      height={totalHeight}
+      viewBox={`0 0 ${totalWidth} ${totalHeight}`}
+      className="block"
+      role="img"
+      aria-label="Binary referral tree"
+    >
           <defs>
             <filter id="treeShadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0f172a" floodOpacity="0.08" />
@@ -369,7 +374,24 @@ export function BinaryTreeGraph({ people, allowNodeClick = true }: { people: Tre
             }
             return <RealNode key={n.id} x={x} y={y} node={n} clickable={allowNodeClick} />;
           })}
-        </svg>
+    </svg>
+  );
+
+  // Embedded: hand the bare SVG to the parent (BinaryTreeZoomable), which owns
+  // the scroll + zoom container.
+  if (embedded) return svg;
+
+  // Standalone: keep the self-contained card + header + horizontal scroll.
+  return (
+    <div className="card p-5">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h2 className="font-semibold">Binary tree</h2>
+        <span className="text-xs text-muted-foreground">
+          {realPeople - 1} downline · {maxDepth} {maxDepth === 1 ? "level" : "levels"} · click <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px]">L+</span> / <span className="inline-block px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-mono text-[10px]">R+</span> on an open slot to register
+        </span>
+      </div>
+      <div className="overflow-x-auto bg-gradient-to-b from-brand-50/40 via-transparent to-transparent rounded-xl">
+        {svg}
       </div>
     </div>
   );
