@@ -28,6 +28,7 @@ export function SiteHeader({ brand }: { brand: SiteBrand }) {
         <nav className="hidden md:flex items-center gap-6 text-sm">
           <Link href="/products" className="hover:text-brand-700">Shop</Link>
           <Link href="/affiliate" className="hover:text-brand-700">Affiliate</Link>
+          <Link href="/blog" className="hover:text-brand-700">Blog</Link>
           <Link href="/about" className="hover:text-brand-700">About</Link>
           <Link href="/contact" className="hover:text-brand-700">Contact</Link>
         </nav>
@@ -111,6 +112,7 @@ export function SiteHeader({ brand }: { brand: SiteBrand }) {
           <nav className="container py-3 flex flex-col text-sm">
             <Link href="/products" onClick={closeNav} className="py-2.5 px-1 hover:text-brand-700">Shop</Link>
             <Link href="/affiliate" onClick={closeNav} className="py-2.5 px-1 hover:text-brand-700">Affiliate</Link>
+            <Link href="/blog" onClick={closeNav} className="py-2.5 px-1 hover:text-brand-700">Blog</Link>
             <Link href="/about" onClick={closeNav} className="py-2.5 px-1 hover:text-brand-700">About</Link>
             <Link href="/contact" onClick={closeNav} className="py-2.5 px-1 hover:text-brand-700">Contact</Link>
           </nav>
