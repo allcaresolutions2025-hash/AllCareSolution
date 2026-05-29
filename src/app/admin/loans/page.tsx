@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { BadgeIndianRupee, Clock, FileCheck2 } from "lucide-react";
+import { BadgeIndianRupee, Clock, FileCheck2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { formatRupees, tierByKey } from "@/lib/loan";
 import { LoanApprovalRow } from "./loan-approval-row";
 import { ReceiptReviewRow } from "./receipt-review-row";
@@ -7,7 +7,7 @@ import { ReceiptReviewRow } from "./receipt-review-row";
 export const dynamic = "force-dynamic";
 
 export default async function AdminLoansPage() {
-  const [pendingLoans, pendingReceipts, recentLoans, totalDisbursed] = await Promise.all([
+  const [pendingLoans, pendingReceipts, recentLoans, totalDisbursed, receivedAgg, outstandingAgg] = await Promise.all([
     prisma.loan.findMany({
       where: { status: "REQUESTED" },
       orderBy: { requestedAt: "asc" },
@@ -42,7 +42,22 @@ export default async function AdminLoansPage() {
       where: { status: { in: ["APPROVED", "CLOSED"] } },
       _sum: { amount: true },
     }),
+    // Repayments received = verified installments across disbursed loans.
+    prisma.loanInstallment.aggregate({
+      where: { status: "VERIFIED", loan: { status: { in: ["APPROVED", "CLOSED"] } } },
+      _sum: { amount: true },
+      _count: true,
+    }),
+    // Repayments still owed = unverified installments on active (approved) loans.
+    prisma.loanInstallment.aggregate({
+      where: { status: { in: ["PENDING", "RECEIPT_UPLOADED"] }, loan: { status: "APPROVED" } },
+      _sum: { amount: true },
+      _count: true,
+    }),
   ]);
+
+  const received = receivedAgg._sum.amount ?? 0;
+  const outstanding = outstandingAgg._sum.amount ?? 0;
 
   return (
     <div className="space-y-6">
@@ -57,6 +72,30 @@ export default async function AdminLoansPage() {
         <Kpi icon={<Clock className="h-5 w-5" />} label="Pending loan requests" value={pendingLoans.length} tone="amber" />
         <Kpi icon={<FileCheck2 className="h-5 w-5" />} label="Receipts awaiting review" value={pendingReceipts.length} tone="sky" />
         <Kpi icon={<BadgeIndianRupee className="h-5 w-5" />} label="Total disbursed" value={formatRupees(totalDisbursed._sum.amount ?? 0)} tone="emerald" />
+      </div>
+
+      {/* Repayment tracking — received vs. still owed */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="card p-5 ring-1 ring-emerald-200 bg-emerald-50/40">
+          <div className="flex items-center gap-2 text-emerald-700">
+            <CheckCircle2 className="h-5 w-5" />
+            <span className="text-sm font-semibold">Loan amount received</span>
+          </div>
+          <div className="mt-3 text-3xl font-bold tabular-nums text-emerald-700">{formatRupees(received)}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {receivedAgg._count} verified installment{receivedAgg._count === 1 ? "" : "s"} collected so far.
+          </div>
+        </div>
+        <div className="card p-5 ring-1 ring-amber-200 bg-amber-50/40">
+          <div className="flex items-center gap-2 text-amber-700">
+            <AlertTriangle className="h-5 w-5" />
+            <span className="text-sm font-semibold">Loan amount not received</span>
+          </div>
+          <div className="mt-3 text-3xl font-bold tabular-nums text-amber-700">{formatRupees(outstanding)}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {outstandingAgg._count} installment{outstandingAgg._count === 1 ? "" : "s"} still due on active loans.
+          </div>
+        </div>
       </div>
 
       {/* Pending loan requests */}
