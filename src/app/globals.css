@@ -9,6 +9,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(1200px 500px at 100% -10%, rgba(13,148,136,0.06), transparent),
+      radial-gradient(900px 500px at -10% 0%, rgba(41,129,67,0.06), transparent);
+    background-attachment: fixed;
   }
   ::selection {
     @apply bg-brand-200 text-brand-900;
@@ -20,10 +24,18 @@
     @apply container py-4 md:py-8 overflow-x-hidden;
   }
   .card {
-    @apply bg-white border border-border rounded-lg shadow-sm;
+    @apply bg-white border border-border rounded-xl shadow-card transition-shadow duration-200;
+  }
+  /* Opt-in hover lift for clickable cards/tiles. */
+  .card-interactive {
+    @apply hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200;
+  }
+  /* Gradient hero/feature card. */
+  .card-brand {
+    @apply rounded-xl text-white shadow-brand bg-brand-gradient;
   }
   .input {
-    @apply w-full rounded-md border border-input bg-white px-3 py-2 text-sm
+    @apply w-full rounded-lg border border-input bg-white px-3 py-2.5 text-sm
            outline-none transition placeholder:text-muted-foreground
            focus:border-brand-500 focus:ring-2 focus:ring-brand-200
            disabled:cursor-not-allowed disabled:opacity-60;
@@ -32,39 +44,51 @@
     @apply block text-sm font-medium text-foreground mb-1;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md text-sm
-           font-medium transition focus-visible:outline-none focus-visible:ring-2
-           focus-visible:ring-ring focus-visible:ring-offset-2
-           disabled:pointer-events-none disabled:opacity-50 px-4 py-2;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg text-sm
+           font-semibold transition-all duration-150 focus-visible:outline-none
+           focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50 px-4 py-2.5
+           active:scale-[0.98];
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+    @apply btn text-white shadow-brand-sm bg-brand-gradient
+           hover:shadow-brand hover:brightness-[1.05];
   }
   .btn-secondary {
     @apply btn bg-brand-50 text-brand-800 hover:bg-brand-100 border border-brand-200;
   }
   .btn-outline {
-    @apply btn border border-border bg-white hover:bg-muted;
+    @apply btn border border-border bg-white hover:bg-muted hover:border-brand-300;
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700;
+    @apply btn text-white shadow-sm bg-gradient-to-br from-red-500 to-rose-600 hover:brightness-[1.05];
   }
   .btn-ghost {
     @apply btn hover:bg-muted;
   }
   .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ring-1 ring-inset;
   }
-  .badge-green { @apply badge bg-brand-100 text-brand-800; }
-  .badge-amber { @apply badge bg-amber-100 text-amber-800; }
-  .badge-red   { @apply badge bg-red-100 text-red-800; }
-  .badge-gray  { @apply badge bg-gray-100 text-gray-800; }
-  .badge-blue  { @apply badge bg-blue-100 text-blue-800; }
+  .badge-green { @apply badge bg-brand-100 text-brand-800 ring-brand-200; }
+  .badge-amber { @apply badge bg-amber-100 text-amber-800 ring-amber-200; }
+  .badge-red   { @apply badge bg-red-100 text-red-800 ring-red-200; }
+  .badge-gray  { @apply badge bg-gray-100 text-gray-700 ring-gray-200; }
+  .badge-blue  { @apply badge bg-sky-100 text-sky-800 ring-sky-200; }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  /* Gradient text for headings / emphasis. */
+  .text-gradient-brand {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-teal-600;
+  }
+  /* Subtle page background wash. */
+  .bg-app {
+    background:
+      radial-gradient(1200px 500px at 100% -10%, rgba(13,148,136,0.06), transparent),
+      radial-gradient(900px 500px at -10% 0%, rgba(41,129,67,0.06), transparent);
   }
 }
 

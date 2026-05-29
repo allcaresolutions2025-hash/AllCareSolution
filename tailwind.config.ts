@@ -52,9 +52,21 @@ const config: Config = {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
       },
       borderRadius: {
+        xl: "1rem",
         lg: "0.75rem",
         md: "0.5rem",
         sm: "0.375rem",
+      },
+      boxShadow: {
+        card: "0 1px 2px rgba(16,24,40,0.04), 0 4px 12px -4px rgba(16,24,40,0.08)",
+        "card-hover": "0 8px 28px -8px rgba(16,24,40,0.16)",
+        brand: "0 8px 22px -8px rgba(41,129,67,0.5)",
+        "brand-sm": "0 4px 12px -4px rgba(41,129,67,0.45)",
+      },
+      backgroundImage: {
+        "brand-gradient": "linear-gradient(135deg, #298143 0%, #0d9488 100%)",
+        "brand-gradient-dark": "linear-gradient(135deg, #1d5230 0%, #115e59 100%)",
+        "brand-soft": "linear-gradient(135deg, #f0faf2 0%, #ecfeff 100%)",
       },
       keyframes: {
         "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },

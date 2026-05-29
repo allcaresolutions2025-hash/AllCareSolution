@@ -62,10 +62,10 @@ export function DashboardShell({
             href={n.href}
             onClick={onClick}
             className={cn(
-              "flex items-center gap-3 rounded-xl transition-colors",
+              "flex items-center gap-3 rounded-xl transition-all duration-150",
               mobile ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm rounded-lg",
               active
-                ? "bg-brand-100 text-brand-800 font-semibold"
+                ? "bg-brand-gradient text-white font-semibold shadow-brand-sm"
                 : "hover:bg-muted text-foreground"
             )}
           >
