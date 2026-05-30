@@ -15,9 +15,9 @@ export default async function SharePage() {
   });
 
   const refId = user?.referralCode ?? "";
-  const waText = `Hey! 🌿 I've been using these herbal wellness products from ACHT MART and love them. If you'd like to join, share my Refer ID — ${refId} — with ACHT MART admin or me, and you'll be placed in my team.`;
+  const waText = `Hey! 🌿 I've been using these herbal wellness products from ACHT MART and love them. If you'd like to join, share my Refer ID — ${refId} — with ACHT MART admin or me, and you'll be placed in my team. Visit www.achtmart.info`;
   const waUrl = `https://wa.me/?text=${encodeURIComponent(waText)}`;
-  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Discover authentic Ayurvedic wellness at ACHT MART. My Refer ID: ${refId}`)}`;
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Discover authentic Ayurvedic wellness at ACHT MART. My Refer ID: ${refId} — www.achtmart.info`)}`;
 
   return (
     <div className="space-y-6">
