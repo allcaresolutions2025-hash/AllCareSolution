@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { X, Radio } from "lucide-react";
 
 type Post = { id: string; title: string };
@@ -38,14 +39,18 @@ export function BreakingNewsTickerClient({
         <span>Live</span>
       </div>
 
-      {/* Scrolling text */}
-      <div className="flex-1 overflow-hidden h-full flex items-center">
+      {/* Scrolling text — click to open news */}
+      <Link
+        href="/affiliate/dashboard/news"
+        className="flex-1 overflow-hidden h-full flex items-center hover:underline focus:outline-none focus:ring-2 focus:ring-white/40"
+        aria-label="Read latest news"
+      >
         <div className="ticker-track whitespace-nowrap will-change-transform">
           <span className="px-6 opacity-95">{text}</span>
           {/* Duplicate for seamless loop */}
           <span className="px-6 opacity-95">{text}</span>
         </div>
-      </div>
+      </Link>
 
       {/* Dismiss button */}
       <button
