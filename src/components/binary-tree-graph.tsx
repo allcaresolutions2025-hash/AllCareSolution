@@ -459,11 +459,11 @@ function RealNode({
   drilldownHrefBuilder?: (id: string) => string;
 }) {
   const isRoot = n.depth === 0;
-  // A drilldown link wins over the default per-node link: when the node sits
-  // at the depth cutoff and has hidden downline, the caller-provided URL
-  // re-roots the tree at this user. Otherwise fall back to the admin detail
-  // page used by the network views.
-  const drilldownHref = n.hasMore && drilldownHrefBuilder ? drilldownHrefBuilder(n.id) : null;
+  // A drilldown link wins over the default per-node link: when a builder is
+  // supplied, every non-root real node re-roots the tree at that user so the
+  // viewer can keep drilling regardless of side or depth. Otherwise fall back
+  // to the admin detail page used by the network views.
+  const drilldownHref = !isRoot && drilldownHrefBuilder ? drilldownHrefBuilder(n.id) : null;
   const href = drilldownHref ?? (clickable ? `/admin/network/${n.id}` : null);
   const isClickable = href !== null;
   const inner = (
