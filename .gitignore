@@ -36,3 +36,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# mobile build artifacts — too large for git, hosted externally (see /admin/download)
+public/downloads/*.apk
+public/downloads/*.aab

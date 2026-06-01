@@ -1,6 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
-import { Smartphone, Download, ShieldCheck, Info } from "lucide-react";
+import { Smartphone, Download, ShieldCheck, Info, ExternalLink } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -9,19 +7,12 @@ export const metadata = {
   description: "Internal Android APK download for staff testing.",
 };
 
-const APK_PATH = "/downloads/achtmart.apk";
-
-function apkAvailable() {
-  try {
-    const full = path.join(process.cwd(), "public", "downloads", "achtmart.apk");
-    return fs.existsSync(full);
-  } catch {
-    return false;
-  }
-}
-
 export default function AdminDownloadPage() {
-  const available = apkAvailable();
+  // APKs are too large for git; we host them on Expo's CDN (or your own bucket)
+  // and point the page at the URL via env var. Set MOBILE_APK_URL in Vercel.
+  const apkUrl = process.env.MOBILE_APK_URL?.trim();
+  const apkVersion = process.env.MOBILE_APK_VERSION?.trim() ?? "0.1.0";
+
   return (
     <div className="max-w-3xl">
       <div className="card p-8">
@@ -35,6 +26,11 @@ export default function AdminDownloadPage() {
               Pre-release Android build for staff testing. Not yet linked from the
               public site — share the APK only with internal testers.
             </p>
+            {apkUrl ? (
+              <p className="text-xs text-muted-foreground mt-2">
+                Current build: <code className="bg-muted px-1 py-0.5 rounded">v{apkVersion}</code>
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -50,31 +46,42 @@ export default function AdminDownloadPage() {
         </div>
 
         <div className="mt-8">
-          {available ? (
+          {apkUrl ? (
             <a
-              href={APK_PATH}
-              download
+              href={apkUrl}
+              target="_blank"
+              rel="noopener"
               className="btn-primary inline-flex items-center gap-2 py-3 px-6 text-base"
             >
               <Download className="h-5 w-5" />
               Download APK
+              <ExternalLink className="h-4 w-4 opacity-70" />
             </a>
           ) : (
             <div className="rounded-lg border border-slate-300 bg-slate-50 text-slate-800 p-4 flex items-start gap-2">
               <Info className="h-5 w-5 mt-0.5 shrink-0" />
               <div>
-                <div className="font-semibold">APK not uploaded yet</div>
-                <p className="text-sm">
-                  Build the app with{" "}
-                  <code className="bg-white px-1 py-0.5 rounded border">
-                    npm run build:apk
-                  </code>{" "}
-                  in <code className="bg-white px-1 py-0.5 rounded border">achtmart-mobile</code>,
-                  then drop the resulting file at{" "}
-                  <code className="bg-white px-1 py-0.5 rounded border">
-                    public/downloads/achtmart.apk
-                  </code>{" "}
-                  and redeploy.
+                <div className="font-semibold">APK URL not configured</div>
+                <p className="text-sm mt-1">
+                  Set the <code className="bg-white px-1 py-0.5 rounded border">MOBILE_APK_URL</code>{" "}
+                  environment variable in Vercel to the download URL of your latest{" "}
+                  <a
+                    href="https://expo.dev"
+                    target="_blank"
+                    rel="noopener"
+                    className="underline"
+                  >
+                    EAS build
+                  </a>
+                  . Optionally also set{" "}
+                  <code className="bg-white px-1 py-0.5 rounded border">MOBILE_APK_VERSION</code>{" "}
+                  (e.g.{" "}
+                  <code className="bg-white px-1 py-0.5 rounded border">0.1.0</code>
+                  ).
+                </p>
+                <p className="text-xs text-slate-600 mt-3">
+                  After updating env vars in Vercel, redeploy or wait for the next
+                  auto-deploy to pick them up.
                 </p>
               </div>
             </div>
