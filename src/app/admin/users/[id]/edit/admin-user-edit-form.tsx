@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Save, KeyRound, Eye, EyeOff } from "lucide-react";
+import { Save, KeyRound, Eye, EyeOff, RefreshCw } from "lucide-react";
 
 type Initial = {
   name: string;
@@ -26,6 +26,24 @@ export function AdminUserEditForm({ userId, initial }: { userId: string; initial
   const [newPassword, setNewPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [pwLoading, setPwLoading] = useState(false);
+  const [txnResetLoading, setTxnResetLoading] = useState(false);
+
+  async function resetTransactionPassword() {
+    if (!initial.phone || !/^\d{10}$/.test(initial.phone)) {
+      toast.error("Save a valid 10-digit mobile for this user first.");
+      return;
+    }
+    if (!confirm(`Reset transaction password to mobile (${initial.phone})? The member will be asked to choose a new one.`)) return;
+    setTxnResetLoading(true);
+    const res = await fetch(`/api/admin/users/${userId}/reset-transaction-password`, { method: "POST" });
+    const data = await res.json();
+    setTxnResetLoading(false);
+    if (!res.ok) {
+      toast.error(data.error || "Failed");
+      return;
+    }
+    toast.success(data.message || "Transaction password reset", { duration: 6000 });
+  }
 
   function set<K extends keyof Initial>(k: K, v: Initial[K]) {
     setForm({ ...form, [k]: v });
@@ -154,6 +172,28 @@ export function AdminUserEditForm({ userId, initial }: { userId: string; initial
         </button>
       </div>
     </form>
+
+    {/* Reset transaction password — sets txn pw to mobile and flags the member to choose a new one */}
+    <div className="card p-6 space-y-3 mt-5">
+      <div className="flex items-center gap-2">
+        <RefreshCw className="h-4 w-4 text-amber-700" />
+        <h3 className="font-semibold text-sm text-amber-800">Reset Transaction Password</h3>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Use this when the member has forgotten their transaction password. We&apos;ll reset it to their
+        registered mobile number ({initial.phone || "—"}). The member must then sign in to Settings,
+        enter their mobile as the current transaction password, and choose a new one. They&apos;ll see a
+        banner on their dashboard until they do.
+      </p>
+      <button
+        type="button"
+        onClick={resetTransactionPassword}
+        disabled={txnResetLoading || !initial.phone}
+        className="btn-outline border-amber-300 text-amber-800 hover:bg-amber-50 inline-flex items-center gap-2"
+      >
+        <RefreshCw className="h-4 w-4" /> {txnResetLoading ? "Resetting…" : "Reset to mobile"}
+      </button>
+    </div>
     </>
   );
 }

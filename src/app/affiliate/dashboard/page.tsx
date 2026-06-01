@@ -112,6 +112,26 @@ export default async function AffiliateDashboardPage() {
         </div>
       )}
 
+      {me.mustChangeTransactionPassword && (
+        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-amber-100 text-amber-700 grid place-items-center shrink-0">
+            <KeyRound className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-amber-900">Set a new transaction password</div>
+            <div className="text-xs text-amber-800">
+              Admin reset your transaction password to your mobile number. Use that as the current password and pick a new one to keep transferring pins.
+            </div>
+          </div>
+          <Link
+            href="/affiliate/dashboard/settings#transaction-password"
+            className="btn-primary shrink-0"
+          >
+            Update now
+          </Link>
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold">Dashboard</h1>
 
       {/* Top: Profile / Earnings / Business Volume */}

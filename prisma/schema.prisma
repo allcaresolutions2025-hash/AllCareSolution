@@ -34,6 +34,7 @@ model User {
   name         String
   passwordHash String
   transactionPasswordHash String?  // separate password required for sensitive ops (pin transfer)
+  mustChangeTransactionPassword Boolean @default(false) // true when admin has reset txn pw to the user's mobile and is awaiting the member to choose a new one
   mustChangePassword Boolean  @default(false) // true when account was created with a default password (mobile)
   mustOnboard        Boolean  @default(false) // true for fresher accounts — forced through the Add Member form on first login
   role         Role     @default(CUSTOMER)

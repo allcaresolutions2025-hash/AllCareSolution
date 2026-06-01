@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Lock } from "lucide-react";
+import { Lock, AlertTriangle } from "lucide-react";
 
-export function TransactionPasswordForm({ isSet }: { isSet: boolean }) {
+export function TransactionPasswordForm({ isSet, mustChange = false }: { isSet: boolean; mustChange?: boolean }) {
   const router = useRouter();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -45,7 +45,7 @@ export function TransactionPasswordForm({ isSet }: { isSet: boolean }) {
   }
 
   return (
-    <form onSubmit={submit} className="card p-6 space-y-4">
+    <form onSubmit={submit} id="transaction-password" className="card p-6 space-y-4">
       <div className="flex items-center gap-2 text-brand-700">
         <Lock className="h-4 w-4" /> <h2 className="font-semibold">Transaction password</h2>
       </div>
@@ -53,6 +53,16 @@ export function TransactionPasswordForm({ isSet }: { isSet: boolean }) {
         This is a separate password used to authorize sensitive actions like pin transfers.
         It is not your login password.
       </p>
+
+      {mustChange && (
+        <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-3 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
+          <div className="text-xs text-amber-900">
+            <strong>Admin has reset your transaction password.</strong> Enter your registered mobile number as the
+            current transaction password, then choose a new one to continue using sensitive actions.
+          </div>
+        </div>
+      )}
 
       {isSet && (
         <div>

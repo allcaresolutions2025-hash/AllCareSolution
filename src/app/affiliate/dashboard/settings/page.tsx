@@ -17,6 +17,7 @@ export default async function SettingsPage() {
     select: {
       transactionPasswordHash: true,
       mustChangePassword: true,
+      mustChangeTransactionPassword: true,
       name: true,
       email: true,
       phone: true,
@@ -42,19 +43,25 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <div className={`card p-5 ${isSet ? "bg-emerald-50/40 border-emerald-200" : "bg-amber-50/40 border-amber-200"}`}>
+      <div className={`card p-5 ${me.mustChangeTransactionPassword ? "bg-amber-50/40 border-amber-200" : isSet ? "bg-emerald-50/40 border-emerald-200" : "bg-amber-50/40 border-amber-200"}`}>
         <div className="flex items-center gap-3">
-          <div className={`h-10 w-10 rounded-lg grid place-items-center ${isSet ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-            {isSet ? <ShieldCheck className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
+          <div className={`h-10 w-10 rounded-lg grid place-items-center ${me.mustChangeTransactionPassword || !isSet ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+            {me.mustChangeTransactionPassword || !isSet ? <ShieldAlert className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
           </div>
           <div>
             <div className="font-semibold">
-              {isSet ? "Transaction password is set" : "Transaction password not yet set"}
+              {me.mustChangeTransactionPassword
+                ? "Transaction password reset by admin — please choose a new one"
+                : isSet
+                  ? "Transaction password is set"
+                  : "Transaction password not yet set"}
             </div>
             <div className="text-xs text-muted-foreground">
-              {isSet
-                ? "Required to transfer pins and for other sensitive actions."
-                : "You must set a transaction password before you can transfer pins."}
+              {me.mustChangeTransactionPassword
+                ? "Use your registered mobile number as the current password, then pick a new one below."
+                : isSet
+                  ? "Required to transfer pins and for other sensitive actions."
+                  : "You must set a transaction password before you can transfer pins."}
             </div>
           </div>
         </div>
@@ -62,7 +69,7 @@ export default async function SettingsPage() {
 
       <LoginPasswordForm mustChange={me.mustChangePassword} />
 
-      <TransactionPasswordForm isSet={isSet} />
+      <TransactionPasswordForm isSet={isSet} mustChange={me.mustChangeTransactionPassword} />
 
       <div className="card p-5 bg-slate-50/40 border-slate-200">
         <div className="flex items-center gap-3">

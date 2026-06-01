@@ -27,8 +27,12 @@ yarn-error.log*
 
 # local env files
 .env
-.env*.local
+.env.*
 !.env.example
+
+# local AI assistant settings (may contain tokens / db URLs)
+.claude/settings.local.json
+**/.claude/settings.local.json
 
 # vercel
 .vercel
