@@ -1,5 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
-import { LayoutDashboard, Package, ShoppingBag, Users, FileCheck2, Wallet, Settings, Network, KeyRound, BadgeIndianRupee, Coins, Megaphone, Trophy, GitBranch, LogIn, BookOpen } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, FileCheck2, Wallet, Settings, Network, KeyRound, BadgeIndianRupee, Coins, Megaphone, Trophy, GitBranch, LogIn, BookOpen, Smartphone } from "lucide-react";
 
 const nav = [
   { href: "/admin", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -17,6 +17,7 @@ const nav = [
   { href: "/admin/loans", label: "Loan Approvals", icon: <BadgeIndianRupee className="h-4 w-4" /> },
   { href: "/admin/daily-payouts", label: "Daily Payouts", icon: <Coins className="h-4 w-4" /> },
   { href: "/admin/payouts", label: "Payouts", icon: <Wallet className="h-4 w-4" /> },
+  { href: "/admin/download", label: "Mobile App", icon: <Smartphone className="h-4 w-4" /> },
   { href: "/admin/settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },
 ];
 
