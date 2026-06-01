@@ -134,9 +134,7 @@ export function TransactionPasswordForm({
         {loading ? "Saving…" : isSet ? "Update password" : "Set password"}
       </button>
 
-      {/* Forgot? — only relevant once a transaction password actually exists */}
-      {isSet && (
-        <div className="pt-3 border-t">
+      <div className="pt-3 border-t">
           {hasPendingResetRequest ? (
             <div className="inline-flex items-center gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
               <Clock className="h-4 w-4" />
@@ -153,8 +151,7 @@ export function TransactionPasswordForm({
               {forgotLoading ? "Sending request…" : "Forgot transaction password? Request admin reset →"}
             </button>
           )}
-        </div>
-      )}
+      </div>
     </form>
   );
 }
