@@ -12,27 +12,34 @@ export default async function SettingsPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const me = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      transactionPasswordHash: true,
-      mustChangePassword: true,
-      mustChangeTransactionPassword: true,
-      name: true,
-      email: true,
-      phone: true,
-      nominee: true,
-      gender: true,
-      address: true,
-      panNumber: true,
-      bankAccountName: true,
-      bankAccountNumber: true,
-      bankIfsc: true,
-      bankName: true,
-    },
-  });
+  const [me, pendingReset] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        transactionPasswordHash: true,
+        mustChangePassword: true,
+        mustChangeTransactionPassword: true,
+        name: true,
+        email: true,
+        phone: true,
+        nominee: true,
+        gender: true,
+        address: true,
+        panNumber: true,
+        bankAccountName: true,
+        bankAccountNumber: true,
+        bankIfsc: true,
+        bankName: true,
+      },
+    }),
+    prisma.txnPasswordResetRequest.findFirst({
+      where: { userId: session.user.id, status: "PENDING" },
+      select: { id: true },
+    }),
+  ]);
   if (!me) return null;
   const isSet = !!me.transactionPasswordHash;
+  const hasPendingResetRequest = !!pendingReset;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -69,7 +76,11 @@ export default async function SettingsPage() {
 
       <LoginPasswordForm mustChange={me.mustChangePassword} />
 
-      <TransactionPasswordForm isSet={isSet} mustChange={me.mustChangeTransactionPassword} />
+      <TransactionPasswordForm
+        isSet={isSet}
+        mustChange={me.mustChangeTransactionPassword}
+        hasPendingResetRequest={hasPendingResetRequest}
+      />
 
       <div className="card p-5 bg-slate-50/40 border-slate-200">
         <div className="flex items-center gap-3">

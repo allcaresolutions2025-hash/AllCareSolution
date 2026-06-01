@@ -3,14 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Lock, AlertTriangle } from "lucide-react";
+import { Lock, AlertTriangle, HelpCircle, Clock } from "lucide-react";
 
-export function TransactionPasswordForm({ isSet, mustChange = false }: { isSet: boolean; mustChange?: boolean }) {
+export function TransactionPasswordForm({
+  isSet,
+  mustChange = false,
+  hasPendingResetRequest = false,
+}: {
+  isSet: boolean;
+  mustChange?: boolean;
+  hasPendingResetRequest?: boolean;
+}) {
   const router = useRouter();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,6 +50,25 @@ export function TransactionPasswordForm({ isSet, mustChange = false }: { isSet: 
     setCurrent("");
     setNext("");
     setConfirm("");
+    router.refresh();
+  }
+
+  async function requestReset() {
+    const ok = window.confirm(
+      "Are you sure you want to request a transaction password reset?\n\n" +
+      "This will send a request to the admin. Once approved, your transaction password will be reset to your registered mobile number — you can then sign in here and choose a new one.\n\n" +
+      "Continue?"
+    );
+    if (!ok) return;
+    setForgotLoading(true);
+    const res = await fetch("/api/affiliate/transaction-password/forgot", { method: "POST" });
+    const data = await res.json();
+    setForgotLoading(false);
+    if (!res.ok) {
+      toast.error(data.error || "Could not send request");
+      return;
+    }
+    toast.success("Request sent to admin. You'll be notified once it's approved.", { duration: 6000 });
     router.refresh();
   }
 
@@ -105,6 +133,28 @@ export function TransactionPasswordForm({ isSet, mustChange = false }: { isSet: 
       <button type="submit" disabled={loading} className="btn-primary">
         {loading ? "Saving…" : isSet ? "Update password" : "Set password"}
       </button>
+
+      {/* Forgot? — only relevant once a transaction password actually exists */}
+      {isSet && (
+        <div className="pt-3 border-t">
+          {hasPendingResetRequest ? (
+            <div className="inline-flex items-center gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <Clock className="h-4 w-4" />
+              Reset request pending admin approval. You&apos;ll be notified once it&apos;s approved.
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={requestReset}
+              disabled={forgotLoading}
+              className="inline-flex items-center gap-1.5 text-sm text-brand-700 hover:text-brand-800 hover:underline disabled:opacity-50"
+            >
+              <HelpCircle className="h-4 w-4" />
+              {forgotLoading ? "Sending request…" : "Forgot transaction password? Request admin reset →"}
+            </button>
+          )}
+        </div>
+      )}
     </form>
   );
 }
