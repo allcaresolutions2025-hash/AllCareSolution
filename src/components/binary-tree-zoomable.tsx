@@ -7,6 +7,8 @@ import { Move } from "lucide-react";
 type Props = {
   people: TreePerson[];
   allowNodeClick?: boolean;
+  maxVisibleDepth?: number;
+  drilldownHrefBuilder?: (id: string) => string;
 };
 
 const MIN_ZOOM = 0.4;
@@ -19,7 +21,12 @@ const MAX_ZOOM = 2.5;
 // are what users expect on mobile, and the old buttons did nothing there.
 // CSS `zoom` (not transform: scale) is used so the scroll area resizes with
 // the content, keeping every node reachable at any zoom level.
-export function BinaryTreeZoomable({ people, allowNodeClick = true }: Props) {
+export function BinaryTreeZoomable({
+  people,
+  allowNodeClick = true,
+  maxVisibleDepth,
+  drilldownHrefBuilder,
+}: Props) {
   const [zoom, setZoom] = useState(1);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pinch = useRef<{ startDist: number; startZoom: number } | null>(null);
@@ -102,7 +109,13 @@ export function BinaryTreeZoomable({ people, allowNodeClick = true }: Props) {
         }}
       >
         <div style={{ zoom, width: "fit-content" }}>
-          <BinaryTreeGraph people={people} allowNodeClick={allowNodeClick} embedded />
+          <BinaryTreeGraph
+            people={people}
+            allowNodeClick={allowNodeClick}
+            embedded
+            maxVisibleDepth={maxVisibleDepth}
+            drilldownHrefBuilder={drilldownHrefBuilder}
+          />
         </div>
       </div>
 

@@ -3,12 +3,17 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getNetworkSnapshot, type DownlineNode } from "@/lib/network";
 import { formatPoints } from "@/lib/money";
+import Link from "next/link";
 import { BinaryTreeGraph, type TreePerson } from "@/components/binary-tree-graph";
-import { Users, Coins, Layers, BadgeCheck } from "lucide-react";
+import { Users, Coins, Layers, BadgeCheck, ArrowLeft } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function GenealogyPage() {
+export default async function GenealogyPage({
+  searchParams,
+}: {
+  searchParams?: { rootId?: string };
+}) {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
@@ -27,7 +32,17 @@ export default async function GenealogyPage() {
   });
   if (!me) return null;
 
+  // The tree always summarises the affiliate's own downline (KPIs, team
+  // counts, etc) — that doesn't change when drilling in. The optional
+  // `?rootId=…` simply re-centres the visual tree on a downline member so the
+  // user can see the next 3 generations below them. Only members inside the
+  // affiliate's own downline are valid roots — anything else falls back to
+  // the affiliate as root.
   const snapshot = await getNetworkSnapshot(me.id);
+  const downlineIdSet = new Set(snapshot.nodes.map((n) => n.id));
+  const drillRootId =
+    searchParams?.rootId && downlineIdSet.has(searchParams.rootId) ? searchParams.rootId : null;
+  const drillRoot = drillRootId ? snapshot.nodes.find((n) => n.id === drillRootId) ?? null : null;
 
   // Identify Left and Right directs by the actual slot field — not creation
   // order, which would swap the cards whenever the right slot was filled first.
@@ -70,33 +85,76 @@ export default async function GenealogyPage() {
     : [];
   const pointsByUser = new Map(wallets.map((w) => [w.userId, w.balanceAvailable]));
 
-  const treePeople: TreePerson[] = [
-    {
-      id: me.id,
-      name: me.name,
-      email: me.email,
-      referralCode: me.referralCode,
-      referrerId: null,
-      depth: 0,
-      isActive: me.isActive,
-      gender: me.gender,
-      pointsPaise: me.wallet?.balanceAvailable ?? 0,
-      isRoot: true,
-    },
-    ...snapshot.nodes.map((n) => ({
-      id: n.id,
-      name: n.name,
-      email: n.email,
-      referralCode: n.referralCode,
-      referrerId: n.referrerId,
-      slot: n.slot,
-      depth: n.depth,
-      isActive: n.isActive,
-      gender: n.gender,
-      createdAt: n.createdAt,
-      pointsPaise: pointsByUser.get(n.id) ?? 0,
-    })),
-  ];
+  // Walk drillRoot's subtree once so we can re-stamp depths relative to the
+  // new root. Without this the tree component would still anchor depth=0 at
+  // `me` and treat drillRoot as an interior node.
+  const subtreeIds = new Set<string>();
+  if (drillRoot) {
+    const stack = [drillRoot.id];
+    while (stack.length) {
+      const id = stack.pop()!;
+      subtreeIds.add(id);
+      for (const k of childrenByParent.get(id) ?? []) stack.push(k.id);
+    }
+  }
+
+  const treePeople: TreePerson[] = drillRoot
+    ? [
+        {
+          id: drillRoot.id,
+          name: drillRoot.name,
+          email: drillRoot.email,
+          referralCode: drillRoot.referralCode,
+          referrerId: null,
+          depth: 0,
+          isActive: drillRoot.isActive,
+          gender: drillRoot.gender,
+          pointsPaise: pointsByUser.get(drillRoot.id) ?? 0,
+          isRoot: true,
+        },
+        ...snapshot.nodes
+          .filter((n) => n.id !== drillRoot.id && subtreeIds.has(n.id))
+          .map((n) => ({
+            id: n.id,
+            name: n.name,
+            email: n.email,
+            referralCode: n.referralCode,
+            referrerId: n.referrerId,
+            slot: n.slot,
+            depth: n.depth - drillRoot.depth,
+            isActive: n.isActive,
+            gender: n.gender,
+            createdAt: n.createdAt,
+            pointsPaise: pointsByUser.get(n.id) ?? 0,
+          })),
+      ]
+    : [
+        {
+          id: me.id,
+          name: me.name,
+          email: me.email,
+          referralCode: me.referralCode,
+          referrerId: null,
+          depth: 0,
+          isActive: me.isActive,
+          gender: me.gender,
+          pointsPaise: me.wallet?.balanceAvailable ?? 0,
+          isRoot: true,
+        },
+        ...snapshot.nodes.map((n) => ({
+          id: n.id,
+          name: n.name,
+          email: n.email,
+          referralCode: n.referralCode,
+          referrerId: n.referrerId,
+          slot: n.slot,
+          depth: n.depth,
+          isActive: n.isActive,
+          gender: n.gender,
+          createdAt: n.createdAt,
+          pointsPaise: pointsByUser.get(n.id) ?? 0,
+        })),
+      ];
 
   return (
     <div className="space-y-6">
@@ -167,8 +225,31 @@ export default async function GenealogyPage() {
         />
       </div>
 
-      {/* Full SVG tree — real nodes are view-only for members */}
-      <BinaryTreeGraph people={treePeople} allowNodeClick={false} />
+      {/* SVG tree — shows 3 generations (root + children + grandchildren).
+          Grandchildren with further downline are tappable and re-root the
+          tree so the user can keep drilling. */}
+      {drillRoot && (
+        <div className="flex items-center justify-between flex-wrap gap-2 text-sm">
+          <div className="text-muted-foreground">
+            Viewing downline under{" "}
+            <span className="font-semibold text-slate-900">{drillRoot.name}</span>{" "}
+            <code className="font-mono bg-muted px-1.5 py-0.5 rounded text-xs">
+              {drillRoot.referralCode}
+            </code>
+          </div>
+          <Link
+            href="/affiliate/dashboard/referrals"
+            className="inline-flex items-center gap-1 text-brand-700 hover:underline"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to your tree
+          </Link>
+        </div>
+      )}
+      <BinaryTreeGraph
+        people={treePeople}
+        allowNodeClick={false}
+        drilldownHrefBuilder={(id) => `/affiliate/dashboard/referrals?rootId=${id}`}
+      />
     </div>
   );
 }

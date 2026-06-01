@@ -35,6 +35,10 @@ type LaidOutNode = {
   slotStart: number;
   slots: number;
   badge: string;
+  // True when this node sits at the depth cutoff and has further downline
+  // members hidden below it — clicking drills in to re-root at this node.
+  hasMore?: boolean;
+  hiddenCount?: number;
 };
 
 // Visual constants.
@@ -44,7 +48,7 @@ const SLOT_W = 208;
 const LEVEL_H = NODE_H + 56;
 const PADDING = 28;
 
-function buildTree(people: TreePerson[]): LaidOutNode | null {
+function buildTree(people: TreePerson[], maxVisibleDepth: number): LaidOutNode | null {
   if (people.length === 0) return null;
   const byId = new Map<string, LaidOutNode>();
   for (const p of people) {
@@ -68,10 +72,35 @@ function buildTree(people: TreePerson[]): LaidOutNode | null {
   }
   if (!root) return null;
 
+  // Cut off the rendered tree at maxVisibleDepth (depth relative to root). Any
+  // node sitting at the cutoff that still has real descendants is marked
+  // `hasMore` — the UI uses that to invite the user to drill in.
+  function pruneAtDepth(n: LaidOutNode) {
+    if (n.depth >= maxVisibleDepth) {
+      if (n.children.length > 0) {
+        n.hasMore = true;
+        n.hiddenCount = countDescendants(n);
+      }
+      n.children = [];
+      return;
+    }
+    for (const c of n.children) pruneAtDepth(c);
+  }
+  function countDescendants(n: LaidOutNode): number {
+    let total = 0;
+    for (const c of n.children) total += 1 + countDescendants(c);
+    return total;
+  }
+  pruneAtDepth(root);
+
   // For each real node, fill missing L/R slots with placeholders.
   // Uses the DB `slot` field (LEFT/RIGHT) — not creation order — so the
   // visual position always matches what the API will check on placement.
   function injectPlaceholders(n: LaidOutNode) {
+    // At the depth cutoff we deliberately do not invite new sign-ups — the
+    // user must drill in first, otherwise the placeholder would lie about
+    // where they'd actually be added in the tree.
+    if (n.depth >= maxVisibleDepth) return;
     const bySlot: { LEFT?: LaidOutNode; RIGHT?: LaidOutNode } = {};
     for (const c of n.children) {
       if (c.slot === "LEFT") bySlot.LEFT = c;
@@ -295,6 +324,8 @@ export function BinaryTreeGraph({
   people,
   allowNodeClick = true,
   embedded = false,
+  maxVisibleDepth = 2,
+  drilldownHrefBuilder,
 }: {
   people: TreePerson[];
   allowNodeClick?: boolean;
@@ -303,8 +334,16 @@ export function BinaryTreeGraph({
   // scroll/zoom container — the inner wrapper would otherwise cap the SVG
   // width and block panning to the right edge of the tree.
   embedded?: boolean;
+  // How many generations below the root to show in one view. Default 2 keeps
+  // the layout legible (root + children + grandchildren) — to see further the
+  // user clicks a grandchild and re-roots the tree there.
+  maxVisibleDepth?: number;
+  // Builds the URL used when the user clicks a depth-cutoff node to drill in.
+  // When provided, the boundary node becomes clickable even if
+  // `allowNodeClick` is false (the affiliate view uses this).
+  drilldownHrefBuilder?: (id: string) => string;
 }) {
-  const root = buildTree(people);
+  const root = buildTree(people, maxVisibleDepth);
   if (!root) {
     return (
       <div className={embedded ? "p-8 text-center text-sm text-muted-foreground" : "card p-8 text-center text-sm text-muted-foreground"}>
@@ -372,7 +411,16 @@ export function BinaryTreeGraph({
             if (n.isPlaceholder) {
               return <PlaceholderNode key={n.id} x={x} y={y} node={n} />;
             }
-            return <RealNode key={n.id} x={x} y={y} node={n} clickable={allowNodeClick} />;
+            return (
+              <RealNode
+                key={n.id}
+                x={x}
+                y={y}
+                node={n}
+                clickable={allowNodeClick}
+                drilldownHrefBuilder={drilldownHrefBuilder}
+              />
+            );
           })}
     </svg>
   );
@@ -397,8 +445,27 @@ export function BinaryTreeGraph({
   );
 }
 
-function RealNode({ x, y, node: n, clickable }: { x: number; y: number; node: LaidOutNode; clickable: boolean }) {
+function RealNode({
+  x,
+  y,
+  node: n,
+  clickable,
+  drilldownHrefBuilder,
+}: {
+  x: number;
+  y: number;
+  node: LaidOutNode;
+  clickable: boolean;
+  drilldownHrefBuilder?: (id: string) => string;
+}) {
   const isRoot = n.depth === 0;
+  // A drilldown link wins over the default per-node link: when the node sits
+  // at the depth cutoff and has hidden downline, the caller-provided URL
+  // re-roots the tree at this user. Otherwise fall back to the admin detail
+  // page used by the network views.
+  const drilldownHref = n.hasMore && drilldownHrefBuilder ? drilldownHrefBuilder(n.id) : null;
+  const href = drilldownHref ?? (clickable ? `/admin/network/${n.id}` : null);
+  const isClickable = href !== null;
   const inner = (
     <>
       <rect
@@ -409,15 +476,15 @@ function RealNode({ x, y, node: n, clickable }: { x: number; y: number; node: La
         rx={12}
         ry={12}
         fill={isRoot ? "#15803d" : "#ffffff"}
-        stroke={isRoot ? "#14532d" : "#e2e8f0"}
-        strokeWidth={1.5}
-        className={clickable ? "transition-opacity hover:opacity-90" : undefined}
-        style={!clickable ? { cursor: "default" } : undefined}
+        stroke={isRoot ? "#14532d" : n.hasMore ? "#15803d" : "#e2e8f0"}
+        strokeWidth={n.hasMore ? 2 : 1.5}
+        className={isClickable ? "transition-opacity hover:opacity-90" : undefined}
+        style={!isClickable ? { cursor: "default" } : undefined}
       />
       <foreignObject x={x} y={y} width={NODE_W} height={NODE_H}>
         <div
           className={`h-full px-3 py-2 flex items-center gap-2 ${isRoot ? "text-white" : "text-slate-900"}`}
-          style={!clickable ? { cursor: "default", userSelect: "none" } : undefined}
+          style={!isClickable ? { cursor: "default", userSelect: "none" } : undefined}
         >
           <DollAvatar variant={genderVariant(n.gender)} isRoot={isRoot} />
           <div className="min-w-0 flex-1">
@@ -434,18 +501,24 @@ function RealNode({ x, y, node: n, clickable }: { x: number; y: number; node: La
             <div className={`mt-0.5 text-sm font-semibold leading-tight truncate ${isRoot ? "text-white" : "text-slate-900"}`}>
               {n.name}
             </div>
-            <div className={`text-[10px] leading-tight truncate font-mono ${isRoot ? "text-brand-100" : "text-muted-foreground"}`}>
-              {n.referralCode}
-            </div>
+            {n.hasMore ? (
+              <div className="text-[10px] leading-tight truncate font-medium text-brand-700">
+                +{n.hiddenCount} below · tap ▼
+              </div>
+            ) : (
+              <div className={`text-[10px] leading-tight truncate font-mono ${isRoot ? "text-brand-100" : "text-muted-foreground"}`}>
+                {n.referralCode}
+              </div>
+            )}
           </div>
         </div>
       </foreignObject>
     </>
   );
-  if (!clickable) {
+  if (!isClickable) {
     return <g style={{ filter: "url(#treeShadow)" }}>{inner}</g>;
   }
-  return <a href={`/admin/network/${n.id}`} style={{ filter: "url(#treeShadow)" }}>{inner}</a>;
+  return <a href={href!} style={{ filter: "url(#treeShadow)" }}>{inner}</a>;
 }
 
 function PlaceholderNode({ x, y, node: n }: { x: number; y: number; node: LaidOutNode }) {
