@@ -1,17 +1,42 @@
 import { prisma } from "@/lib/db";
-import { BadgeIndianRupee, Clock, FileCheck2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { BadgeIndianRupee, Clock, CheckCircle2, AlertTriangle, CalendarDays } from "lucide-react";
 import { formatRupees, tierByKey } from "@/lib/loan";
-import { LoanApprovalRow } from "./loan-approval-row";
 import { ReceiptReviewRow } from "./receipt-review-row";
+import { PendingLoansSection, type PendingLoanRow } from "./pending-loans-section";
+import { UnpaidInstallmentsSection, type UnpaidInstallmentRow } from "./unpaid-installments-section";
+import { istDateString } from "@/lib/daily-payout";
 
 export const dynamic = "force-dynamic";
 
+// Returns the UTC instants that mark the start of "today" and "tomorrow" in
+// IST (Asia/Kolkata). Used to bucket installment dueDates into today / overdue.
+function istDayBoundsUtc(): { startUtc: Date; endUtc: Date } {
+  const todayIst = istDateString(); // "YYYY-MM-DD" in IST
+  // IST is UTC+05:30. IST midnight = UTC of the previous day at 18:30.
+  const startUtc = new Date(`${todayIst}T00:00:00+05:30`);
+  const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000);
+  return { startUtc, endUtc };
+}
+
 export default async function AdminLoansPage() {
-  const [pendingLoans, pendingReceipts, recentLoans, totalDisbursed, receivedAgg, outstandingAgg] = await Promise.all([
+  const { startUtc, endUtc } = istDayBoundsUtc();
+
+  const [
+    pendingLoans,
+    pendingReceipts,
+    recentLoans,
+    totalDisbursed,
+    receivedAgg,
+    outstandingAgg,
+    dueTodayInstallments,
+    overdueInstallments,
+  ] = await Promise.all([
     prisma.loan.findMany({
       where: { status: "REQUESTED" },
       orderBy: { requestedAt: "asc" },
-      include: { user: { select: { name: true, email: true, referralCode: true } } },
+      include: {
+        user: { select: { name: true, email: true, referralCode: true, phone: true, panNumber: true } },
+      },
     }),
     prisma.loanInstallment.findMany({
       where: {
@@ -54,10 +79,134 @@ export default async function AdminLoansPage() {
       _sum: { amount: true },
       _count: true,
     }),
+    // Installments due TODAY (IST) — either PENDING or RECEIPT_UPLOADED.
+    prisma.loanInstallment.findMany({
+      where: {
+        loan: { status: "APPROVED" },
+        status: { in: ["PENDING", "RECEIPT_UPLOADED"] },
+        dueDate: { gte: startUtc, lt: endUtc },
+      },
+      orderBy: { dueDate: "asc" },
+      include: {
+        loan: {
+          select: {
+            id: true,
+            tierKey: true,
+            user: { select: { id: true, name: true, email: true, referralCode: true, phone: true, panNumber: true } },
+          },
+        },
+      },
+    }),
+    // OVERDUE installments — past due, still PENDING (RECEIPT_UPLOADED means the
+    // user has at least submitted a receipt; surface those under the existing
+    // "Receipts awaiting verification" section instead).
+    prisma.loanInstallment.findMany({
+      where: {
+        loan: { status: "APPROVED" },
+        status: "PENDING",
+        dueDate: { lt: startUtc },
+      },
+      orderBy: { dueDate: "asc" },
+      include: {
+        loan: {
+          select: {
+            id: true,
+            tierKey: true,
+            user: { select: { id: true, name: true, email: true, referralCode: true, phone: true, panNumber: true } },
+          },
+        },
+      },
+    }),
   ]);
 
   const received = receivedAgg._sum.amount ?? 0;
   const outstanding = outstandingAgg._sum.amount ?? 0;
+
+  // ---- Pending loan rows: enrich with same-PAN duplicate count ------------
+  const pendingPans = pendingLoans
+    .map((l) => l.user.panNumber)
+    .filter((p): p is string => !!p);
+  const panCounts = new Map<string, number>();
+  if (pendingPans.length > 0) {
+    const panAgg = await prisma.user.findMany({
+      where: { panNumber: { in: pendingPans } },
+      select: { panNumber: true, loans: { where: { status: "REQUESTED" }, select: { id: true } } },
+    });
+    for (const u of panAgg) {
+      if (!u.panNumber) continue;
+      panCounts.set(u.panNumber, (panCounts.get(u.panNumber) ?? 0) + u.loans.length);
+    }
+  }
+
+  const pendingRows: PendingLoanRow[] = pendingLoans.map((l) => {
+    const totalOnPan = l.user.panNumber ? panCounts.get(l.user.panNumber) ?? 0 : 0;
+    const duplicates = l.user.panNumber ? Math.max(0, totalOnPan - 1) : 0;
+    return {
+      id: l.id,
+      requestedAt: l.requestedAt.toISOString(),
+      userName: l.user.name,
+      userEmail: l.user.email,
+      userCode: l.user.referralCode,
+      userPhone: l.user.phone,
+      userPan: l.user.panNumber,
+      tierLabel: tierByKey(l.tierKey)?.label ?? l.tierKey,
+      amount: l.amount,
+      totalWeeks: l.totalWeeks,
+      duplicatePanCount: duplicates,
+    };
+  });
+
+  // ---- Unpaid installments: compute per-user total unpaid -----------------
+  const unpaidUserIds = Array.from(
+    new Set(
+      [...dueTodayInstallments, ...overdueInstallments].map((i) => i.loan.user.id),
+    ),
+  );
+  const totalsByUser = new Map<string, number>();
+  if (unpaidUserIds.length > 0) {
+    const agg = await prisma.loanInstallment.groupBy({
+      by: ["loanId"],
+      where: {
+        loan: { status: "APPROVED", userId: { in: unpaidUserIds } },
+        status: { in: ["PENDING", "RECEIPT_UPLOADED"] },
+      },
+      _sum: { amount: true },
+    });
+    const loanToUser = new Map<string, string>();
+    [...dueTodayInstallments, ...overdueInstallments].forEach((i) => {
+      loanToUser.set(i.loanId, i.loan.user.id);
+    });
+    for (const r of agg) {
+      const uid = loanToUser.get(r.loanId);
+      if (!uid) continue;
+      totalsByUser.set(uid, (totalsByUser.get(uid) ?? 0) + (r._sum.amount ?? 0));
+    }
+  }
+
+  function toUnpaidRow(i: (typeof dueTodayInstallments)[number]): UnpaidInstallmentRow {
+    const dueTime = i.dueDate.getTime();
+    const daysOverdue = Math.max(0, Math.floor((startUtc.getTime() - dueTime) / (24 * 60 * 60 * 1000)));
+    return {
+      id: i.id,
+      loanId: i.loanId,
+      weekNumber: i.weekNumber,
+      amount: i.amount,
+      dueDate: i.dueDate.toISOString(),
+      status: i.status as "PENDING" | "RECEIPT_UPLOADED",
+      lastReminderAt: i.lastReminderAt?.toISOString() ?? null,
+      daysOverdue,
+      userName: i.loan.user.name,
+      userEmail: i.loan.user.email,
+      userCode: i.loan.user.referralCode,
+      userPhone: i.loan.user.phone,
+      userPan: i.loan.user.panNumber,
+      tierLabel: tierByKey(i.loan.tierKey)?.label ?? i.loan.tierKey,
+      totalUnpaid: totalsByUser.get(i.loan.user.id) ?? 0,
+    };
+  }
+
+  const dueTodayRows = dueTodayInstallments.map(toUnpaidRow);
+  const overdueRows = overdueInstallments.map(toUnpaidRow);
 
   return (
     <div className="space-y-6">
@@ -68,9 +217,10 @@ export default async function AdminLoansPage() {
         </p>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi icon={<Clock className="h-5 w-5" />} label="Pending loan requests" value={pendingLoans.length} tone="amber" />
-        <Kpi icon={<FileCheck2 className="h-5 w-5" />} label="Receipts awaiting review" value={pendingReceipts.length} tone="sky" />
+        <Kpi icon={<CalendarDays className="h-5 w-5" />} label="Due today" value={dueTodayRows.length} tone="sky" />
+        <Kpi icon={<AlertTriangle className="h-5 w-5" />} label="Overdue installments" value={overdueRows.length} tone="red" />
         <Kpi icon={<BadgeIndianRupee className="h-5 w-5" />} label="Total disbursed" value={formatRupees(totalDisbursed._sum.amount ?? 0)} tone="emerald" />
       </div>
 
@@ -98,48 +248,24 @@ export default async function AdminLoansPage() {
         </div>
       </div>
 
-      {/* Pending loan requests */}
-      <div className="card overflow-hidden">
-        <div className="p-5 border-b">
-          <h2 className="font-semibold">Pending loan requests ({pendingLoans.length})</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Verify the member, hand over the cash offline, then click Approve to issue the repayment schedule.
-          </p>
-        </div>
-        {pendingLoans.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">No pending loan requests.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Requested</th>
-                  <th className="px-4 py-2 font-medium">Member</th>
-                  <th className="px-4 py-2 font-medium">Tier</th>
-                  <th className="px-4 py-2 font-medium text-right">Amount</th>
-                  <th className="px-4 py-2 font-medium text-right">Weeks</th>
-                  <th className="px-4 py-2 font-medium">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingLoans.map((l) => (
-                  <LoanApprovalRow
-                    key={l.id}
-                    id={l.id}
-                    requestedAt={l.requestedAt.toISOString()}
-                    userName={l.user.name}
-                    userEmail={l.user.email}
-                    userCode={l.user.referralCode}
-                    tierLabel={tierByKey(l.tierKey)?.label ?? l.tierKey}
-                    amount={l.amount}
-                    totalWeeks={l.totalWeeks}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {/* Pending loan requests — with PAN-aware search */}
+      <PendingLoansSection rows={pendingRows} />
+
+      {/* Installments due today (IST) */}
+      <UnpaidInstallmentsSection
+        title="Installments due today"
+        description="Borrowers whose repayment falls on today's date. Send a same-day reminder so they don't slip into overdue."
+        rows={dueTodayRows}
+        tone="amber"
+      />
+
+      {/* Overdue installments */}
+      <UnpaidInstallmentsSection
+        title="Overdue (unpaid) installments"
+        description="Repayments past their due date with no receipt yet. Send a WhatsApp reminder to the borrower — the timestamp is logged here."
+        rows={overdueRows}
+        tone="red"
+      />
 
       {/* Pending receipt verifications */}
       <div className="card overflow-hidden">
@@ -228,13 +354,14 @@ function Kpi({
   icon: React.ReactNode;
   label: string;
   value: number | string;
-  tone: "amber" | "emerald" | "brand" | "sky";
+  tone: "amber" | "emerald" | "brand" | "sky" | "red";
 }) {
   const toneMap = {
     amber: "bg-amber-100 text-amber-700",
     emerald: "bg-emerald-100 text-emerald-700",
     brand: "bg-brand-100 text-brand-700",
     sky: "bg-sky-100 text-sky-700",
+    red: "bg-red-100 text-red-700",
   };
   return (
     <div className="card p-5">

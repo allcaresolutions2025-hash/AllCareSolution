@@ -483,10 +483,13 @@ model LoanInstallment {
   verifiedAt    DateTime?
   reviewerNotes String?
 
+  lastReminderAt DateTime?            // admin tracking — when an unpaid-due reminder was last sent
+
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 
   @@index([loanId])
+  @@index([status, dueDate])
   @@unique([loanId, weekNumber])
 }
 
