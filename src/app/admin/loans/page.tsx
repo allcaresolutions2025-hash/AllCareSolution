@@ -4,6 +4,7 @@ import { formatRupees, tierByKey } from "@/lib/loan";
 import { ReceiptReviewRow } from "./receipt-review-row";
 import { PendingLoansSection, type PendingLoanRow } from "./pending-loans-section";
 import { UnpaidInstallmentsSection, type UnpaidInstallmentRow } from "./unpaid-installments-section";
+import { RecentLoansSection, type RecentLoanRow } from "./recent-loans-section";
 import { istDateString } from "@/lib/daily-payout";
 
 export const dynamic = "force-dynamic";
@@ -300,50 +301,19 @@ export default async function AdminLoansPage() {
       </div>
 
       {/* Recent history */}
-      <div className="card overflow-hidden">
-        <div className="p-5 border-b">
-          <h2 className="font-semibold">Recent loans</h2>
-        </div>
-        {recentLoans.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">No history yet.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Updated</th>
-                  <th className="px-4 py-2 font-medium">Member</th>
-                  <th className="px-4 py-2 font-medium">Tier</th>
-                  <th className="px-4 py-2 font-medium text-right">Amount</th>
-                  <th className="px-4 py-2 font-medium text-right">Weeks</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentLoans.map((l) => (
-                  <tr key={l.id} className="border-t">
-                    <td className="px-4 py-2 text-muted-foreground text-xs">
-                      {l.updatedAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="font-medium">{l.user.name}</div>
-                      <div className="text-xs font-mono text-muted-foreground">{l.user.referralCode}</div>
-                    </td>
-                    <td className="px-4 py-2 text-xs">{tierByKey(l.tierKey)?.label ?? l.tierKey}</td>
-                    <td className="px-4 py-2 text-right font-bold tabular-nums">{formatRupees(l.amount)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{l.totalWeeks}</td>
-                    <td className="px-4 py-2">
-                      {l.status === "APPROVED" ? <span className="badge-green">Active</span>
-                        : l.status === "CLOSED" ? <span className="badge-blue">Cleared</span>
-                        : <span className="badge-red">Rejected</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <RecentLoansSection
+        rows={recentLoans.map((l) => ({
+          id: l.id,
+          updatedAt: l.updatedAt.toISOString(),
+          userName: l.user.name,
+          userEmail: l.user.email,
+          userCode: l.user.referralCode,
+          tierLabel: tierByKey(l.tierKey)?.label ?? l.tierKey,
+          amount: l.amount,
+          totalWeeks: l.totalWeeks,
+          status: l.status as "APPROVED" | "CLOSED" | "REJECTED",
+        }))}
+      />
     </div>
   );
 }
