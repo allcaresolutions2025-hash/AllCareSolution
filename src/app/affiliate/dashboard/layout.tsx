@@ -1,6 +1,6 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { BreakingNewsTicker } from "@/components/breaking-news-ticker";
-import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy } from "lucide-react";
+import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy, Smartphone } from "lucide-react";
 
 const nav = [
   { href: "/affiliate/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -16,6 +16,7 @@ const nav = [
   { href: "/affiliate/dashboard/achieved-offers", label: "Achieved Offers", icon: <Award className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/loan", label: "My Loan", icon: <BadgeIndianRupee className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/daily-payouts", label: "Daily Payouts", icon: <Coins className="h-4 w-4" /> },
+  { href: "/affiliate/dashboard/download", label: "Mobile App", icon: <Smartphone className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/settings", label: "Settings", icon: <SettingsIcon className="h-4 w-4" /> },
 ];
 
