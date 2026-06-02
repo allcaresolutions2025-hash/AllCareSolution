@@ -94,6 +94,7 @@ export default async function MyLoanPage() {
                       <th className="px-4 py-2 font-medium">Week</th>
                       <th className="px-4 py-2 font-medium">Due Date</th>
                       <th className="px-4 py-2 font-medium text-right">Amount</th>
+                      <th className="px-4 py-2 font-medium text-right">Penalty</th>
                       <th className="px-4 py-2 font-medium">Status</th>
                       <th className="px-4 py-2 font-medium">Receipt</th>
                     </tr>
@@ -106,6 +107,7 @@ export default async function MyLoanPage() {
                         weekNumber={inst.weekNumber}
                         dueDate={inst.dueDate.toISOString()}
                         amount={inst.amount}
+                        loanAmount={loan.amount}
                         status={inst.status}
                         hasReceipt={!!inst.receiptBase64}
                         uploadedAt={inst.uploadedAt?.toISOString() ?? null}

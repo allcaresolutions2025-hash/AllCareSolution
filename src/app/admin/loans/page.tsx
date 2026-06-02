@@ -92,6 +92,7 @@ export default async function AdminLoansPage() {
           select: {
             id: true,
             tierKey: true,
+            amount: true,
             user: { select: { id: true, name: true, email: true, referralCode: true, phone: true, panNumber: true } },
           },
         },
@@ -112,6 +113,7 @@ export default async function AdminLoansPage() {
           select: {
             id: true,
             tierKey: true,
+            amount: true,
             user: { select: { id: true, name: true, email: true, referralCode: true, phone: true, panNumber: true } },
           },
         },
@@ -191,6 +193,7 @@ export default async function AdminLoansPage() {
       loanId: i.loanId,
       weekNumber: i.weekNumber,
       amount: i.amount,
+      loanAmount: i.loan.amount,
       dueDate: i.dueDate.toISOString(),
       status: i.status as "PENDING" | "RECEIPT_UPLOADED",
       lastReminderAt: i.lastReminderAt?.toISOString() ?? null,

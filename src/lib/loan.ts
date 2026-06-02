@@ -88,3 +88,18 @@ export function formatRupees(paise: number): string {
   const rupees = paise / 100;
   return `Rs. ${rupees.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
+
+// Overdue penalty tiers (in paise per day):
+//   Loan >= Rs. 1,00,000  → Rs. 10,000 / day
+//   Loan >= Rs. 10,000    → Rs.    500 / day
+//   Otherwise             → Rs.    100 / day
+export function calcDailyPenalty(loanAmountPaise: number): number {
+  if (loanAmountPaise >= 10_000_000) return 1_000_000; // ₹10,000/day
+  if (loanAmountPaise >= 1_000_000)  return 50_000;    // ₹500/day
+  return 10_000;                                        // ₹100/day
+}
+
+export function calcTotalPenalty(loanAmountPaise: number, daysOverdue: number): number {
+  if (daysOverdue <= 0) return 0;
+  return calcDailyPenalty(loanAmountPaise) * daysOverdue;
+}

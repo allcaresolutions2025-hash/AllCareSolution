@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Upload, CheckCircle2, Clock, FileUp } from "lucide-react";
-import { formatRupees } from "@/lib/loan";
+import { Upload, CheckCircle2, Clock, FileUp, AlertTriangle } from "lucide-react";
+import { formatRupees, calcTotalPenalty } from "@/lib/loan";
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB cap for base64 receipts
 const ACCEPTED_MIMES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
@@ -16,6 +16,7 @@ export function InstallmentRow({
   weekNumber,
   dueDate,
   amount,
+  loanAmount,
   status,
   hasReceipt,
   uploadedAt,
@@ -25,6 +26,7 @@ export function InstallmentRow({
   weekNumber: number;
   dueDate: string;
   amount: number;
+  loanAmount: number;
   status: Status;
   hasReceipt: boolean;
   uploadedAt: string | null;
@@ -36,6 +38,8 @@ export function InstallmentRow({
 
   const due = new Date(dueDate);
   const isOverdue = status === "PENDING" && due.getTime() < Date.now();
+  const daysOverdue = isOverdue ? Math.floor((Date.now() - due.getTime()) / (24 * 60 * 60 * 1000)) : 0;
+  const penalty = calcTotalPenalty(loanAmount, daysOverdue);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -76,6 +80,16 @@ export function InstallmentRow({
         {isOverdue && <div className="text-red-600 font-semibold mt-0.5">Overdue</div>}
       </td>
       <td className="px-4 py-3 text-right font-bold tabular-nums">{formatRupees(amount)}</td>
+      <td className="px-4 py-3 text-right tabular-nums">
+        {penalty > 0 ? (
+          <span className="inline-flex items-center gap-1 text-red-700 font-bold">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            {formatRupees(penalty)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-xs">—</span>
+        )}
+      </td>
       <td className="px-4 py-3">
         {status === "VERIFIED" ? (
           <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-200">

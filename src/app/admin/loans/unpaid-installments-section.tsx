@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Bell, MessageCircle, Phone } from "lucide-react";
-import { formatRupees } from "@/lib/loan";
+import { Bell, MessageCircle, Phone, AlertTriangle } from "lucide-react";
+import { formatRupees, calcTotalPenalty } from "@/lib/loan";
 import { SearchBox } from "./pending-loans-section";
 
 export type UnpaidInstallmentRow = {
@@ -12,6 +12,7 @@ export type UnpaidInstallmentRow = {
   loanId: string;
   weekNumber: number;
   amount: number;
+  loanAmount: number; // total loan principal in paise — used for penalty tier
   dueDate: string;
   status: "PENDING" | "RECEIPT_UPLOADED";
   lastReminderAt: string | null;
@@ -91,6 +92,7 @@ export function UnpaidInstallmentsSection({
                 <th className="px-4 py-2 font-medium">Member</th>
                 <th className="px-4 py-2 font-medium">Tier · Week</th>
                 <th className="px-4 py-2 font-medium text-right">Amount</th>
+                <th className="px-4 py-2 font-medium text-right">Penalty</th>
                 <th className="px-4 py-2 font-medium text-right">Total unpaid</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium">Reminder</th>
@@ -194,6 +196,16 @@ function UnpaidRow({ row }: { row: UnpaidInstallmentRow }) {
         <div className="text-muted-foreground">Week {row.weekNumber}</div>
       </td>
       <td className="px-4 py-2 text-right font-bold tabular-nums">{formatRupees(row.amount)}</td>
+      <td className="px-4 py-2 text-right tabular-nums">
+        {row.daysOverdue > 0 ? (
+          <span className="inline-flex items-center justify-end gap-1 text-red-700 font-bold">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            {formatRupees(calcTotalPenalty(row.loanAmount, row.daysOverdue))}
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-xs">—</span>
+        )}
+      </td>
       <td className="px-4 py-2 text-right tabular-nums">{formatRupees(row.totalUnpaid)}</td>
       <td className="px-4 py-2">
         {row.status === "RECEIPT_UPLOADED" ? (

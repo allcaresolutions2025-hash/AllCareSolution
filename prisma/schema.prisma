@@ -509,6 +509,8 @@ model LoanInstallment {
 
   lastReminderAt DateTime?            // admin tracking — when an unpaid-due reminder was last sent
 
+  penaltyPaise  Int                   @default(0) // accumulated overdue penalty in paise
+
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 
