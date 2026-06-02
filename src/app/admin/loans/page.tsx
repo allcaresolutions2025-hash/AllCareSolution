@@ -4,7 +4,7 @@ import { formatRupees, tierByKey } from "@/lib/loan";
 import { ReceiptReviewRow } from "./receipt-review-row";
 import { PendingLoansSection, type PendingLoanRow } from "./pending-loans-section";
 import { UnpaidInstallmentsSection, type UnpaidInstallmentRow } from "./unpaid-installments-section";
-import { RecentLoansSection, type RecentLoanRow } from "./recent-loans-section";
+import { RecentLoansSection } from "./recent-loans-section";
 import { istDateString } from "@/lib/daily-payout";
 
 export const dynamic = "force-dynamic";
