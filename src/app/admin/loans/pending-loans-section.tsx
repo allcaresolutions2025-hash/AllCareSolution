@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Search, Check, X } from "lucide-react";
+import { Search, Check, X, MessageCircle } from "lucide-react";
 import { formatRupees } from "@/lib/loan";
 
 export type PendingLoanRow = {
@@ -89,6 +89,20 @@ function PendingLoanTr({ row }: { row: PendingLoanRow }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
+  function whatsappLink(): string | null {
+    if (!row.userPhone) return null;
+    const digits = row.userPhone.replace(/[^\d]/g, "");
+    if (!digits) return null;
+    const phone = digits.length === 10 ? `91${digits}` : digits;
+    const msg =
+      `Good day, ${row.userName}!\n\n` +
+      `We are pleased to inform you that your loan application of ${formatRupees(row.amount)} with ACHT MART has been reviewed and you are eligible to proceed with the loan disbursement.\n\n` +
+      `To complete the processing of your loan, we kindly request you to provide a valid Government-issued ID proof (such as Aadhaar Card, PAN Card, Passport, or Voter ID) at your earliest convenience.\n\n` +
+      `Please feel free to reach out if you have any questions or require further assistance. We look forward to serving you.\n\n` +
+      `Thank you for being a valued member of ACHT MART.`;
+    return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+  }
+
   async function act(action: "approve" | "reject") {
     if (busy) return;
     const notes =
@@ -142,7 +156,7 @@ function PendingLoanTr({ row }: { row: PendingLoanRow }) {
       <td className="px-4 py-2 text-right font-bold tabular-nums">{formatRupees(row.amount)}</td>
       <td className="px-4 py-2 text-right tabular-nums">{row.totalWeeks}</td>
       <td className="px-4 py-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => act("approve")}
             disabled={busy}
@@ -157,6 +171,23 @@ function PendingLoanTr({ row }: { row: PendingLoanRow }) {
           >
             <X className="h-3.5 w-3.5" /> Reject
           </button>
+          {whatsappLink() ? (
+            <a
+              href={whatsappLink()!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md bg-[#25D366] text-white hover:bg-[#1ebe5d]"
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+            </a>
+          ) : (
+            <span
+              title="No phone number on file"
+              className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md bg-slate-100 text-slate-400 cursor-not-allowed"
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+            </span>
+          )}
         </div>
       </td>
     </tr>
