@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Upload, CheckCircle2, Clock, FileUp, AlertTriangle } from "lucide-react";
-import { formatRupees, calcTotalPenalty } from "@/lib/loan";
+import { formatRupees, calcTotalPenalty, daysOverdueIst } from "@/lib/loan";
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB cap for base64 receipts
 const ACCEPTED_MIMES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
@@ -37,8 +37,8 @@ export function InstallmentRow({
   const [busy, setBusy] = useState(false);
 
   const due = new Date(dueDate);
-  const isOverdue = status === "PENDING" && due.getTime() < Date.now();
-  const daysOverdue = isOverdue ? Math.floor((Date.now() - due.getTime()) / (24 * 60 * 60 * 1000)) : 0;
+  const daysOverdue = status === "PENDING" ? daysOverdueIst(due) : 0;
+  const isOverdue = daysOverdue > 0;
   const penalty = calcTotalPenalty(loanAmount, daysOverdue);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {

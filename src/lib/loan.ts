@@ -112,3 +112,16 @@ export function calcTotalPenalty(loanAmountPaise: number, daysOverdue: number): 
   if (daysOverdue <= 0) return 0;
   return calcDailyPenalty(loanAmountPaise) * daysOverdue;
 }
+
+// Days overdue, counted by IST calendar day. An installment due today (IST)
+// returns 0; due yesterday returns 1; etc. Comparing IST midnight to IST
+// midnight avoids the wrong-by-one bug where a dueDate whose UTC instant is
+// less than 24h before today's IST midnight would floor to 0 days even
+// though its IST calendar date has already passed.
+export function daysOverdueIst(dueDate: Date, now: Date = new Date()): number {
+  const istDay = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(d);
+  const dueMidnightUtc = new Date(`${istDay(dueDate)}T00:00:00+05:30`).getTime();
+  const nowMidnightUtc = new Date(`${istDay(now)}T00:00:00+05:30`).getTime();
+  return Math.max(0, Math.round((nowMidnightUtc - dueMidnightUtc) / (24 * 60 * 60 * 1000)));
+}

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { BadgeIndianRupee, Clock, CheckCircle2, AlertTriangle, CalendarDays } from "lucide-react";
-import { formatRupees, tierByKey } from "@/lib/loan";
+import { formatRupees, tierByKey, daysOverdueIst } from "@/lib/loan";
 import { ReceiptReviewRow } from "./receipt-review-row";
 import { PendingLoansSection, type PendingLoanRow } from "./pending-loans-section";
 import { UnpaidInstallmentsSection, type UnpaidInstallmentRow } from "./unpaid-installments-section";
@@ -187,8 +187,7 @@ export default async function AdminLoansPage() {
   }
 
   function toUnpaidRow(i: (typeof dueTodayInstallments)[number]): UnpaidInstallmentRow {
-    const dueTime = i.dueDate.getTime();
-    const daysOverdue = Math.max(0, Math.floor((startUtc.getTime() - dueTime) / (24 * 60 * 60 * 1000)));
+    const daysOverdue = daysOverdueIst(i.dueDate);
     return {
       id: i.id,
       loanId: i.loanId,
