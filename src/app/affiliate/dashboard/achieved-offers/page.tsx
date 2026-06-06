@@ -2,8 +2,8 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee } from "lucide-react";
-import { LOAN_TIERS, tierIsEligible, highestEligibleTier, formatRupees, type EligibilityContext } from "@/lib/loan";
+import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock } from "lucide-react";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, highestEligibleTier, formatRupees, type EligibilityContext } from "@/lib/loan";
 import { ApplyLoanButton } from "./apply-loan-button";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export default async function AchievedOffersPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [me, directLeftSlots, directRightSlots, activeLoan] = await Promise.all([
+  const [me, directLeftSlots, directRightSlots, activeLoan, closedLoans] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { leftLegCount: true, rightLegCount: true },
@@ -27,6 +27,10 @@ export default async function AchievedOffersPage() {
       orderBy: { requestedAt: "desc" },
       select: { id: true, status: true, amount: true, tierKey: true },
     }),
+    prisma.loan.findMany({
+      where: { userId: session.user.id, status: "CLOSED" },
+      select: { tierKey: true },
+    }),
   ]);
 
   const ctx: EligibilityContext = {
@@ -34,6 +38,7 @@ export default async function AchievedOffersPage() {
     rightLegCount: me?.rightLegCount ?? 0,
     directLeftSlots,
     directRightSlots,
+    completedTierKeys: closedLoans.map((l) => l.tierKey),
   };
 
   const topTier = highestEligibleTier(ctx);
@@ -109,11 +114,19 @@ export default async function AchievedOffersPage() {
         </div>
         <div className="divide-y">
           {LOAN_TIERS.map((tier) => {
+            const completed = tierIsCompleted(tier, ctx);
             const eligible = tierIsEligible(tier, ctx);
+            const state: "completed" | "eligible" | "locked" = completed
+              ? "completed"
+              : eligible
+                ? "eligible"
+                : "locked";
             return (
               <div key={tier.key} className="p-4 flex items-center justify-between gap-4">
                 <div className="flex items-start gap-3 min-w-0">
-                  {eligible ? (
+                  {state === "completed" ? (
+                    <Lock className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
+                  ) : state === "eligible" ? (
                     <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                   ) : (
                     <CircleDashed className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
@@ -127,12 +140,14 @@ export default async function AchievedOffersPage() {
                 </div>
                 <span
                   className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                    eligible
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-slate-50 text-slate-600 border-slate-200"
+                    state === "completed"
+                      ? "bg-slate-100 text-slate-700 border-slate-300"
+                      : state === "eligible"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-slate-50 text-slate-600 border-slate-200"
                   }`}
                 >
-                  {eligible ? "Eligible" : "Locked"}
+                  {state === "completed" ? "Completed" : state === "eligible" ? "Eligible" : "Locked"}
                 </span>
               </div>
             );

@@ -41,9 +41,18 @@ export type EligibilityContext = {
   rightLegCount: number;
   directLeftSlots: number;   // count of direct children with slot=LEFT
   directRightSlots: number;  // count of direct children with slot=RIGHT
+  // Tier keys the user has already taken & repaid (LoanStatus.CLOSED). Each
+  // tier can be claimed only once per user — once closed it is permanently
+  // locked, regardless of whether the user still meets the leg requirements.
+  completedTierKeys?: readonly string[];
 };
 
+export function tierIsCompleted(tier: LoanTier, ctx: EligibilityContext): boolean {
+  return ctx.completedTierKeys?.includes(tier.key) ?? false;
+}
+
 export function tierIsEligible(tier: LoanTier, ctx: EligibilityContext): boolean {
+  if (tierIsCompleted(tier, ctx)) return false;
   if (tier.kind === "directs") {
     return ctx.directLeftSlots >= 1 && ctx.directRightSlots >= 1;
   }

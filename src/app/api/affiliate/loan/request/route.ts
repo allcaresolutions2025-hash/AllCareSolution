@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
   // Re-verify eligibility server-side so a malicious client can't request a
   // tier they don't actually qualify for.
-  const [me, directLeftSlots, directRightSlots, openLoan] = await Promise.all([
+  const [me, directLeftSlots, directRightSlots, openLoan, closedLoans] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { leftLegCount: true, rightLegCount: true },
@@ -34,6 +34,10 @@ export async function POST(req: Request) {
       where: { userId: session.user.id, status: { in: ["REQUESTED", "APPROVED"] } },
       select: { id: true, status: true },
     }),
+    prisma.loan.findMany({
+      where: { userId: session.user.id, status: "CLOSED" },
+      select: { tierKey: true },
+    }),
   ]);
 
   if (openLoan) {
@@ -43,11 +47,20 @@ export async function POST(req: Request) {
     );
   }
 
+  const completedTierKeys = closedLoans.map((l) => l.tierKey);
+  if (completedTierKeys.includes(tier.key)) {
+    return NextResponse.json(
+      { error: "You have already completed this loan tier. Move on to the next level." },
+      { status: 400 },
+    );
+  }
+
   const eligible = tierIsEligible(tier, {
     leftLegCount: me?.leftLegCount ?? 0,
     rightLegCount: me?.rightLegCount ?? 0,
     directLeftSlots,
     directRightSlots,
+    completedTierKeys,
   });
   if (!eligible) {
     return NextResponse.json({ error: "You do not qualify for this tier yet" }, { status: 400 });
