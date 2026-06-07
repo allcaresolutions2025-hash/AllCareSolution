@@ -12,6 +12,8 @@ export type PendingPayout = {
   userName: string;
   userEmail: string;
   userCode: string;
+  leftLegCount: number;
+  rightLegCount: number;
   startBalance: number;
   paidAmount: number;
   forfeitAmount: number;
@@ -180,6 +182,7 @@ export function PendingPayoutsTable({ payouts }: { payouts: PendingPayout[] }) {
               </th>
               <th className="px-4 py-2 font-medium">Run Date (IST)</th>
               <th className="px-4 py-2 font-medium">Member</th>
+              <th className="px-4 py-2 font-medium text-center">Legs (L / R)</th>
               <th className="px-4 py-2 font-medium text-right">Start</th>
               <th className="px-4 py-2 font-medium text-right">Pay (90%)</th>
               <th className="px-4 py-2 font-medium text-right">Forfeit (10%)</th>
@@ -205,6 +208,23 @@ export function PendingPayoutsTable({ payouts }: { payouts: PendingPayout[] }) {
                     <div className="font-medium">{p.userName}</div>
                     <div className="text-xs text-muted-foreground">
                       {p.userEmail} · <code className="font-mono">{p.userCode}</code>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <div className="inline-flex items-center gap-1 text-xs tabular-nums">
+                      <span
+                        className="px-1.5 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200 font-mono"
+                        title="Left leg member count"
+                      >
+                        L {p.leftLegCount}
+                      </span>
+                      <span className="text-muted-foreground">/</span>
+                      <span
+                        className="px-1.5 py-0.5 rounded bg-violet-50 text-violet-800 border border-violet-200 font-mono"
+                        title="Right leg member count"
+                      >
+                        R {p.rightLegCount}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">

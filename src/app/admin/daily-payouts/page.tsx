@@ -19,7 +19,17 @@ export default async function AdminDailyPayoutsPage() {
     prisma.dailyPayout.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
-      include: { user: { select: { name: true, email: true, referralCode: true } } },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+            referralCode: true,
+            leftLegCount: true,
+            rightLegCount: true,
+          },
+        },
+      },
     }),
     prisma.dailyPayout.aggregate({
       where: { status: "PENDING" },
@@ -89,6 +99,8 @@ export default async function AdminDailyPayoutsPage() {
             userName: p.user.name,
             userEmail: p.user.email,
             userCode: p.user.referralCode,
+            leftLegCount: p.user.leftLegCount,
+            rightLegCount: p.user.rightLegCount,
             startBalance: p.startBalance,
             paidAmount: p.paidAmount,
             forfeitAmount: p.forfeitAmount,
