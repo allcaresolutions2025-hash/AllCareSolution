@@ -2,13 +2,20 @@
 // the achieved-offers spec. Stored in paise to stay consistent with the rest of
 // the codebase (1 INR = 100 paise).
 //
-// Eligibility uses EXACT pair matching (per user decision): qualifies for a leg
-// tier only when leftLegCount === rightLegCount AND equals the tier value. The
-// smallest tier (2,000) uses direct-referral slots instead: at least one direct
-// child in the LEFT slot AND one in the RIGHT slot.
+// Each tier corresponds to a binary-tree level. A user reaches level N when the
+// tree under them has grown to that level's threshold on BOTH sides — i.e.
+// leftLegCount AND rightLegCount are each >= 2^N - 1. Eligibility uses
+// threshold matching (>=) rather than exact pairs because real networks blow
+// past the exact count between referrals (e.g. a user goes 6/7 -> 8/9 with one
+// signup) and would otherwise miss the qualifying window forever.
+// `highestEligibleTier` picks the largest tier the user crosses on both legs.
+// Only certain levels grant loans: 1, 3, 5, 7, 9, 10, 11, 12, 13, 14, 15.
+// Level 1 is special-cased to direct slots (1 direct on Left + 1 on Right),
+// which is equivalent to leftLegCount=rightLegCount=1.
 
 export type LoanTier = {
   key: string;
+  level: number;            // binary-tree level (1, 3, 5, ...)
   label: string;            // human description of the requirement
   amount: number;           // paise
   amountLabel: string;      // pretty rupee label
@@ -19,17 +26,17 @@ export type LoanTier = {
 };
 
 export const LOAN_TIERS: LoanTier[] = [
-  { key: "DIRECTS_1_1", kind: "directs",                       label: "1 direct on Left + 1 on Right", amount:        200_000, amountLabel: "Rs. 2,000",     totalWeeks: 2 },
-  { key: "LEG_7",       kind: "legCount", legCount:     7,     label: "7 on Left & 7 on Right",         amount:      1_000_000, amountLabel: "Rs. 10,000",    totalWeeks: 4 },
-  { key: "LEG_31",      kind: "legCount", legCount:    31,     label: "31 on Left & 31 on Right",       amount:      2_000_000, amountLabel: "Rs. 20,000",    totalWeeks: 5 },
-  { key: "LEG_127",     kind: "legCount", legCount:   127,     label: "127 on Left & 127 on Right",     amount:      3_000_000, amountLabel: "Rs. 30,000",    totalWeeks: 6 },
-  { key: "LEG_511",     kind: "legCount", legCount:   511,     label: "511 on Left & 511 on Right",     amount:      5_000_000, amountLabel: "Rs. 50,000",    totalWeeks: 10 },
-  { key: "LEG_1023",    kind: "legCount", legCount:  1023,     label: "1,023 on Left & 1,023 on Right", amount:     10_000_000, amountLabel: "Rs. 1 Lakh",    totalWeeks: 10 },
-  { key: "LEG_2047",    kind: "legCount", legCount:  2047,     label: "2,047 on Left & 2,047 on Right", amount:     20_000_000, amountLabel: "Rs. 2 Lakhs",   totalWeeks: 20 },
-  { key: "LEG_4095",    kind: "legCount", legCount:  4095,     label: "4,095 on Left & 4,095 on Right", amount:     30_000_000, amountLabel: "Rs. 3 Lakhs",   totalWeeks: 30 },
-  { key: "LEG_8191",    kind: "legCount", legCount:  8191,     label: "8,191 on Left & 8,191 on Right", amount:     50_000_000, amountLabel: "Rs. 5 Lakhs",   totalWeeks: 25 },
-  { key: "LEG_16383",   kind: "legCount", legCount: 16383,     label: "16,383 on Left & 16,383 on Right", amount:  100_000_000, amountLabel: "Rs. 10 Lakhs",  totalWeeks: 50 },
-  { key: "LEG_32767",   kind: "legCount", legCount: 32767,     label: "32,767 on Left & 32,767 on Right", amount: 10_000_000_00, amountLabel: "Rs. 1 Crore",   totalWeeks: 100 },
+  { key: "DIRECTS_1_1", level:  1, kind: "directs",                       label: "Level 1 — 1 member on Left & 1 on Right",                amount:        200_000, amountLabel: "Rs. 2,000",     totalWeeks: 2 },
+  { key: "LEG_7",       level:  3, kind: "legCount", legCount:     7,     label: "Level 3 — 7 members on Left & 7 on Right",               amount:      1_000_000, amountLabel: "Rs. 10,000",    totalWeeks: 4 },
+  { key: "LEG_31",      level:  5, kind: "legCount", legCount:    31,     label: "Level 5 — 31 members on Left & 31 on Right",             amount:      2_000_000, amountLabel: "Rs. 20,000",    totalWeeks: 5 },
+  { key: "LEG_127",     level:  7, kind: "legCount", legCount:   127,     label: "Level 7 — 127 members on Left & 127 on Right",           amount:      3_000_000, amountLabel: "Rs. 30,000",    totalWeeks: 6 },
+  { key: "LEG_511",     level:  9, kind: "legCount", legCount:   511,     label: "Level 9 — 511 members on Left & 511 on Right",           amount:      5_000_000, amountLabel: "Rs. 50,000",    totalWeeks: 10 },
+  { key: "LEG_1023",    level: 10, kind: "legCount", legCount:  1023,     label: "Level 10 — 1,023 members on Left & 1,023 on Right",      amount:     10_000_000, amountLabel: "Rs. 1 Lakh",    totalWeeks: 10 },
+  { key: "LEG_2047",    level: 11, kind: "legCount", legCount:  2047,     label: "Level 11 — 2,047 members on Left & 2,047 on Right",      amount:     20_000_000, amountLabel: "Rs. 2 Lakhs",   totalWeeks: 20 },
+  { key: "LEG_4095",    level: 12, kind: "legCount", legCount:  4095,     label: "Level 12 — 4,095 members on Left & 4,095 on Right",      amount:     30_000_000, amountLabel: "Rs. 3 Lakhs",   totalWeeks: 30 },
+  { key: "LEG_8191",    level: 13, kind: "legCount", legCount:  8191,     label: "Level 13 — 8,191 members on Left & 8,191 on Right",      amount:     50_000_000, amountLabel: "Rs. 5 Lakhs",   totalWeeks: 25 },
+  { key: "LEG_16383",   level: 14, kind: "legCount", legCount: 16383,     label: "Level 14 — 16,383 members on Left & 16,383 on Right",    amount:  100_000_000, amountLabel: "Rs. 10 Lakhs",  totalWeeks: 50 },
+  { key: "LEG_32767",   level: 15, kind: "legCount", legCount: 32767,     label: "Level 15 — 32,767 members on Left & 32,767 on Right",    amount: 10_000_000_00, amountLabel: "Rs. 1 Crore",   totalWeeks: 100 },
 ];
 
 export function tierByKey(key: string): LoanTier | undefined {
@@ -56,8 +63,8 @@ export function tierIsEligible(tier: LoanTier, ctx: EligibilityContext): boolean
   if (tier.kind === "directs") {
     return ctx.directLeftSlots >= 1 && ctx.directRightSlots >= 1;
   }
-  // legCount tiers — exact pair match (per spec)
-  return ctx.leftLegCount === tier.legCount && ctx.rightLegCount === tier.legCount;
+  // legCount tiers — threshold match on both legs.
+  return ctx.leftLegCount >= (tier.legCount ?? 0) && ctx.rightLegCount >= (tier.legCount ?? 0);
 }
 
 export function highestEligibleTier(ctx: EligibilityContext): LoanTier | null {

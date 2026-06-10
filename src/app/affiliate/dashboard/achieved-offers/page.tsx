@@ -75,7 +75,7 @@ export default async function AchievedOffersPage() {
               </div>
             ) : (
               <div className="mt-1 text-sm text-muted-foreground">
-                Match a tier below exactly to unlock a loan offer.
+                Reach a tier&apos;s threshold on <strong>both</strong> Left and Right legs to unlock a loan offer.
               </div>
             )}
           </div>
@@ -108,8 +108,9 @@ export default async function AchievedOffersPage() {
         <div className="p-5 border-b">
           <h2 className="font-semibold">Loan Tiers</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Each tier requires an EXACT pair match (the same number of members on Left and Right legs).
-            The first tier just needs one direct referral on each side.
+            You qualify for a tier when your Left and Right legs <strong>both</strong> reach its member count.
+            You can take the highest tier you qualify for that you haven&apos;t already claimed.
+            Loans are offered at Levels 1, 3, 5, 7, 9, 10, 11, 12, 13, 14 and 15.
           </p>
         </div>
         <div className="divide-y">
