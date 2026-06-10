@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
-import { LOAN_TIERS, tierByKey, tierIsEligible } from "@/lib/loan";
+import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, formatRupees } from "@/lib/loan";
 
 export const dynamic = "force-dynamic";
 
@@ -55,16 +55,27 @@ export async function POST(req: Request) {
       );
     }
 
-    const eligible = tierIsEligible(tier, {
+    const ctx = {
       leftLegCount: me?.leftLegCount ?? 0,
       rightLegCount: me?.rightLegCount ?? 0,
       directLeftSlots,
       directRightSlots,
       completedTierKeys,
-    });
-    if (!eligible) {
+    };
+    if (!tierIsEligible(tier, ctx)) {
       return NextResponse.json(
         { error: "You do not qualify for this tier yet" },
+        { status: 400 },
+      );
+    }
+    const next = nextClaimableTier(ctx);
+    if (!next || next.key !== tier.key) {
+      return NextResponse.json(
+        {
+          error: next
+            ? `Complete the ${formatRupees(next.amount)} loan first before applying for this tier.`
+            : "You do not qualify for any tier yet.",
+        },
         { status: 400 },
       );
     }

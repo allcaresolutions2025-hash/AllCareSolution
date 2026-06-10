@@ -74,6 +74,26 @@ export function highestEligibleTier(ctx: EligibilityContext): LoanTier | null {
   return null;
 }
 
+// Sequential claiming: a user can only apply for the LOWEST uncompleted tier
+// whose threshold they meet. Higher tiers stay locked behind it even if the
+// member's leg counts already exceed them — they must clear lower loans first.
+// Returns null if there is no qualifying next tier.
+export function nextClaimableTier(ctx: EligibilityContext): LoanTier | null {
+  for (const tier of LOAN_TIERS) {
+    if (tierIsCompleted(tier, ctx)) continue;
+    if (tierIsEligible(tier, ctx)) return tier;
+    // LOAN_TIERS is ordered ascending by threshold. If this uncompleted tier's
+    // threshold isn't met, no higher tier's threshold is either.
+    return null;
+  }
+  return null;
+}
+
+export function tierCanClaim(tier: LoanTier, ctx: EligibilityContext): boolean {
+  const next = nextClaimableTier(ctx);
+  return next !== null && next.key === tier.key;
+}
+
 // Build the per-week installment plan. Most tiers split evenly. The 2,000 tier
 // is special-cased to 1,000 + 1,000 per spec, which is already even — but the
 // general "split principal across weeks, give rounding remainder to the last

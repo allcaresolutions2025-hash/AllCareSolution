@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock } from "lucide-react";
-import { LOAN_TIERS, tierIsEligible, tierIsCompleted, highestEligibleTier, formatRupees, type EligibilityContext } from "@/lib/loan";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, type EligibilityContext } from "@/lib/loan";
 import { ApplyLoanButton } from "./apply-loan-button";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +41,7 @@ export default async function AchievedOffersPage() {
     completedTierKeys: closedLoans.map((l) => l.tierKey),
   };
 
-  const topTier = highestEligibleTier(ctx);
+  const claimable = nextClaimableTier(ctx);
 
   return (
     <div className="space-y-6">
@@ -69,9 +69,9 @@ export default async function AchievedOffersPage() {
               {" "}Right leg: <span className="font-mono tabular-nums">{ctx.rightLegCount}</span> ·
               {" "}Direct L/R slots: <span className="font-mono">{ctx.directLeftSlots}/{ctx.directRightSlots}</span>
             </div>
-            {topTier ? (
+            {claimable ? (
               <div className="mt-1 text-sm">
-                You qualify for <span className="font-semibold text-emerald-700">{formatRupees(topTier.amount)}</span> — repay over {topTier.totalWeeks} weeks.
+                You can apply for <span className="font-semibold text-emerald-700">{formatRupees(claimable.amount)}</span> — repay over {claimable.totalWeeks} weeks.
               </div>
             ) : (
               <div className="mt-1 text-sm text-muted-foreground">
@@ -89,8 +89,8 @@ export default async function AchievedOffersPage() {
             >
               View my loan
             </Link>
-          ) : topTier ? (
-            <ApplyLoanButton tierKey={topTier.key} amountLabel={formatRupees(topTier.amount)} />
+          ) : claimable ? (
+            <ApplyLoanButton tierKey={claimable.key} amountLabel={formatRupees(claimable.amount)} />
           ) : (
             <button
               disabled
@@ -116,19 +116,30 @@ export default async function AchievedOffersPage() {
         <div className="divide-y">
           {LOAN_TIERS.map((tier) => {
             const completed = tierIsCompleted(tier, ctx);
-            const eligible = tierIsEligible(tier, ctx);
-            const state: "completed" | "eligible" | "locked" = completed
+            const thresholdMet = tierIsEligible(tier, ctx);
+            const canClaim = claimable?.key === tier.key;
+            const state: "completed" | "canClaim" | "waiting" | "locked" = completed
               ? "completed"
-              : eligible
-                ? "eligible"
-                : "locked";
+              : canClaim
+                ? "canClaim"
+                : thresholdMet
+                  ? "waiting"
+                  : "locked";
+            const badge = {
+              completed: { label: "Completed",   cls: "bg-slate-100 text-slate-700 border-slate-300" },
+              canClaim:  { label: "Apply now",   cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+              waiting:   { label: "Eligible — clear previous loan first", cls: "bg-amber-50 text-amber-800 border-amber-200" },
+              locked:    { label: "Locked",      cls: "bg-slate-50 text-slate-600 border-slate-200" },
+            }[state];
             return (
               <div key={tier.key} className="p-4 flex items-center justify-between gap-4">
                 <div className="flex items-start gap-3 min-w-0">
                   {state === "completed" ? (
                     <Lock className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
-                  ) : state === "eligible" ? (
+                  ) : state === "canClaim" ? (
                     <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : state === "waiting" ? (
+                    <CheckCircle2 className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                   ) : (
                     <CircleDashed className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                   )}
@@ -137,18 +148,15 @@ export default async function AchievedOffersPage() {
                     <div className="text-xs text-muted-foreground">
                       {tier.label} · Repay over {tier.totalWeeks} weeks
                     </div>
+                    {state === "waiting" && claimable && (
+                      <div className="text-xs text-amber-700 mt-1">
+                        Complete the {formatRupees(claimable.amount)} loan first to unlock this tier.
+                      </div>
+                    )}
                   </div>
                 </div>
-                <span
-                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                    state === "completed"
-                      ? "bg-slate-100 text-slate-700 border-slate-300"
-                      : state === "eligible"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-slate-50 text-slate-600 border-slate-200"
-                  }`}
-                >
-                  {state === "completed" ? "Completed" : state === "eligible" ? "Eligible" : "Locked"}
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${badge.cls}`}>
+                  {badge.label}
                 </span>
               </div>
             );
