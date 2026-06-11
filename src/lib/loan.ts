@@ -43,6 +43,16 @@ export function tierByKey(key: string): LoanTier | undefined {
   return LOAN_TIERS.find((t) => t.key === key);
 }
 
+// Temporary maintenance window — new loan applications are blocked until this
+// instant. 2026-06-12 09:00 IST == 2026-06-12 03:30 UTC.
+export const LOAN_PAUSE_UNTIL = new Date("2026-06-12T03:30:00.000Z");
+export const LOAN_PAUSE_MESSAGE =
+  "Loan applications are paused while we perform maintenance on the website. Please try again tomorrow at 9:00 AM IST.";
+
+export function loansPaused(now: Date = new Date()): boolean {
+  return now < LOAN_PAUSE_UNTIL;
+}
+
 export type EligibilityContext = {
   leftLegCount: number;
   rightLegCount: number;

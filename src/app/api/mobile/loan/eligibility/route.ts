@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
-import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier } from "@/lib/loan";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, loansPaused, LOAN_PAUSE_MESSAGE, LOAN_PAUSE_UNTIL } from "@/lib/loan";
 
 export const dynamic = "force-dynamic";
 
@@ -37,14 +37,18 @@ export async function GET(req: Request) {
     };
 
     const nextTier = nextClaimableTier(ctx);
+    const paused = loansPaused();
     return NextResponse.json({
       context: ctx,
       openLoan,
+      paused,
+      pauseMessage: paused ? LOAN_PAUSE_MESSAGE : null,
+      pauseUntil: paused ? LOAN_PAUSE_UNTIL.toISOString() : null,
       nextClaimableTierKey: nextTier?.key ?? null,
       tiers: LOAN_TIERS.map((t) => {
         const completed = tierIsCompleted(t, ctx);
         const thresholdMet = tierIsEligible(t, ctx);
-        const canClaim = !openLoan && nextTier?.key === t.key;
+        const canClaim = !openLoan && !paused && nextTier?.key === t.key;
         return {
           key: t.key,
           label: t.label,

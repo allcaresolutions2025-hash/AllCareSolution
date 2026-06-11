@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
-import { tierByKey, tierIsEligible, nextClaimableTier, formatRupees, LOAN_TIERS } from "@/lib/loan";
+import { tierByKey, tierIsEligible, nextClaimableTier, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE } from "@/lib/loan";
 
 const bodySchema = z.object({
   tierKey: z.enum(LOAN_TIERS.map((t) => t.key) as [string, ...string[]]),
@@ -12,6 +12,10 @@ const bodySchema = z.object({
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+
+  if (loansPaused()) {
+    return NextResponse.json({ error: LOAN_PAUSE_MESSAGE }, { status: 503 });
+  }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

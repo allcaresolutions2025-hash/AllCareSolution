@@ -2,8 +2,8 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock } from "lucide-react";
-import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, type EligibilityContext } from "@/lib/loan";
+import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock, Wrench } from "lucide-react";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, type EligibilityContext } from "@/lib/loan";
 import { ApplyLoanButton } from "./apply-loan-button";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +42,7 @@ export default async function AchievedOffersPage() {
   };
 
   const claimable = nextClaimableTier(ctx);
+  const paused = loansPaused();
 
   return (
     <div className="space-y-6">
@@ -55,6 +56,16 @@ export default async function AchievedOffersPage() {
         </div>
         <Award className="absolute right-6 lg:right-10 top-1/2 -translate-y-1/2 h-20 w-20 lg:h-28 lg:w-28 text-white/15" />
       </div>
+
+      {paused && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 flex items-start gap-3">
+          <Wrench className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
+          <div className="text-sm text-amber-900">
+            <div className="font-semibold">Loan applications temporarily paused</div>
+            <div className="mt-0.5">{LOAN_PAUSE_MESSAGE}</div>
+          </div>
+        </div>
+      )}
 
       {/* Active loan banner / Apply button */}
       <div className="card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -89,6 +100,15 @@ export default async function AchievedOffersPage() {
             >
               View my loan
             </Link>
+          ) : paused ? (
+            <button
+              disabled
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-slate-200 text-slate-500 text-sm font-medium cursor-not-allowed"
+              title={LOAN_PAUSE_MESSAGE}
+            >
+              <Wrench className="h-4 w-4" />
+              Paused for maintenance
+            </button>
           ) : claimable ? (
             <ApplyLoanButton tierKey={claimable.key} amountLabel={formatRupees(claimable.amount)} />
           ) : (

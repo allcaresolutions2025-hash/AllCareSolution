@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
-import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, formatRupees } from "@/lib/loan";
+import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE } from "@/lib/loan";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,10 @@ export async function POST(req: Request) {
   try {
     const auth = await authMobile(req);
     if ("response" in auth) return auth.response;
+
+    if (loansPaused()) {
+      return NextResponse.json({ error: LOAN_PAUSE_MESSAGE }, { status: 503 });
+    }
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
