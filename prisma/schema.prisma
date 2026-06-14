@@ -76,6 +76,7 @@ model User {
 
   // Pin system
   pinRequests   PinRequest[]
+  pinPurchases  PinPurchase[]
   pinsOwned     Pin[]          @relation("PinOwner")
   pinUsedToJoin Pin?           @relation("PinUsedFor")
 
@@ -410,6 +411,8 @@ model Pin {
   owner         User        @relation("PinOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   requestId     String?
   request       PinRequest? @relation(fields: [requestId], references: [id])
+  purchaseId    String?
+  purchase      PinPurchase? @relation(fields: [purchaseId], references: [id])
   status        PinStatus   @default(ACTIVE)
   usedForUserId String?     @unique
   usedForUser   User?       @relation("PinUsedFor", fields: [usedForUserId], references: [id])
@@ -417,6 +420,37 @@ model Pin {
   usedAt        DateTime?
 
   @@index([ownerId, status])
+  @@index([purchaseId])
+}
+
+// Leader (50+ downline) Razorpay self-checkout for pins. Bypasses admin review;
+// pins are minted ACTIVE on payment verify. Admin sees these in a separate
+// table for audit / reconciliation.
+enum PinPurchaseStatus {
+  PENDING  // Razorpay order created, awaiting payment confirmation
+  PAID     // signature verified, pins minted
+  FAILED
+}
+
+model PinPurchase {
+  id                 String            @id @default(cuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quantity           Int
+  mobileNumber       String
+  pricePerPin        Int               // paise, snapshot at purchase time
+  totalAmount        Int               // paise: quantity * pricePerPin
+  status             PinPurchaseStatus @default(PENDING)
+  razorpayOrderId    String            @unique
+  razorpayPaymentId  String?
+  razorpaySignature  String?
+  pins               Pin[]
+  createdAt          DateTime          @default(now())
+  paidAt             DateTime?
+  updatedAt          DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([status, createdAt])
 }
 
 // ---------- DAILY POINTS PAYOUT ----------

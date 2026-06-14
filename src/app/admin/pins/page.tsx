@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/db";
 import { PinRequestRow } from "./pin-request-row";
 import { GeneratePinsCard } from "./generate-pins-card";
-import { KeyRound, Clock, CheckCircle2 } from "lucide-react";
+import { formatINR } from "@/lib/money";
+import { KeyRound, Clock, CheckCircle2, CreditCard } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPinsPage() {
-  const [pending, recent, totalPinsIssued, totalPinsActive] = await Promise.all([
+  const [pending, recent, totalPinsIssued, totalPinsActive, razorpayPurchases] = await Promise.all([
     prisma.pinRequest.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
@@ -23,6 +24,15 @@ export default async function AdminPinsPage() {
     }),
     prisma.pin.count(),
     prisma.pin.count({ where: { status: "ACTIVE" } }),
+    prisma.pinPurchase.findMany({
+      where: { status: "PAID" },
+      orderBy: { paidAt: "desc" },
+      take: 100,
+      include: {
+        user: { select: { name: true, email: true, referralCode: true, leftLegCount: true, rightLegCount: true } },
+        _count: { select: { pins: true } },
+      },
+    }),
   ]);
 
   return (
@@ -74,6 +84,61 @@ export default async function AdminPinsPage() {
                     mobile={r.mobileNumber}
                     quantity={r.quantity}
                   />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card overflow-hidden">
+        <div className="p-5 border-b flex items-center gap-2">
+          <CreditCard className="h-4 w-4 text-brand-700" />
+          <h2 className="font-semibold">Razorpay pin purchases (Leaders)</h2>
+          <span className="ml-auto text-xs text-muted-foreground">
+            Auto-issued. No admin approval needed.
+          </span>
+        </div>
+        {razorpayPurchases.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            No Razorpay pin purchases yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Paid</th>
+                  <th className="px-4 py-2 font-medium">Member</th>
+                  <th className="px-4 py-2 font-medium">Downline</th>
+                  <th className="px-4 py-2 font-medium">Mobile</th>
+                  <th className="px-4 py-2 font-medium text-right">Qty</th>
+                  <th className="px-4 py-2 font-medium text-right">Amount</th>
+                  <th className="px-4 py-2 font-medium">Razorpay IDs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {razorpayPurchases.map((p) => (
+                  <tr key={p.id} className="border-t">
+                    <td className="px-4 py-2 text-muted-foreground text-xs">
+                      {p.paidAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }) ?? "—"}
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="font-medium">{p.user.name}</div>
+                      <div className="text-xs font-mono text-muted-foreground">{p.user.referralCode}</div>
+                    </td>
+                    <td className="px-4 py-2 text-xs tabular-nums">
+                      {p.user.leftLegCount + p.user.rightLegCount}
+                      <span className="text-muted-foreground"> (L {p.user.leftLegCount} / R {p.user.rightLegCount})</span>
+                    </td>
+                    <td className="px-4 py-2 text-xs font-mono">{p.mobileNumber}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{p._count.pins}</td>
+                    <td className="px-4 py-2 text-right tabular-nums font-medium">{formatINR(p.totalAmount)}</td>
+                    <td className="px-4 py-2 text-[11px] font-mono text-muted-foreground">
+                      <div>Order: {p.razorpayOrderId}</div>
+                      <div>Payment: {p.razorpayPaymentId ?? "—"}</div>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
