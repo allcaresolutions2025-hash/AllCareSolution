@@ -38,7 +38,12 @@ export default async function AdminLoansPage() {
       where: { status: "REQUESTED" },
       orderBy: { requestedAt: "asc" },
       include: {
-        user: { select: { name: true, email: true, referralCode: true, phone: true, panNumber: true } },
+        user: {
+          select: {
+            name: true, email: true, referralCode: true, phone: true, panNumber: true,
+            leftLegCount: true, rightLegCount: true,
+          },
+        },
       },
     }),
     prisma.loanInstallment.findMany({
@@ -180,6 +185,8 @@ export default async function AdminLoansPage() {
       tierLabel: tierByKey(l.tierKey)?.label ?? l.tierKey,
       amount: l.amount,
       totalWeeks: l.totalWeeks,
+      leftLegCount: l.user.leftLegCount,
+      rightLegCount: l.user.rightLegCount,
       duplicatePanCount: duplicates,
     };
   });

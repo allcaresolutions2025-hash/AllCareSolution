@@ -17,6 +17,8 @@ export type PendingLoanRow = {
   tierLabel: string;
   amount: number;
   totalWeeks: number;
+  leftLegCount: number;
+  rightLegCount: number;
   // Count of OTHER pending loan requests sharing this PAN (excludes this row).
   // Helps the admin spot duplicate applications across the 15 IDs a PAN may hold.
   duplicatePanCount: number;
@@ -66,6 +68,7 @@ export function PendingLoansSection({ rows }: { rows: PendingLoanRow[] }) {
               <tr>
                 <th className="px-4 py-2 font-medium">Requested</th>
                 <th className="px-4 py-2 font-medium">Member</th>
+                <th className="px-4 py-2 font-medium text-center">L / R</th>
                 <th className="px-4 py-2 font-medium">PAN</th>
                 <th className="px-4 py-2 font-medium">Tier</th>
                 <th className="px-4 py-2 font-medium text-right">Amount</th>
@@ -137,6 +140,23 @@ function PendingLoanTr({ row }: { row: PendingLoanRow }) {
           {row.userEmail} · <code className="font-mono">{row.userCode}</code>
         </div>
         {row.userPhone && <div className="text-xs text-muted-foreground">{row.userPhone}</div>}
+      </td>
+      <td className="px-4 py-2 text-center">
+        <div className="inline-flex items-center gap-1 text-xs tabular-nums">
+          <span
+            className="px-1.5 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200 font-mono"
+            title="Left leg member count"
+          >
+            L {row.leftLegCount}
+          </span>
+          <span className="text-muted-foreground">/</span>
+          <span
+            className="px-1.5 py-0.5 rounded bg-violet-50 text-violet-800 border border-violet-200 font-mono"
+            title="Right leg member count"
+          >
+            R {row.rightLegCount}
+          </span>
+        </div>
       </td>
       <td className="px-4 py-2">
         {row.userPan ? (
