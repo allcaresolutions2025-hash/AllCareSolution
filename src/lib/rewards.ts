@@ -1,14 +1,13 @@
-// Reward ladder — mirrors the loan tier model. Each level requires a member
-// count threshold met on BOTH the LEFT and RIGHT legs (>=, not exact). Levels
-// are claimable strictly in ascending order: a higher level stays locked until
-// every lower level has been claimed, even if the leg counts already qualify
-// for it. This matches the loan technique in `lib/loan.ts`.
+// Reward ladder. Each level requires a member-count threshold met on BOTH the
+// LEFT and RIGHT legs (>=, not exact). Levels are INDEPENDENT — there is no
+// sequential lock: as soon as a level's threshold is met it is claimable,
+// regardless of which other levels the user has or hasn't claimed. The only
+// per-level lock is the one-claim-per-user uniqueness on RewardClaim.
 
 // Welcome Kit is a one-time joining gift. It is NOT part of the level ladder —
 // any joined user can apply for it once, independent of leg counts, and it
-// does not gate the sequential claiming of L1-L15. Stored at level=0 in the
-// RewardClaim table so the admin's existing reward queue surfaces it
-// alongside regular claims.
+// does not gate the level rewards. Stored at level=0 in the RewardClaim table
+// so the admin's existing reward queue surfaces it alongside L1-L15 claims.
 export const WELCOME_KIT_LEVEL = 0;
 export const WELCOME_KIT_REWARD = {
   level: WELCOME_KIT_LEVEL,
@@ -45,7 +44,7 @@ export type RewardEligibilityContext = {
   leftLegCount: number;
   rightLegCount: number;
   // Levels the user has already claimed (any status — pending counts too).
-  // Once a level appears here it is permanently locked.
+  // Once a level appears here it is permanently locked for re-claiming.
   claimedLevels?: readonly number[];
 };
 
@@ -57,22 +56,10 @@ export function rewardIsClaimed(reward: RewardLevel, ctx: RewardEligibilityConte
   return ctx.claimedLevels?.includes(reward.level) ?? false;
 }
 
-// Sequential claiming: the user can only claim the LOWEST unclaimed level
-// whose threshold they meet. REWARD_LEVELS is ascending by legCount, so as
-// soon as we hit an unclaimed level whose threshold isn't met we know no
-// higher level qualifies either.
-export function nextClaimableReward(ctx: RewardEligibilityContext): RewardLevel | null {
-  for (const r of REWARD_LEVELS) {
-    if (rewardIsClaimed(r, ctx)) continue;
-    if (rewardThresholdMet(r, ctx)) return r;
-    return null;
-  }
-  return null;
-}
-
+// A reward is claimable when its leg-count threshold is met AND it hasn't been
+// claimed yet. Levels are independent of one another — no sequential lock.
 export function rewardCanClaim(reward: RewardLevel, ctx: RewardEligibilityContext): boolean {
-  const next = nextClaimableReward(ctx);
-  return next !== null && next.level === reward.level;
+  return rewardThresholdMet(reward, ctx) && !rewardIsClaimed(reward, ctx);
 }
 
 // Highest level whose leg threshold the user satisfies, ignoring claim state.

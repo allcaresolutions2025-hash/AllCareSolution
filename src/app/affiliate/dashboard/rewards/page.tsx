@@ -3,7 +3,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   REWARD_LEVELS,
-  nextClaimableReward,
   rewardThresholdMet,
   WELCOME_KIT_LEVEL,
 } from "@/lib/rewards";
@@ -29,17 +28,12 @@ export default async function RewardsPage() {
     select: { level: true, status: true, adminNote: true, requestedAt: true, updatedAt: true },
   });
   const claimByLevel = new Map(claims.map((c) => [c.level, c]));
-  // Sequential-claim ladder considers only L1-L15; the Welcome Kit (level 0)
-  // is a separate joining gift and must NOT gate the ladder.
-  const claimedLevels = claims.map((c) => c.level).filter((l) => l !== WELCOME_KIT_LEVEL);
   const welcomeKitClaim = claimByLevel.get(WELCOME_KIT_LEVEL) ?? null;
 
   const ctx = {
     leftLegCount: me.leftLegCount,
     rightLegCount: me.rightLegCount,
-    claimedLevels,
   };
-  const next = nextClaimableReward(ctx);
 
   const minLeg = Math.min(me.leftLegCount, me.rightLegCount);
   const maxLeg = Math.max(me.leftLegCount, me.rightLegCount);
@@ -53,7 +47,7 @@ export default async function RewardsPage() {
           <Trophy className="h-6 w-6 text-amber-500" /> My Rewards
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Build your team equally on both sides to unlock gifts. Claim them <strong>one level at a time</strong> — finish the lower level before the next unlocks.
+          Build your team equally on both sides to unlock gifts. Each level is independent — claim any unlocked level whenever you like.
         </p>
       </div>
 
@@ -91,32 +85,26 @@ export default async function RewardsPage() {
       {/* Joining gift — Welcome Kit (not part of the L1-L15 ladder) */}
       <WelcomeKitCard claim={welcomeKitClaim} />
 
-      {/* Next claimable banner */}
-      {next ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          Next claimable gift: <strong>Level {next.level} — {next.gift}</strong>. Tap the card below to request it.
-        </div>
-      ) : minLeg > 0 ? (
+      {/* Progress banner */}
+      {minLeg > 0 && (
         <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
           Your weaker leg has <strong>{minLeg.toLocaleString("en-IN")}</strong> member{minLeg !== 1 ? "s" : ""} and stronger leg has <strong>{maxLeg.toLocaleString("en-IN")}</strong>.
           {nextThreshold !== null && (
             <> Next unlock at <strong>{nextThreshold.toLocaleString("en-IN")}</strong> on each side.</>
           )}
         </div>
-      ) : null}
+      )}
 
       {/* Reward cards */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {REWARD_LEVELS.map((reward) => {
           const claim = claimByLevel.get(reward.level) ?? null;
           const thresholdMet = rewardThresholdMet(reward, ctx);
-          const isNextClaimable = next !== null && next.level === reward.level;
           return (
             <RewardCard
               key={reward.level}
               reward={reward}
               thresholdMet={thresholdMet}
-              isNextClaimable={isNextClaimable}
               minLeg={minLeg}
               claim={claim}
             />

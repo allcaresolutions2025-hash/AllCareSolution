@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Gift, CheckCircle2, Clock, Truck, Package, XCircle, ChevronRight, Hourglass } from "lucide-react";
+import { Lock, Gift, CheckCircle2, Clock, Truck, Package, XCircle, ChevronRight } from "lucide-react";
 import type { RewardLevel } from "@/lib/rewards";
 import type { RewardClaimStatus } from "@prisma/client";
 
@@ -16,7 +16,6 @@ type ClaimInfo = {
 interface Props {
   reward: RewardLevel;
   thresholdMet: boolean;       // leg counts satisfy this level
-  isNextClaimable: boolean;    // this is the next sequential level to claim
   minLeg: number;
   claim: ClaimInfo;
 }
@@ -37,7 +36,7 @@ const COLOR_CHIP: Record<string, string> = {
   red:     "bg-red-50 text-red-700 border-red-200",
 };
 
-export function RewardCard({ reward, thresholdMet, isNextClaimable, minLeg, claim }: Props) {
+export function RewardCard({ reward, thresholdMet, minLeg, claim }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -64,8 +63,6 @@ export function RewardCard({ reward, thresholdMet, isNextClaimable, minLeg, clai
   }
 
   const statusCfg = claim ? STATUS_CONFIG[claim.status] : null;
-  // Threshold reached but not the next-in-line — locked behind lower levels.
-  const queuedBehindLower = thresholdMet && !isNextClaimable && !claim;
 
   return (
     <div className={`card p-5 flex flex-col gap-3 transition-all ${thresholdMet ? "border-brand-200 shadow-sm" : "opacity-70"}`}>
@@ -130,7 +127,7 @@ export function RewardCard({ reward, thresholdMet, isNextClaimable, minLeg, clai
               </p>
             )}
           </div>
-        ) : isNextClaimable ? (
+        ) : thresholdMet ? (
           <div>
             {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
             <button
@@ -140,10 +137,6 @@ export function RewardCard({ reward, thresholdMet, isNextClaimable, minLeg, clai
             >
               {loading ? "Submitting…" : (<><Gift className="h-4 w-4" /> Request Gift <ChevronRight className="h-3.5 w-3.5" /></>)}
             </button>
-          </div>
-        ) : queuedBehindLower ? (
-          <div className="text-xs text-amber-700 flex items-center gap-1">
-            <Hourglass className="h-3 w-3" /> Claim lower levels first to unlock
           </div>
         ) : (
           <div className="text-xs text-muted-foreground flex items-center gap-1">

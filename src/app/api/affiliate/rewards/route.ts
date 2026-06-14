@@ -4,15 +4,15 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   REWARD_LEVELS,
-  rewardCanClaim,
-  nextClaimableReward,
+  rewardThresholdMet,
   WELCOME_KIT_LEVEL,
   WELCOME_KIT_REWARD,
 } from "@/lib/rewards";
 import { z } from "zod";
 
-// level 0 = Welcome Kit (joining gift, no leg-count gate, no sequential lock)
-// level 1-15 = the sequential reward ladder
+// level 0    = Welcome Kit (joining gift, no leg-count gate)
+// level 1-15 = the reward ladder; each level is INDEPENDENTLY claimable once
+//              the per-leg threshold is met
 const schema = z.object({ level: z.number().int().min(0).max(15) });
 
 export async function POST(req: Request) {
@@ -56,25 +56,11 @@ export async function POST(req: Request) {
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const claimedLevels = (
-    await prisma.rewardClaim.findMany({
-      where: { userId: session.user.id },
-      select: { level: true },
-    })
-  ).map((c) => c.level);
-
-  const ctx = {
-    leftLegCount: user.leftLegCount,
-    rightLegCount: user.rightLegCount,
-    claimedLevels,
-  };
-
-  if (!rewardCanClaim(reward, ctx)) {
-    const next = nextClaimableReward(ctx);
-    const msg = next
-      ? `Claim level ${next.level} (${next.gift}) first — rewards unlock in order.`
-      : "This reward is not yet unlocked. Grow both legs to the required size.";
-    return NextResponse.json({ error: msg }, { status: 403 });
+  if (!rewardThresholdMet(reward, { leftLegCount: user.leftLegCount, rightLegCount: user.rightLegCount })) {
+    return NextResponse.json(
+      { error: `This reward requires ${reward.legCount} members on each side. Grow your weaker leg to unlock.` },
+      { status: 403 },
+    );
   }
 
   const claim = await prisma.rewardClaim.create({
