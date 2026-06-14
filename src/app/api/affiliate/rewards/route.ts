@@ -2,10 +2,18 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { REWARD_LEVELS, rewardCanClaim, nextClaimableReward } from "@/lib/rewards";
+import {
+  REWARD_LEVELS,
+  rewardCanClaim,
+  nextClaimableReward,
+  WELCOME_KIT_LEVEL,
+  WELCOME_KIT_REWARD,
+} from "@/lib/rewards";
 import { z } from "zod";
 
-const schema = z.object({ level: z.number().int().min(1).max(15) });
+// level 0 = Welcome Kit (joining gift, no leg-count gate, no sequential lock)
+// level 1-15 = the sequential reward ladder
+const schema = z.object({ level: z.number().int().min(0).max(15) });
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -16,14 +24,6 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid level" }, { status: 400 });
 
   const { level } = parsed.data;
-  const reward = REWARD_LEVELS.find((r) => r.level === level);
-  if (!reward) return NextResponse.json({ error: "Unknown reward level" }, { status: 400 });
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { leftLegCount: true, rightLegCount: true },
-  });
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   // Block duplicate claims at this level first (clearer 409 than the generic
   // sequential-claim error).
@@ -33,6 +33,28 @@ export async function POST(req: Request) {
   if (existing) {
     return NextResponse.json({ error: "You have already submitted a claim for this level" }, { status: 409 });
   }
+
+  // Welcome Kit — every joined user can claim it once; no leg-count check, no
+  // sequential ordering against L1-L15.
+  if (level === WELCOME_KIT_LEVEL) {
+    const claim = await prisma.rewardClaim.create({
+      data: {
+        userId: session.user.id,
+        level: WELCOME_KIT_LEVEL,
+        rewardName: WELCOME_KIT_REWARD.gift,
+      },
+    });
+    return NextResponse.json({ ok: true, claimId: claim.id });
+  }
+
+  const reward = REWARD_LEVELS.find((r) => r.level === level);
+  if (!reward) return NextResponse.json({ error: "Unknown reward level" }, { status: 400 });
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { leftLegCount: true, rightLegCount: true },
+  });
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const claimedLevels = (
     await prisma.rewardClaim.findMany({

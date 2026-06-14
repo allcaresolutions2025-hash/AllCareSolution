@@ -4,6 +4,18 @@
 // every lower level has been claimed, even if the leg counts already qualify
 // for it. This matches the loan technique in `lib/loan.ts`.
 
+// Welcome Kit is a one-time joining gift. It is NOT part of the level ladder —
+// any joined user can apply for it once, independent of leg counts, and it
+// does not gate the sequential claiming of L1-L15. Stored at level=0 in the
+// RewardClaim table so the admin's existing reward queue surfaces it
+// alongside regular claims.
+export const WELCOME_KIT_LEVEL = 0;
+export const WELCOME_KIT_REWARD = {
+  level: WELCOME_KIT_LEVEL,
+  gift: "Welcome Kit",
+  icon: "🎁",
+} as const;
+
 export type RewardLevel = {
   level: number;
   legCount: number;   // members required on EACH leg

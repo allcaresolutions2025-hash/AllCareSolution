@@ -5,8 +5,10 @@ import {
   REWARD_LEVELS,
   nextClaimableReward,
   rewardThresholdMet,
+  WELCOME_KIT_LEVEL,
 } from "@/lib/rewards";
 import { RewardCard } from "./reward-card";
+import { WelcomeKitCard } from "./welcome-kit-card";
 import { Trophy, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +29,10 @@ export default async function RewardsPage() {
     select: { level: true, status: true, adminNote: true, requestedAt: true, updatedAt: true },
   });
   const claimByLevel = new Map(claims.map((c) => [c.level, c]));
-  const claimedLevels = claims.map((c) => c.level);
+  // Sequential-claim ladder considers only L1-L15; the Welcome Kit (level 0)
+  // is a separate joining gift and must NOT gate the ladder.
+  const claimedLevels = claims.map((c) => c.level).filter((l) => l !== WELCOME_KIT_LEVEL);
+  const welcomeKitClaim = claimByLevel.get(WELCOME_KIT_LEVEL) ?? null;
 
   const ctx = {
     leftLegCount: me.leftLegCount,
@@ -82,6 +87,9 @@ export default async function RewardsPage() {
           </div>
         </div>
       </div>
+
+      {/* Joining gift — Welcome Kit (not part of the L1-L15 ladder) */}
+      <WelcomeKitCard claim={welcomeKitClaim} />
 
       {/* Next claimable banner */}
       {next ? (
