@@ -156,6 +156,11 @@ export default async function AdminLoansPage() {
   const paidTodayTotal = paidTodayInstallments.reduce((sum, i) => sum + i.amount, 0);
 
   // ---- Pending loan rows: enrich with same-PAN duplicate count ------------
+  // Count ACTIVE loans (REQUESTED + APPROVED) per PAN. A PAN with >1 active
+  // loan means another account on the same PAN already has a pending or
+  // disbursed loan — strong signal of identity reuse the admin should review
+  // before approving. The row itself contributes 1 to its PAN's count, so
+  // `duplicates = totalOnPan - 1` gives the number of OTHER active loans.
   const pendingPans = pendingLoans
     .map((l) => l.user.panNumber)
     .filter((p): p is string => !!p);
@@ -163,7 +168,13 @@ export default async function AdminLoansPage() {
   if (pendingPans.length > 0) {
     const panAgg = await prisma.user.findMany({
       where: { panNumber: { in: pendingPans } },
-      select: { panNumber: true, loans: { where: { status: "REQUESTED" }, select: { id: true } } },
+      select: {
+        panNumber: true,
+        loans: {
+          where: { status: { in: ["REQUESTED", "APPROVED"] } },
+          select: { id: true },
+        },
+      },
     });
     for (const u of panAgg) {
       if (!u.panNumber) continue;

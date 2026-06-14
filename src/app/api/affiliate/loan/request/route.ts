@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
-import { tierByKey, tierIsEligible, nextClaimableTier, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE } from "@/lib/loan";
+import { tierByKey, tierIsEligible, nextClaimableTier, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE } from "@/lib/loan";
 
 const bodySchema = z.object({
   tierKey: z.enum(LOAN_TIERS.map((t) => t.key) as [string, ...string[]]),
@@ -49,6 +49,12 @@ export async function POST(req: Request) {
       { error: `You already have a ${openLoan.status.toLowerCase()} loan` },
       { status: 400 },
     );
+  }
+
+  // PAN reuse guard: another account on this PAN already holds an active loan.
+  const panConflict = await countActivePanLoanConflicts(prisma, session.user.id);
+  if (panConflict.conflictCount > 0) {
+    return NextResponse.json({ error: PAN_CONFLICT_MESSAGE }, { status: 400 });
   }
 
   const completedTierKeys = closedLoans.map((l) => l.tierKey);

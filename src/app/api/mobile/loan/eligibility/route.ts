@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
-import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, loansPaused, LOAN_PAUSE_MESSAGE, LOAN_PAUSE_UNTIL } from "@/lib/loan";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, loansPaused, LOAN_PAUSE_MESSAGE, LOAN_PAUSE_UNTIL, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE } from "@/lib/loan";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     const auth = await authMobile(req);
     if ("response" in auth) return auth.response;
 
-    const [me, directLeftSlots, directRightSlots, openLoan, closedLoans] = await Promise.all([
+    const [me, directLeftSlots, directRightSlots, openLoan, closedLoans, panConflict] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.user.id },
         select: { leftLegCount: true, rightLegCount: true },
@@ -25,7 +25,9 @@ export async function GET(req: Request) {
         where: { userId: auth.user.id, status: "CLOSED" },
         select: { tierKey: true },
       }),
+      countActivePanLoanConflicts(prisma, auth.user.id),
     ]);
+    const panBlocked = panConflict.conflictCount > 0;
 
     const completedTierKeys = closedLoans.map((l) => l.tierKey);
     const ctx = {
@@ -44,11 +46,13 @@ export async function GET(req: Request) {
       paused,
       pauseMessage: paused ? LOAN_PAUSE_MESSAGE : null,
       pauseUntil: paused ? LOAN_PAUSE_UNTIL.toISOString() : null,
+      panBlocked,
+      panBlockMessage: panBlocked ? PAN_CONFLICT_MESSAGE : null,
       nextClaimableTierKey: nextTier?.key ?? null,
       tiers: LOAN_TIERS.map((t) => {
         const completed = tierIsCompleted(t, ctx);
         const thresholdMet = tierIsEligible(t, ctx);
-        const canClaim = !openLoan && !paused && nextTier?.key === t.key;
+        const canClaim = !openLoan && !paused && !panBlocked && nextTier?.key === t.key;
         return {
           key: t.key,
           label: t.label,

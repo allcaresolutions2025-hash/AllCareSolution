@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
-import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE } from "@/lib/loan";
+import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE } from "@/lib/loan";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +49,12 @@ export async function POST(req: Request) {
         { error: `You already have a ${openLoan.status.toLowerCase()} loan` },
         { status: 400 },
       );
+    }
+
+    // PAN reuse guard: another account on this PAN already holds an active loan.
+    const panConflict = await countActivePanLoanConflicts(prisma, auth.user.id);
+    if (panConflict.conflictCount > 0) {
+      return NextResponse.json({ error: PAN_CONFLICT_MESSAGE }, { status: 400 });
     }
 
     const completedTierKeys = closedLoans.map((l) => l.tierKey);

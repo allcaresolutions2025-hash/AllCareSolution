@@ -150,6 +150,32 @@ export function calcTotalPenalty(loanAmountPaise: number, daysOverdue: number): 
   return calcDailyPenalty(loanAmountPaise) * daysOverdue;
 }
 
+// PAN reuse guard. A single PAN may be held by up to 15 accounts (a family
+// hierarchy), but only ONE of those accounts may have an active loan at a
+// time. This function returns the count of OTHER users sharing this user's
+// PAN who currently have a REQUESTED or APPROVED loan — used to block new
+// loan applications and to flag duplicates in the admin queue.
+export async function countActivePanLoanConflicts(
+  prisma: import("@prisma/client").PrismaClient | import("@prisma/client").Prisma.TransactionClient,
+  userId: string,
+): Promise<{ pan: string | null; conflictCount: number }> {
+  const me = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { panNumber: true },
+  });
+  if (!me?.panNumber) return { pan: null, conflictCount: 0 };
+  const conflictCount = await prisma.loan.count({
+    where: {
+      status: { in: ["REQUESTED", "APPROVED"] },
+      user: { panNumber: me.panNumber, id: { not: userId } },
+    },
+  });
+  return { pan: me.panNumber, conflictCount };
+}
+
+export const PAN_CONFLICT_MESSAGE =
+  "A loan is already active under this PAN on another account. Please close the existing loan before applying again.";
+
 // Days overdue, counted by IST calendar day. An installment due today (IST)
 // returns 0; due yesterday returns 1; etc. Comparing IST midnight to IST
 // midnight avoids the wrong-by-one bug where a dueDate whose UTC instant is

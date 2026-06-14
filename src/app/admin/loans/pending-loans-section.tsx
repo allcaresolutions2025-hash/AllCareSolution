@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Search, Check, X, MessageCircle } from "lucide-react";
+import { Search, Check, X, MessageCircle, ShieldAlert } from "lucide-react";
 import { formatRupees } from "@/lib/loan";
 
 export type PendingLoanRow = {
@@ -19,8 +19,10 @@ export type PendingLoanRow = {
   totalWeeks: number;
   leftLegCount: number;
   rightLegCount: number;
-  // Count of OTHER pending loan requests sharing this PAN (excludes this row).
-  // Helps the admin spot duplicate applications across the 15 IDs a PAN may hold.
+  // Count of OTHER ACTIVE loans (REQUESTED + APPROVED) on the same PAN,
+  // excluding this row. Anything > 0 means another account on this PAN
+  // already has a pending or disbursed loan — strong signal the admin
+  // should not approve a second loan for the same identity.
   duplicatePanCount: number;
 };
 
@@ -38,7 +40,12 @@ function matches(row: PendingLoanRow, q: string): boolean {
 
 export function PendingLoansSection({ rows }: { rows: PendingLoanRow[] }) {
   const [q, setQ] = useState("");
-  const filtered = useMemo(() => rows.filter((r) => matches(r, q)), [rows, q]);
+  const [onlyDupes, setOnlyDupes] = useState(false);
+  const filtered = useMemo(
+    () => rows.filter((r) => matches(r, q) && (!onlyDupes || r.duplicatePanCount > 0)),
+    [rows, q, onlyDupes],
+  );
+  const duplicateCount = useMemo(() => rows.filter((r) => r.duplicatePanCount > 0).length, [rows]);
 
   return (
     <div className="card overflow-hidden">
@@ -53,6 +60,23 @@ export function PendingLoansSection({ rows }: { rows: PendingLoanRow[] }) {
           </div>
           <SearchBox value={q} onChange={setQ} placeholder="Search name / email / code / PAN…" />
         </div>
+
+        {duplicateCount > 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-900">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-red-700 shrink-0" />
+              <span>
+                <strong>{duplicateCount}</strong> request{duplicateCount === 1 ? "" : "s"} flagged — same PAN already has an active loan on another account.
+              </span>
+            </div>
+            <button
+              onClick={() => setOnlyDupes((v) => !v)}
+              className="px-2 py-1 rounded-md bg-white border border-red-300 text-red-700 hover:bg-red-100 font-medium"
+            >
+              {onlyDupes ? "Show all" : "Show only flagged"}
+            </button>
+          </div>
+        )}
       </div>
 
       {rows.length === 0 ? (
@@ -129,8 +153,9 @@ function PendingLoanTr({ row }: { row: PendingLoanRow }) {
     router.refresh();
   }
 
+  const dupe = row.duplicatePanCount > 0;
   return (
-    <tr className="border-t align-top">
+    <tr className={`border-t align-top ${dupe ? "bg-red-50/40" : ""}`}>
       <td className="px-4 py-2 text-xs text-muted-foreground">
         {new Date(row.requestedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
       </td>
@@ -162,9 +187,13 @@ function PendingLoanTr({ row }: { row: PendingLoanRow }) {
         {row.userPan ? (
           <div className="flex flex-col gap-1">
             <code className="font-mono text-xs">{row.userPan}</code>
-            {row.duplicatePanCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 w-fit">
-                +{row.duplicatePanCount} other request{row.duplicatePanCount === 1 ? "" : "s"} on this PAN
+            {dupe && (
+              <span
+                title="Another account on this PAN has a REQUESTED or APPROVED loan. Do NOT approve a second loan for the same identity."
+                className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-800 border border-red-300 w-fit"
+              >
+                <ShieldAlert className="h-3 w-3" />
+                +{row.duplicatePanCount} other active loan{row.duplicatePanCount === 1 ? "" : "s"} on this PAN
               </span>
             )}
           </div>
