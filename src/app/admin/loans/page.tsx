@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/db";
-import { BadgeIndianRupee, Clock, CheckCircle2, AlertTriangle, CalendarDays } from "lucide-react";
+import { BadgeIndianRupee, Clock, CheckCircle2, AlertTriangle, CalendarDays, Receipt } from "lucide-react";
 import { formatRupees, tierByKey, daysOverdueIst } from "@/lib/loan";
 import { ReceiptReviewRow } from "./receipt-review-row";
 import { PendingLoansSection, type PendingLoanRow } from "./pending-loans-section";
 import { UnpaidInstallmentsSection, type UnpaidInstallmentRow } from "./unpaid-installments-section";
 import { RecentLoansSection } from "./recent-loans-section";
+import { PaidTodayRow } from "./paid-today-row";
 import { istDateString } from "@/lib/daily-payout";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ export default async function AdminLoansPage() {
     outstandingAgg,
     dueTodayInstallments,
     overdueInstallments,
+    paidTodayInstallments,
   ] = await Promise.all([
     prisma.loan.findMany({
       where: { status: "REQUESTED" },
@@ -120,10 +122,33 @@ export default async function AdminLoansPage() {
         },
       },
     }),
+    // Installments VERIFIED today (IST) — the "paid today" view. Includes
+    // already-CLOSED loans because today's final installment closes the loan.
+    prisma.loanInstallment.findMany({
+      where: {
+        status: "VERIFIED",
+        verifiedAt: { gte: startUtc, lt: endUtc },
+      },
+      orderBy: { verifiedAt: "desc" },
+      select: {
+        id: true,
+        weekNumber: true,
+        amount: true,
+        verifiedAt: true,
+        receiptMime: true,
+        loan: {
+          select: {
+            tierKey: true,
+            user: { select: { name: true, referralCode: true, phone: true } },
+          },
+        },
+      },
+    }),
   ]);
 
   const received = receivedAgg._sum.amount ?? 0;
   const outstanding = outstandingAgg._sum.amount ?? 0;
+  const paidTodayTotal = paidTodayInstallments.reduce((sum, i) => sum + i.amount, 0);
 
   // ---- Pending loan rows: enrich with same-PAN duplicate count ------------
   const pendingPans = pendingLoans
@@ -220,10 +245,11 @@ export default async function AdminLoansPage() {
         </p>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Kpi icon={<Clock className="h-5 w-5" />} label="Pending loan requests" value={pendingLoans.length} tone="amber" />
         <Kpi icon={<CalendarDays className="h-5 w-5" />} label="Due today" value={dueTodayRows.length} tone="sky" />
         <Kpi icon={<AlertTriangle className="h-5 w-5" />} label="Overdue installments" value={overdueRows.length} tone="red" />
+        <Kpi icon={<Receipt className="h-5 w-5" />} label="Paid today" value={`${paidTodayInstallments.length} · ${formatRupees(paidTodayTotal)}`} tone="brand" />
         <Kpi icon={<BadgeIndianRupee className="h-5 w-5" />} label="Total disbursed" value={formatRupees(totalDisbursed._sum.amount ?? 0)} tone="emerald" />
       </div>
 
@@ -269,6 +295,60 @@ export default async function AdminLoansPage() {
         rows={overdueRows}
         tone="red"
       />
+
+      {/* Paid today — installments verified within today's IST day */}
+      <div className="card overflow-hidden">
+        <div className="p-5 border-b flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="font-semibold flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-brand-700" /> Paid today ({paidTodayInstallments.length})
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Loan installments you verified today. Receipts remain viewable for audit.
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-muted-foreground">Collected today</div>
+            <div className="text-lg font-bold tabular-nums text-emerald-700">{formatRupees(paidTodayTotal)}</div>
+          </div>
+        </div>
+        {paidTodayInstallments.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            No installments verified today yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Verified</th>
+                  <th className="px-4 py-2 font-medium">Member</th>
+                  <th className="px-4 py-2 font-medium">Tier</th>
+                  <th className="px-4 py-2 font-medium">Week</th>
+                  <th className="px-4 py-2 font-medium text-right">Amount</th>
+                  <th className="px-4 py-2 font-medium">Receipt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paidTodayInstallments.map((i) => (
+                  <PaidTodayRow
+                    key={i.id}
+                    id={i.id}
+                    weekNumber={i.weekNumber}
+                    amount={i.amount}
+                    verifiedAt={i.verifiedAt!.toISOString()}
+                    userName={i.loan.user.name}
+                    userCode={i.loan.user.referralCode}
+                    userPhone={i.loan.user.phone}
+                    tierLabel={tierByKey(i.loan.tierKey)?.label ?? i.loan.tierKey}
+                    hasReceipt={!!i.receiptMime}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Pending receipt verifications */}
       <div className="card overflow-hidden">
