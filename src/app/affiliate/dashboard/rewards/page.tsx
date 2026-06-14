@@ -1,7 +1,11 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { REWARD_LEVELS } from "@/lib/rewards";
+import {
+  REWARD_LEVELS,
+  nextClaimableReward,
+  rewardThresholdMet,
+} from "@/lib/rewards";
 import { RewardCard } from "./reward-card";
 import { Trophy, Users } from "lucide-react";
 
@@ -23,10 +27,19 @@ export default async function RewardsPage() {
     select: { level: true, status: true, adminNote: true, requestedAt: true, updatedAt: true },
   });
   const claimByLevel = new Map(claims.map((c) => [c.level, c]));
+  const claimedLevels = claims.map((c) => c.level);
+
+  const ctx = {
+    leftLegCount: me.leftLegCount,
+    rightLegCount: me.rightLegCount,
+    claimedLevels,
+  };
+  const next = nextClaimableReward(ctx);
 
   const minLeg = Math.min(me.leftLegCount, me.rightLegCount);
   const maxLeg = Math.max(me.leftLegCount, me.rightLegCount);
-  const unlockedCount = REWARD_LEVELS.filter((r) => minLeg >= r.minLegSize).length;
+  const unlockedCount = REWARD_LEVELS.filter((r) => rewardThresholdMet(r, ctx)).length;
+  const nextThreshold = REWARD_LEVELS.find((r) => !rewardThresholdMet(r, ctx))?.legCount ?? null;
 
   return (
     <div className="space-y-6">
@@ -35,7 +48,7 @@ export default async function RewardsPage() {
           <Trophy className="h-6 w-6 text-amber-500" /> My Rewards
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Build your team equally on both sides to unlock gifts — one level at a time.
+          Build your team equally on both sides to unlock gifts. Claim them <strong>one level at a time</strong> — finish the lower level before the next unlocks.
         </p>
       </div>
 
@@ -70,24 +83,32 @@ export default async function RewardsPage() {
         </div>
       </div>
 
-      {/* Balanced leg info */}
-      {minLeg > 0 && (
+      {/* Next claimable banner */}
+      {next ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          Next claimable gift: <strong>Level {next.level} — {next.gift}</strong>. Tap the card below to request it.
+        </div>
+      ) : minLeg > 0 ? (
         <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
           Your weaker leg has <strong>{minLeg.toLocaleString("en-IN")}</strong> member{minLeg !== 1 ? "s" : ""} and stronger leg has <strong>{maxLeg.toLocaleString("en-IN")}</strong>.
-          {" "}Next unlock at <strong>{(REWARD_LEVELS.find((r) => r.minLegSize > minLeg)?.minLegSize ?? "—").toLocaleString?.("en-IN")}</strong> on each side.
+          {nextThreshold !== null && (
+            <> Next unlock at <strong>{nextThreshold.toLocaleString("en-IN")}</strong> on each side.</>
+          )}
         </div>
-      )}
+      ) : null}
 
       {/* Reward cards */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {REWARD_LEVELS.map((reward) => {
           const claim = claimByLevel.get(reward.level) ?? null;
-          const isUnlocked = minLeg >= reward.minLegSize;
+          const thresholdMet = rewardThresholdMet(reward, ctx);
+          const isNextClaimable = next !== null && next.level === reward.level;
           return (
             <RewardCard
               key={reward.level}
               reward={reward}
-              isUnlocked={isUnlocked}
+              thresholdMet={thresholdMet}
+              isNextClaimable={isNextClaimable}
               minLeg={minLeg}
               claim={claim}
             />

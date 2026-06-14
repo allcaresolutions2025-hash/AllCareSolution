@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Gift, CheckCircle2, Clock, Truck, Package, XCircle, ChevronRight } from "lucide-react";
+import { Lock, Gift, CheckCircle2, Clock, Truck, Package, XCircle, ChevronRight, Hourglass } from "lucide-react";
 import type { RewardLevel } from "@/lib/rewards";
 import type { RewardClaimStatus } from "@prisma/client";
 
@@ -15,7 +15,8 @@ type ClaimInfo = {
 
 interface Props {
   reward: RewardLevel;
-  isUnlocked: boolean;
+  thresholdMet: boolean;       // leg counts satisfy this level
+  isNextClaimable: boolean;    // this is the next sequential level to claim
   minLeg: number;
   claim: ClaimInfo;
 }
@@ -36,12 +37,12 @@ const COLOR_CHIP: Record<string, string> = {
   red:     "bg-red-50 text-red-700 border-red-200",
 };
 
-export function RewardCard({ reward, isUnlocked, minLeg, claim }: Props) {
+export function RewardCard({ reward, thresholdMet, isNextClaimable, minLeg, claim }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const progressPct = Math.min(100, Math.round((minLeg / reward.minLegSize) * 100));
+  const progressPct = Math.min(100, Math.round((minLeg / reward.legCount) * 100));
 
   async function handleClaim() {
     setLoading(true);
@@ -63,9 +64,11 @@ export function RewardCard({ reward, isUnlocked, minLeg, claim }: Props) {
   }
 
   const statusCfg = claim ? STATUS_CONFIG[claim.status] : null;
+  // Threshold reached but not the next-in-line — locked behind lower levels.
+  const queuedBehindLower = thresholdMet && !isNextClaimable && !claim;
 
   return (
-    <div className={`card p-5 flex flex-col gap-3 transition-all ${isUnlocked ? "border-brand-200 shadow-sm" : "opacity-70"}`}>
+    <div className={`card p-5 flex flex-col gap-3 transition-all ${thresholdMet ? "border-brand-200 shadow-sm" : "opacity-70"}`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -75,7 +78,7 @@ export function RewardCard({ reward, isUnlocked, minLeg, claim }: Props) {
             <div className="font-semibold text-sm leading-tight">{reward.gift}</div>
           </div>
         </div>
-        {isUnlocked ? (
+        {thresholdMet ? (
           <div className="h-7 w-7 rounded-full bg-emerald-100 text-emerald-600 grid place-items-center shrink-0">
             <Gift className="h-4 w-4" />
           </div>
@@ -88,8 +91,8 @@ export function RewardCard({ reward, isUnlocked, minLeg, claim }: Props) {
 
       {/* Requirement */}
       <div className="text-xs text-muted-foreground">
-        Need <strong>{reward.minLegSize.toLocaleString("en-IN")}</strong> on each side
-        {" "}({reward.totalMembers.toLocaleString("en-IN")} total)
+        Need <strong>{reward.legCount.toLocaleString("en-IN")}</strong> on each side
+        {" "}({(reward.legCount * 2).toLocaleString("en-IN")} total)
       </div>
 
       {/* Progress bar */}
@@ -100,7 +103,7 @@ export function RewardCard({ reward, isUnlocked, minLeg, claim }: Props) {
         </div>
         <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${isUnlocked ? "bg-emerald-500" : "bg-brand-400"}`}
+            className={`h-full rounded-full transition-all ${thresholdMet ? "bg-emerald-500" : "bg-brand-400"}`}
             style={{ width: `${progressPct}%` }}
           />
         </div>
@@ -127,7 +130,7 @@ export function RewardCard({ reward, isUnlocked, minLeg, claim }: Props) {
               </p>
             )}
           </div>
-        ) : isUnlocked ? (
+        ) : isNextClaimable ? (
           <div>
             {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
             <button
@@ -137,6 +140,10 @@ export function RewardCard({ reward, isUnlocked, minLeg, claim }: Props) {
             >
               {loading ? "Submitting…" : (<><Gift className="h-4 w-4" /> Request Gift <ChevronRight className="h-3.5 w-3.5" /></>)}
             </button>
+          </div>
+        ) : queuedBehindLower ? (
+          <div className="text-xs text-amber-700 flex items-center gap-1">
+            <Hourglass className="h-3 w-3" /> Claim lower levels first to unlock
           </div>
         ) : (
           <div className="text-xs text-muted-foreground flex items-center gap-1">

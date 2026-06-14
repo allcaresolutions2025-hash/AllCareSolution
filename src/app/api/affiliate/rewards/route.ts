@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { REWARD_LEVELS } from "@/lib/rewards";
+import { REWARD_LEVELS, rewardCanClaim, nextClaimableReward } from "@/lib/rewards";
 import { z } from "zod";
 
 const schema = z.object({ level: z.number().int().min(1).max(15) });
@@ -25,17 +25,34 @@ export async function POST(req: Request) {
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const minLeg = Math.min(user.leftLegCount, user.rightLegCount);
-  if (minLeg < reward.minLegSize) {
-    return NextResponse.json({ error: "This reward is not yet unlocked" }, { status: 403 });
-  }
-
-  // Check for existing claim
+  // Block duplicate claims at this level first (clearer 409 than the generic
+  // sequential-claim error).
   const existing = await prisma.rewardClaim.findUnique({
     where: { userId_level: { userId: session.user.id, level } },
   });
   if (existing) {
     return NextResponse.json({ error: "You have already submitted a claim for this level" }, { status: 409 });
+  }
+
+  const claimedLevels = (
+    await prisma.rewardClaim.findMany({
+      where: { userId: session.user.id },
+      select: { level: true },
+    })
+  ).map((c) => c.level);
+
+  const ctx = {
+    leftLegCount: user.leftLegCount,
+    rightLegCount: user.rightLegCount,
+    claimedLevels,
+  };
+
+  if (!rewardCanClaim(reward, ctx)) {
+    const next = nextClaimableReward(ctx);
+    const msg = next
+      ? `Claim level ${next.level} (${next.gift}) first — rewards unlock in order.`
+      : "This reward is not yet unlocked. Grow both legs to the required size.";
+    return NextResponse.json({ error: msg }, { status: 403 });
   }
 
   const claim = await prisma.rewardClaim.create({
