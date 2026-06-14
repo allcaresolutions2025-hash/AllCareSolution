@@ -6,8 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime queries use DATABASE_URL (Neon pooler) for connection limits.
+  // Migrations and other interactive-transaction work use directUrl (Neon
+  // direct endpoint) because the pooler kills interactive transactions
+  // mid-flight, which made `prisma migrate deploy` hang during Vercel builds.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------- USERS ----------
