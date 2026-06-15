@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Toaster } from "react-hot-toast";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SiteHeader } from "@/components/site-header";
@@ -52,6 +54,8 @@ export default async function RootLayout({
             toastOptions={{ duration: 4000, className: "text-sm" }}
           />
         </Providers>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
