@@ -1,7 +1,11 @@
+import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "./db";
 
 // Settings layer: env defaults, overridable via Setting table (admin-managed).
-// We cache reads in-memory per request to avoid hammering the DB.
+// Reads are cached on Vercel's data layer for 5 minutes (or until setSetting
+// invalidates the tag). Admin changes propagate immediately on the next req.
+
+const SETTINGS_CACHE_TAG = "business-settings";
 
 type SettingKey =
   | "COMMISSION_L1_PERCENT"
@@ -24,22 +28,7 @@ const ENV_DEFAULTS: Record<SettingKey, string> = {
   PIN_PRICE_INR: process.env.PIN_PRICE_INR ?? "1000",
 };
 
-export async function getSetting(key: SettingKey): Promise<number> {
-  const row = await prisma.setting.findUnique({ where: { key } });
-  const raw = row?.value ?? ENV_DEFAULTS[key];
-  const n = parseFloat(raw);
-  return isFinite(n) ? n : 0;
-}
-
-export async function setSetting(key: SettingKey, value: string | number) {
-  await prisma.setting.upsert({
-    where: { key },
-    update: { value: String(value) },
-    create: { key, value: String(value) },
-  });
-}
-
-export async function getAllBusinessSettings() {
+async function readAllSettings(): Promise<Record<SettingKey, number>> {
   const keys: SettingKey[] = [
     "COMMISSION_L1_PERCENT",
     "COMMISSION_L2_PERCENT",
@@ -55,4 +44,24 @@ export async function getAllBusinessSettings() {
   return Object.fromEntries(
     keys.map((k) => [k, parseFloat(map[k] ?? ENV_DEFAULTS[k])])
   ) as Record<SettingKey, number>;
+}
+
+export const getAllBusinessSettings = unstable_cache(
+  readAllSettings,
+  ["business-settings"],
+  { revalidate: 300, tags: [SETTINGS_CACHE_TAG] },
+);
+
+export async function getSetting(key: SettingKey): Promise<number> {
+  const all = await getAllBusinessSettings();
+  return all[key];
+}
+
+export async function setSetting(key: SettingKey, value: string | number) {
+  await prisma.setting.upsert({
+    where: { key },
+    update: { value: String(value) },
+    create: { key, value: String(value) },
+  });
+  revalidateTag(SETTINGS_CACHE_TAG);
 }

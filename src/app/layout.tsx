@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import { Toaster } from "react-hot-toast";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -49,10 +48,6 @@ export default async function RootLayout({
           <SiteHeader brand={brand} />
           <main className="flex-1">{children}</main>
           <SiteFooter brand={brand} />
-          <Toaster
-            position="top-right"
-            toastOptions={{ duration: 4000, className: "text-sm" }}
-          />
         </Providers>
         <SpeedInsights />
         <Analytics />

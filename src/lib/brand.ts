@@ -1,4 +1,7 @@
+import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "./db";
+
+const BRAND_CACHE_TAG = "site-brand";
 
 // Branding settings live in the same Setting table as everything else, keyed
 // by string. Stored as a single data URL (or external https URL). Reading is
@@ -20,30 +23,37 @@ export type SiteBrand = {
   tagline: string;            // defaults to "Pure Nature, Pure Wellness"
 };
 
-export async function getSiteBrand(): Promise<SiteBrand> {
-  try {
-    const rows = await prisma.setting.findMany({
-      where: { key: { in: [LOGO_KEY, SITE_NAME_KEY, SITE_TAGLINE_KEY] } },
-      select: { key: true, value: true },
-    });
-    const byKey = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-    const uploaded = byKey[LOGO_KEY] || "";
-    return {
-      logoUrl: uploaded || DEFAULT_LOGO_URL,
-      isCustomLogo: !!uploaded,
-      siteName: byKey[SITE_NAME_KEY] || "ACHT MART",
-      tagline: byKey[SITE_TAGLINE_KEY] || "Pure Nature, Pure Wellness",
-    };
-  } catch {
-    // DB not ready yet (e.g. migrations pending) — return safe defaults.
-    return {
-      logoUrl: DEFAULT_LOGO_URL,
-      isCustomLogo: false,
-      siteName: "ACHT MART",
-      tagline: "Pure Nature, Pure Wellness",
-    };
-  }
-}
+// Cached on the Vercel data layer for 5 minutes (or until the admin saves
+// branding, which calls revalidateTag below). Branding changes maybe once a
+// month; this turns 3 DB calls per page navigation into ~1 per 5 minutes.
+export const getSiteBrand = unstable_cache(
+  async (): Promise<SiteBrand> => {
+    try {
+      const rows = await prisma.setting.findMany({
+        where: { key: { in: [LOGO_KEY, SITE_NAME_KEY, SITE_TAGLINE_KEY] } },
+        select: { key: true, value: true },
+      });
+      const byKey = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+      const uploaded = byKey[LOGO_KEY] || "";
+      return {
+        logoUrl: uploaded || DEFAULT_LOGO_URL,
+        isCustomLogo: !!uploaded,
+        siteName: byKey[SITE_NAME_KEY] || "ACHT MART",
+        tagline: byKey[SITE_TAGLINE_KEY] || "Pure Nature, Pure Wellness",
+      };
+    } catch {
+      // DB not ready yet (e.g. migrations pending) — return safe defaults.
+      return {
+        logoUrl: DEFAULT_LOGO_URL,
+        isCustomLogo: false,
+        siteName: "ACHT MART",
+        tagline: "Pure Nature, Pure Wellness",
+      };
+    }
+  },
+  ["site-brand"],
+  { revalidate: 300, tags: [BRAND_CACHE_TAG] },
+);
 
 // Updates are nullable strings: null/"" clears the override and reverts to
 // defaults (DEFAULT_LOGO_URL for the logo). undefined means "don't touch".
@@ -71,4 +81,6 @@ export async function setSiteBrand(updates: SiteBrandUpdate): Promise<void> {
       });
     }
   }
+  // Bust the cached brand so admin changes show on the very next request.
+  revalidateTag(BRAND_CACHE_TAG);
 }
