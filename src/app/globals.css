@@ -10,8 +10,8 @@
   body {
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(1200px 500px at 100% -10%, rgba(13,148,136,0.06), transparent),
-      radial-gradient(900px 500px at -10% 0%, rgba(41,129,67,0.06), transparent);
+      radial-gradient(1200px 500px at 100% -10%, rgba(13,148,136,0.05), transparent),
+      radial-gradient(900px 500px at -10% 0%, rgba(41,129,67,0.05), transparent);
     background-attachment: fixed;
   }
   ::selection {
@@ -21,10 +21,11 @@
 
 @layer components {
   .container-page {
-    @apply container py-4 md:py-8 overflow-x-hidden;
+    @apply container py-6 md:py-10 overflow-x-hidden;
   }
+  /* Base white card with soft modern shadow + larger radius. */
   .card {
-    @apply bg-white border border-border rounded-xl shadow-card transition-shadow duration-200;
+    @apply bg-white border border-border/70 rounded-2xl shadow-soft transition-shadow duration-200;
   }
   /* Opt-in hover lift for clickable cards/tiles. */
   .card-interactive {
@@ -32,22 +33,31 @@
   }
   /* Gradient hero/feature card. */
   .card-brand {
-    @apply rounded-xl text-white shadow-brand bg-brand-gradient;
+    @apply rounded-3xl text-white shadow-brand bg-brand-gradient;
   }
+  /* Pastel surface cards — no border, just soft shade + tinted shadow.
+     Pair with a colored icon tile and dark heading for the Dribbble look. */
+  .surface-mint     { @apply bg-mint-50; }
+  .surface-butter   { @apply bg-butter-50; }
+  .surface-peach    { @apply bg-peach-50; }
+  .surface-lavender { @apply bg-lavender-50; }
+  .surface-seafoam  { @apply bg-seafoam-50; }
+  .surface-cream    { @apply bg-cream-50; }
+
   .input {
-    @apply w-full rounded-lg border border-input bg-white px-3 py-2.5 text-sm
+    @apply w-full rounded-xl border border-input bg-white px-4 py-3 text-sm
            outline-none transition placeholder:text-muted-foreground
            focus:border-brand-500 focus:ring-2 focus:ring-brand-200
            disabled:cursor-not-allowed disabled:opacity-60;
   }
   .label {
-    @apply block text-sm font-medium text-foreground mb-1;
+    @apply block text-sm font-medium text-foreground mb-1.5;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg text-sm
+    @apply inline-flex items-center justify-center gap-2 rounded-full text-sm
            font-semibold transition-all duration-150 focus-visible:outline-none
            focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-           disabled:pointer-events-none disabled:opacity-50 px-4 py-2.5
+           disabled:pointer-events-none disabled:opacity-50 px-5 py-2.5
            active:scale-[0.98];
   }
   .btn-primary {
@@ -65,6 +75,15 @@
   }
   .btn-ghost {
     @apply btn hover:bg-muted;
+  }
+  /* Small uppercase eyebrow label used above section headings.
+     Replaces the inline "tiny tag" pattern repeated throughout. */
+  .eyebrow {
+    @apply inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-700;
+  }
+  /* Soft pastel pill chip — perfect for "Sparkle • Tagline" labels in heros. */
+  .pill {
+    @apply inline-flex items-center gap-2 rounded-full bg-white/80 backdrop-blur border border-brand-100 px-3.5 py-1.5 text-xs font-semibold text-brand-800 shadow-soft;
   }
   .badge {
     @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ring-1 ring-inset;
@@ -87,8 +106,12 @@
   /* Subtle page background wash. */
   .bg-app {
     background:
-      radial-gradient(1200px 500px at 100% -10%, rgba(13,148,136,0.06), transparent),
-      radial-gradient(900px 500px at -10% 0%, rgba(41,129,67,0.06), transparent);
+      radial-gradient(1200px 500px at 100% -10%, rgba(13,148,136,0.05), transparent),
+      radial-gradient(900px 500px at -10% 0%, rgba(41,129,67,0.05), transparent);
+  }
+  /* Generous vertical rhythm for marketing pages. */
+  .section-y {
+    @apply py-16 md:py-24;
   }
 }
 

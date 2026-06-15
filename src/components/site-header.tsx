@@ -19,18 +19,18 @@ export function SiteHeader({ brand }: { brand: SiteBrand }) {
   const closeNav = () => setNavOpen(false);
 
   return (
-    <header className="border-b bg-white sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-white/90">
+    <header className="border-b border-border/60 bg-white/80 sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-white/75">
       <div className="container flex h-16 items-center justify-between gap-2 sm:gap-4">
         <Link href="/" className="flex items-center gap-2.5 group min-w-0">
           <AchtMartLogo size="md" imageUrl={brand.logoUrl} alt={`${brand.siteName} logo`} />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm">
-          <Link href="/products" className="hover:text-brand-700">Shop</Link>
-          <Link href="/affiliate" className="hover:text-brand-700">Affiliate</Link>
-          <Link href="/blog" className="hover:text-brand-700">Blog</Link>
-          <Link href="/about" className="hover:text-brand-700">About</Link>
-          <Link href="/contact" className="hover:text-brand-700">Contact</Link>
+        <nav className="hidden md:flex items-center gap-1 text-sm">
+          <Link href="/products"  className="px-3 py-1.5 rounded-full font-medium text-slate-700 hover:bg-mint-50 hover:text-brand-800 transition-colors">Shop</Link>
+          <Link href="/affiliate" className="px-3 py-1.5 rounded-full font-medium text-slate-700 hover:bg-mint-50 hover:text-brand-800 transition-colors">Affiliate</Link>
+          <Link href="/blog"      className="px-3 py-1.5 rounded-full font-medium text-slate-700 hover:bg-mint-50 hover:text-brand-800 transition-colors">Blog</Link>
+          <Link href="/about"     className="px-3 py-1.5 rounded-full font-medium text-slate-700 hover:bg-mint-50 hover:text-brand-800 transition-colors">About</Link>
+          <Link href="/contact"   className="px-3 py-1.5 rounded-full font-medium text-slate-700 hover:bg-mint-50 hover:text-brand-800 transition-colors">Contact</Link>
         </nav>
 
         <div className="flex items-center gap-1 sm:gap-2">
