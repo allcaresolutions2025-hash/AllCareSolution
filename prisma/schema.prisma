@@ -6,13 +6,14 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  // Runtime queries use DATABASE_URL (Neon pooler) for connection limits.
-  // Migrations and other interactive-transaction work use directUrl (Neon
-  // direct endpoint) because the pooler kills interactive transactions
-  // mid-flight, which made `prisma migrate deploy` hang during Vercel builds.
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // No directUrl — migrations run through the Neon pooler with
+  // PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 (set inline in package.json's
+  // build script). directUrl pointed at the non-pooler endpoint, which
+  // Neon idles aggressively, and Prisma v6's client opens a check against
+  // it at startup — breaking every dashboard page when the direct compute
+  // is asleep.
 }
 
 // ---------- USERS ----------
