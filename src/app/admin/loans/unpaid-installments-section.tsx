@@ -21,6 +21,7 @@ export type UnpaidInstallmentRow = {
   userEmail: string;
   userCode: string;
   userPhone: string | null;
+  userWhatsapp: string | null; // captured at loan apply time; preferred for the WhatsApp button
   userPan: string | null;
   tierLabel: string;
   totalUnpaid: number; // total paise this user still owes across all unpaid installments
@@ -132,9 +133,13 @@ function UnpaidRow({ row }: { row: UnpaidInstallmentRow }) {
     }
   }
 
+  // Prefer the WhatsApp number captured at loan-apply time; fall back to
+  // the registered phone for older borrowers who applied before that field
+  // existed.
+  const waContact = row.userWhatsapp || row.userPhone;
   function whatsappLink(): string | null {
-    if (!row.userPhone) return null;
-    const digits = row.userPhone.replace(/[^\d]/g, "");
+    if (!waContact) return null;
+    const digits = waContact.replace(/[^\d]/g, "");
     if (!digits) return null;
     // Default to India country code if user entered a 10-digit number.
     const phone = digits.length === 10 ? `91${digits}` : digits;
@@ -150,7 +155,7 @@ function UnpaidRow({ row }: { row: UnpaidInstallmentRow }) {
   async function sendWhatsapp() {
     const link = whatsappLink();
     if (!link) {
-      toast.error("No phone on file for this member");
+      toast.error("No WhatsApp / phone on file for this member");
       return;
     }
     window.open(link, "_blank", "noopener,noreferrer");
@@ -190,6 +195,12 @@ function UnpaidRow({ row }: { row: UnpaidInstallmentRow }) {
             <Phone className="h-3 w-3" /> {row.userPhone}
           </a>
         )}
+        {row.userWhatsapp && row.userWhatsapp !== row.userPhone && (
+          <div className="inline-flex items-center gap-1 text-xs text-emerald-700 mt-0.5">
+            <MessageCircle className="h-3 w-3" /> {row.userWhatsapp}
+            <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-emerald-100 text-emerald-700 uppercase tracking-wider">WA</span>
+          </div>
+        )}
       </td>
       <td className="px-4 py-2 text-xs">
         <div>{row.tierLabel}</div>
@@ -223,11 +234,18 @@ function UnpaidRow({ row }: { row: UnpaidInstallmentRow }) {
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={sendWhatsapp}
-              disabled={busy || !row.userPhone}
-              title={row.userPhone ? "Open WhatsApp with a prefilled reminder" : "No phone number on file"}
+              disabled={busy || !waContact}
+              title={
+                waContact
+                  ? `Open WhatsApp with a prefilled reminder (${row.userWhatsapp ? "uses captured WhatsApp number" : "falls back to registered phone — may not be on WhatsApp"})`
+                  : "No phone / WhatsApp number on file"
+              }
               className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+              {!row.userWhatsapp && waContact && (
+                <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-amber-300 text-amber-900 uppercase tracking-wider ml-0.5" title="WhatsApp number not confirmed by borrower; using registered phone">?</span>
+              )}
             </button>
             <button
               onClick={recordReminder}

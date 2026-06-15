@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const [me, directLeftSlots, directRightSlots, openLoan, closedLoans, panConflict] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.user.id },
-        select: { leftLegCount: true, rightLegCount: true },
+        select: { leftLegCount: true, rightLegCount: true, phone: true, whatsappNumber: true },
       }),
       prisma.user.count({ where: { referrerId: auth.user.id, slot: "LEFT" } }),
       prisma.user.count({ where: { referrerId: auth.user.id, slot: "RIGHT" } }),
@@ -48,6 +48,9 @@ export async function GET(req: Request) {
       pauseUntil: paused ? LOAN_PAUSE_UNTIL.toISOString() : null,
       panBlocked,
       panBlockMessage: panBlocked ? PAN_CONFLICT_MESSAGE : null,
+      // For prefilling the WhatsApp input on the apply form.
+      registeredPhone: me?.phone ?? null,
+      savedWhatsappNumber: me?.whatsappNumber ?? null,
       nextClaimableTierKey: nextTier?.key ?? null,
       tiers: LOAN_TIERS.map((t) => {
         const completed = tierIsCompleted(t, ctx);

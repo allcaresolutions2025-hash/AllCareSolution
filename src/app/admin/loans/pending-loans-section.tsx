@@ -13,6 +13,7 @@ export type PendingLoanRow = {
   userEmail: string;
   userCode: string;
   userPhone: string | null;
+  userWhatsapp: string | null; // captured at loan apply; preferred for the WhatsApp button
   userPan: string | null;
   tierLabel: string;
   amount: number;
@@ -116,9 +117,13 @@ function PendingLoanTr({ row }: { row: PendingLoanRow }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
+  // Prefer the WhatsApp number captured at loan-apply time; fall back to
+  // the registered phone for older borrowers who applied before that field
+  // existed.
+  const waContact = row.userWhatsapp || row.userPhone;
   function whatsappLink(): string | null {
-    if (!row.userPhone) return null;
-    const digits = row.userPhone.replace(/[^\d]/g, "");
+    if (!waContact) return null;
+    const digits = waContact.replace(/[^\d]/g, "");
     if (!digits) return null;
     const phone = digits.length === 10 ? `91${digits}` : digits;
     const msg =
@@ -225,13 +230,17 @@ function PendingLoanTr({ row }: { row: PendingLoanRow }) {
               href={whatsappLink()!}
               target="_blank"
               rel="noopener noreferrer"
+              title={row.userWhatsapp ? `WhatsApp (confirmed): ${row.userWhatsapp}` : `WhatsApp (falling back to registered phone): ${row.userPhone}`}
               className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md bg-[#25D366] text-white hover:bg-[#1ebe5d]"
             >
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+              {!row.userWhatsapp && (
+                <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-amber-300 text-amber-900 uppercase tracking-wider ml-0.5" title="Not confirmed by borrower">?</span>
+              )}
             </a>
           ) : (
             <span
-              title="No phone number on file"
+              title="No phone / WhatsApp number on file"
               className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md bg-slate-100 text-slate-400 cursor-not-allowed"
             >
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp

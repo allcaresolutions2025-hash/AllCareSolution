@@ -40,7 +40,7 @@ export default async function AdminLoansPage() {
       include: {
         user: {
           select: {
-            name: true, email: true, referralCode: true, phone: true, panNumber: true,
+            name: true, email: true, referralCode: true, phone: true, whatsappNumber: true, panNumber: true,
             leftLegCount: true, rightLegCount: true,
           },
         },
@@ -101,7 +101,7 @@ export default async function AdminLoansPage() {
             id: true,
             tierKey: true,
             amount: true,
-            user: { select: { id: true, name: true, email: true, referralCode: true, phone: true, panNumber: true } },
+            user: { select: { id: true, name: true, email: true, referralCode: true, phone: true, whatsappNumber: true, panNumber: true } },
           },
         },
       },
@@ -122,7 +122,7 @@ export default async function AdminLoansPage() {
             id: true,
             tierKey: true,
             amount: true,
-            user: { select: { id: true, name: true, email: true, referralCode: true, phone: true, panNumber: true } },
+            user: { select: { id: true, name: true, email: true, referralCode: true, phone: true, whatsappNumber: true, panNumber: true } },
           },
         },
       },
@@ -192,6 +192,7 @@ export default async function AdminLoansPage() {
       userEmail: l.user.email,
       userCode: l.user.referralCode,
       userPhone: l.user.phone,
+      userWhatsapp: l.user.whatsappNumber,
       userPan: l.user.panNumber,
       tierLabel: tierByKey(l.tierKey)?.label ?? l.tierKey,
       amount: l.amount,
@@ -245,6 +246,7 @@ export default async function AdminLoansPage() {
       userEmail: i.loan.user.email,
       userCode: i.loan.user.referralCode,
       userPhone: i.loan.user.phone,
+      userWhatsapp: i.loan.user.whatsappNumber,
       userPan: i.loan.user.panNumber,
       tierLabel: tierByKey(i.loan.tierKey)?.label ?? i.loan.tierKey,
       totalUnpaid: totalsByUser.get(i.loan.user.id) ?? 0,

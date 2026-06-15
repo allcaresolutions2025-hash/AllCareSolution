@@ -15,7 +15,7 @@ export default async function AchievedOffersPage() {
   const [me, directLeftSlots, directRightSlots, activeLoan, closedLoans, panConflict] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { leftLegCount: true, rightLegCount: true },
+      select: { leftLegCount: true, rightLegCount: true, phone: true, whatsappNumber: true },
     }),
     prisma.user.count({ where: { referrerId: session.user.id, slot: "LEFT" } }),
     prisma.user.count({ where: { referrerId: session.user.id, slot: "RIGHT" } }),
@@ -131,7 +131,12 @@ export default async function AchievedOffersPage() {
               PAN already in use
             </button>
           ) : claimable ? (
-            <ApplyLoanButton tierKey={claimable.key} amountLabel={formatRupees(claimable.amount)} />
+            <ApplyLoanButton
+              tierKey={claimable.key}
+              amountLabel={formatRupees(claimable.amount)}
+              registeredPhone={me?.phone ?? null}
+              savedWhatsappNumber={me?.whatsappNumber ?? null}
+            />
           ) : (
             <button
               disabled

@@ -7,6 +7,7 @@ import { tierByKey, tierIsEligible, nextClaimableTier, formatRupees, LOAN_TIERS,
 
 const bodySchema = z.object({
   tierKey: z.enum(LOAN_TIERS.map((t) => t.key) as [string, ...string[]]),
+  whatsappNumber: z.string().regex(/^[6-9][0-9]{9}$/, "Enter a valid 10-digit WhatsApp number"),
 });
 
 export async function POST(req: Request) {
@@ -87,14 +88,20 @@ export async function POST(req: Request) {
     );
   }
 
-  const loan = await prisma.loan.create({
-    data: {
-      userId: session.user.id,
-      tierKey: tier.key,
-      amount: tier.amount,
-      totalWeeks: tier.totalWeeks,
-      status: "REQUESTED",
-    },
+  const loan = await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: session.user.id },
+      data: { whatsappNumber: parsed.data.whatsappNumber },
+    });
+    return tx.loan.create({
+      data: {
+        userId: session.user.id,
+        tierKey: tier.key,
+        amount: tier.amount,
+        totalWeeks: tier.totalWeeks,
+        status: "REQUESTED",
+      },
+    });
   });
 
   return NextResponse.json({ ok: true, id: loan.id });
