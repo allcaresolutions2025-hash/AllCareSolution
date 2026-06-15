@@ -16,6 +16,11 @@ const bodySchema = z.object({
     .regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Invalid PAN format")
     .nullable()
     .optional(),
+  whatsappNumber: z
+    .string()
+    .regex(/^[6-9][0-9]{9}$/, "Enter a valid 10-digit WhatsApp number")
+    .nullable()
+    .optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -26,7 +31,7 @@ export async function PATCH(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { email, nominee, gender, address, panNumber } = parsed.data;
+  const { email, nominee, gender, address, panNumber, whatsappNumber } = parsed.data;
 
   const current = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -52,7 +57,7 @@ export async function PATCH(req: Request) {
 
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { email, nominee, gender, address, panNumber },
+    data: { email, nominee, gender, address, panNumber, whatsappNumber },
   });
   return NextResponse.json({ ok: true });
 }

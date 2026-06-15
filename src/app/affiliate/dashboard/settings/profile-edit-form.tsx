@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { UserCog } from "lucide-react";
+import { UserCog, MessageCircle } from "lucide-react";
 
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const WA_REGEX = /^[6-9][0-9]{9}$/;
 
 type Initial = {
   email: string;
   name: string;
   phone: string | null;
+  whatsappNumber: string | null;
   nominee: string | null;
   gender: "MALE" | "FEMALE" | null;
   address: string | null;
@@ -28,12 +30,17 @@ export function ProfileEditForm({ initial }: { initial: Initial }) {
   const [gender, setGender] = useState<"MALE" | "FEMALE" | "">(initial.gender ?? "");
   const [address, setAddress] = useState(initial.address ?? "");
   const [pan, setPan] = useState(initial.panNumber ?? "");
+  const [whatsapp, setWhatsapp] = useState(initial.whatsappNumber ?? "");
   const [loading, setLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (pan && !PAN_REGEX.test(pan)) {
       toast.error("Invalid PAN format. Must be 5 letters + 4 digits + 1 letter.");
+      return;
+    }
+    if (whatsapp && !WA_REGEX.test(whatsapp)) {
+      toast.error("Enter a valid 10-digit WhatsApp number");
       return;
     }
     setLoading(true);
@@ -46,6 +53,7 @@ export function ProfileEditForm({ initial }: { initial: Initial }) {
         gender: gender || null,
         address: address.trim() || null,
         panNumber: pan.trim() || null,
+        whatsappNumber: whatsapp.trim() || null,
       }),
     });
     const data = await res.json();
@@ -71,13 +79,41 @@ export function ProfileEditForm({ initial }: { initial: Initial }) {
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
+          <label className="label flex items-center gap-1.5">
+            <MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> WhatsApp number
+          </label>
+          <input
+            type="tel"
+            inputMode="numeric"
+            pattern="[6-9][0-9]{9}"
+            maxLength={10}
+            className={`input font-mono ${whatsapp.length > 0 && !WA_REGEX.test(whatsapp) ? "border-red-400 focus:border-red-500" : ""}`}
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ""))}
+            placeholder="10-digit WhatsApp number"
+          />
+          {initial.phone && initial.phone !== whatsapp && (
+            <button
+              type="button"
+              onClick={() => setWhatsapp(initial.phone!.replace(/\D/g, "").slice(-10))}
+              className="mt-1.5 text-xs text-brand-700 hover:text-brand-900 font-medium"
+            >
+              Same as registered mobile ({initial.phone}) →
+            </button>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            Used for loan repayment reminders. Leave blank to use your registered mobile.
+          </p>
+        </div>
+        <div>
           <label className="label">Email</label>
           <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
-        <div>
-          <label className="label">Nominee</label>
-          <input className="input" value={nominee} onChange={(e) => setNominee(e.target.value)} placeholder="Nominee full name" />
-        </div>
+      </div>
+
+      <div>
+        <label className="label">Nominee</label>
+        <input className="input" value={nominee} onChange={(e) => setNominee(e.target.value)} placeholder="Nominee full name" />
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
