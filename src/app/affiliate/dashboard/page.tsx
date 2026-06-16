@@ -93,7 +93,7 @@ export default async function AffiliateDashboardPage() {
   return (
     <div className="space-y-6">
       {me.mustChangePassword && (
-        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 flex items-center gap-3">
+        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 flex flex-wrap items-start gap-3">
           <div className="h-10 w-10 rounded-lg bg-amber-100 text-amber-700 grid place-items-center shrink-0">
             <KeyRound className="h-5 w-5" />
           </div>
@@ -105,7 +105,7 @@ export default async function AffiliateDashboardPage() {
           </div>
           <Link
             href="/affiliate/dashboard/settings#change-password"
-            className="btn-primary shrink-0"
+            className="btn-primary shrink-0 text-xs px-3"
           >
             Change password
           </Link>
@@ -113,7 +113,7 @@ export default async function AffiliateDashboardPage() {
       )}
 
       {me.mustChangeTransactionPassword && (
-        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 flex items-center gap-3">
+        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 flex flex-wrap items-start gap-3">
           <div className="h-10 w-10 rounded-lg bg-amber-100 text-amber-700 grid place-items-center shrink-0">
             <KeyRound className="h-5 w-5" />
           </div>
@@ -125,7 +125,7 @@ export default async function AffiliateDashboardPage() {
           </div>
           <Link
             href="/affiliate/dashboard/settings#transaction-password"
-            className="btn-primary shrink-0"
+            className="btn-primary shrink-0 text-xs px-3"
           >
             Update now
           </Link>
@@ -358,11 +358,12 @@ function IncomeRow({
     orange: "bg-orange-50 text-orange-700 border-orange-200",
   };
   return (
-    <div className={`flex items-center justify-between gap-2 rounded-xl border px-4 py-3 ${map[tone]}`}>
-      <div className="flex items-center gap-2 text-base font-semibold">
-        {icon} {label}
+    <div className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 ${map[tone]}`}>
+      <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
+        <span className="shrink-0">{icon}</span>
+        <span className="truncate">{label}</span>
       </div>
-      <div className="text-base font-bold tabular-nums">{value}</div>
+      <div className="text-sm font-bold tabular-nums shrink-0 ml-1">{value}</div>
     </div>
   );
 }

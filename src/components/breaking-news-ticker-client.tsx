@@ -42,7 +42,7 @@ export function BreakingNewsTickerClient({
       {/* Scrolling text — click to open news */}
       <Link
         href="/affiliate/dashboard/news"
-        className="flex-1 overflow-hidden h-full flex items-center hover:underline focus:outline-none focus:ring-2 focus:ring-white/40"
+        className="flex-1 min-w-0 overflow-hidden h-full flex items-center hover:underline focus:outline-none focus:ring-2 focus:ring-white/40"
         aria-label="Read latest news"
       >
         <div className="ticker-track whitespace-nowrap will-change-transform">

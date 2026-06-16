@@ -149,7 +149,7 @@ export function DashboardShell({
       </div>
 
       {/* Content */}
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 overflow-x-hidden">{children}</div>
     </div>
   );
 }
