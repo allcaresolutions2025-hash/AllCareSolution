@@ -135,9 +135,9 @@ export default async function AffiliateDashboardPage() {
       <h1 className="text-2xl font-bold">Dashboard</h1>
 
       {/* Top: Profile / Earnings / Business Volume */}
-      <div className="grid lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Profile card */}
-        <div className="card p-5">
+        <div className="card p-5 min-w-0">
           <div className="flex flex-col items-center text-center">
             <div className="relative">
               <div className="h-20 w-20 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 grid place-items-center text-2xl font-bold text-brand-800">
@@ -177,7 +177,7 @@ export default async function AffiliateDashboardPage() {
         </div>
 
         {/* Earnings doughnut */}
-        <div className="card p-5">
+        <div className="card p-5 min-w-0">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-lg text-brand-700">My Earnings</h2>
             <span className="text-xl font-bold tabular-nums text-brand-700">
@@ -210,7 +210,7 @@ export default async function AffiliateDashboardPage() {
         </div>
 
         {/* Business Volume */}
-        <div className="card p-5">
+        <div className="card p-5 min-w-0">
           <h2 className="font-semibold">Business Volume (BV)</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <BvCell label="Team L BV" value={teamLCount} />
@@ -424,8 +424,8 @@ function TeamCounter({
     blue: { iconBg: "bg-blue-100 text-blue-700", value: "text-blue-700" },
   }[color];
   return (
-    <div className="card p-3 sm:p-5 flex flex-col items-center text-center gap-1 sm:flex-row sm:items-center sm:text-left sm:justify-between sm:gap-3">
-      <div>
+    <div className="card p-3 sm:p-5 min-w-0 flex flex-col items-center text-center gap-1 sm:flex-row sm:items-center sm:text-left sm:justify-between sm:gap-3">
+      <div className="min-w-0">
         <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider font-semibold leading-tight">{label}</div>
         <div className={`text-3xl sm:text-4xl font-bold tabular-nums ${tone.value}`}>{value}</div>
       </div>
