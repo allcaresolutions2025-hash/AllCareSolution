@@ -33,12 +33,17 @@ export const revalidate = 60;
 // Cache the featured-products query on Vercel's data layer so warm renders
 // skip the DB entirely. Revalidates with the page above.
 const getFeaturedProducts = unstable_cache(
-  async () =>
-    prisma.product.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-      take: 8,
-    }),
+  async () => {
+    try {
+      return await prisma.product.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        take: 8,
+      });
+    } catch {
+      return [];
+    }
+  },
   ["homepage-featured-products"],
   { revalidate: 60, tags: ["products"] },
 );
