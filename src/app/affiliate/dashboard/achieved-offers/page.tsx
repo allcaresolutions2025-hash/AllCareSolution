@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock, Wrench, ShieldAlert } from "lucide-react";
 import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, type EligibilityContext } from "@/lib/loan";
+import { getLegFillDepths } from "@/lib/network";
 import { ApplyLoanButton } from "./apply-loan-button";
 
 export const dynamic = "force-dynamic";
@@ -12,13 +13,14 @@ export default async function AchievedOffersPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [me, directLeftSlots, directRightSlots, activeLoan, closedLoans, panConflict] = await Promise.all([
+  const [me, directLeftSlots, directRightSlots, fillDepths, activeLoan, closedLoans, panConflict] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { leftLegCount: true, rightLegCount: true, phone: true, whatsappNumber: true },
     }),
     prisma.user.count({ where: { referrerId: session.user.id, slot: "LEFT" } }),
     prisma.user.count({ where: { referrerId: session.user.id, slot: "RIGHT" } }),
+    getLegFillDepths(session.user.id),
     prisma.loan.findFirst({
       where: {
         userId: session.user.id,
@@ -40,6 +42,8 @@ export default async function AchievedOffersPage() {
     rightLegCount: me?.rightLegCount ?? 0,
     directLeftSlots,
     directRightSlots,
+    leftFillDepth: fillDepths.leftFillDepth,
+    rightFillDepth: fillDepths.rightFillDepth,
     completedTierKeys: closedLoans.map((l) => l.tierKey),
   };
 
@@ -88,9 +92,9 @@ export default async function AchievedOffersPage() {
           <div>
             <div className="font-semibold">Loan Eligibility</div>
             <div className="text-sm text-muted-foreground">
-              Left leg: <span className="font-mono tabular-nums">{ctx.leftLegCount}</span> ·
-              {" "}Right leg: <span className="font-mono tabular-nums">{ctx.rightLegCount}</span> ·
-              {" "}Direct L/R slots: <span className="font-mono">{ctx.directLeftSlots}/{ctx.directRightSlots}</span>
+              Filled level — Left: <span className="font-mono tabular-nums">{ctx.leftFillDepth ?? 0}</span> ·
+              {" "}Right: <span className="font-mono tabular-nums">{ctx.rightFillDepth ?? 0}</span>
+              {" "}<span className="text-xs">(both legs must be completely filled to a level — no empty slots)</span>
             </div>
             {claimable ? (
               <div className="mt-1 text-sm">
@@ -98,7 +102,7 @@ export default async function AchievedOffersPage() {
               </div>
             ) : (
               <div className="mt-1 text-sm text-muted-foreground">
-                Reach a tier&apos;s threshold on <strong>both</strong> Left and Right legs to unlock a loan offer.
+                Fill <strong>both</strong> Left and Right legs completely — every slot up to a level occupied — to unlock that level&apos;s loan offer.
               </div>
             )}
           </div>
@@ -154,8 +158,9 @@ export default async function AchievedOffersPage() {
         <div className="p-5 border-b">
           <h2 className="font-semibold">Loan Tiers</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            You qualify for a tier when your Left and Right legs <strong>both</strong> reach its member count.
-            You can take the highest tier you qualify for that you haven&apos;t already claimed.
+            You qualify for a tier when your Left and Right legs are <strong>both completely filled</strong> to
+            that tier&apos;s level — every slot occupied, no gaps. A deep but lopsided leg with an empty slot
+            does not count. You can take the highest tier you qualify for that you haven&apos;t already claimed.
             Loans are offered at Levels 1, 3, 5, 7, 9, 10, 11, 12, 13, 14 and 15.
           </p>
         </div>

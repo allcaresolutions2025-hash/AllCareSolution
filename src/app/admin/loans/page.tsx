@@ -6,6 +6,7 @@ import { PendingLoansSection, type PendingLoanRow } from "./pending-loans-sectio
 import { UnpaidInstallmentsSection, type UnpaidInstallmentRow } from "./unpaid-installments-section";
 import { RecentLoansSection } from "./recent-loans-section";
 import { PaidTodayRow } from "./paid-today-row";
+import { EligibilityAuditCard } from "./eligibility-audit-card";
 import { istDateString } from "@/lib/daily-payout";
 
 export const dynamic = "force-dynamic";
@@ -265,6 +266,9 @@ export default async function AdminLoansPage() {
           Review loan requests, disburse funds offline, and verify weekly receipts.
         </p>
       </div>
+
+      {/* Requests that no longer qualify under the completely-filled-tree rule */}
+      <EligibilityAuditCard />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Kpi icon={<Clock className="h-5 w-5" />} label="Pending loan requests" value={pendingLoans.length} tone="amber" />

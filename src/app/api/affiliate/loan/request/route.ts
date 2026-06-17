@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { tierByKey, tierIsEligible, nextClaimableTier, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE } from "@/lib/loan";
+import { getLegFillDepths } from "@/lib/network";
 
 const bodySchema = z.object({
   tierKey: z.enum(LOAN_TIERS.map((t) => t.key) as [string, ...string[]]),
@@ -28,13 +29,14 @@ export async function POST(req: Request) {
 
   // Re-verify eligibility server-side so a malicious client can't request a
   // tier they don't actually qualify for.
-  const [me, directLeftSlots, directRightSlots, openLoan, closedLoans] = await Promise.all([
+  const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { leftLegCount: true, rightLegCount: true },
     }),
     prisma.user.count({ where: { referrerId: session.user.id, slot: "LEFT" } }),
     prisma.user.count({ where: { referrerId: session.user.id, slot: "RIGHT" } }),
+    getLegFillDepths(session.user.id),
     prisma.loan.findFirst({
       where: { userId: session.user.id, status: { in: ["REQUESTED", "APPROVED"] } },
       select: { id: true, status: true },
@@ -71,6 +73,8 @@ export async function POST(req: Request) {
     rightLegCount: me?.rightLegCount ?? 0,
     directLeftSlots,
     directRightSlots,
+    leftFillDepth: fillDepths.leftFillDepth,
+    rightFillDepth: fillDepths.rightFillDepth,
     completedTierKeys,
   };
   if (!tierIsEligible(tier, ctx)) {

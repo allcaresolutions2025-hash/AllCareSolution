@@ -139,6 +139,65 @@ export function groupByLevel(nodes: DownlineNode[]): Map<number, DownlineNode[]>
   return map;
 }
 
+/**
+ * Compute each leg's *fill depth* — the deepest level to which the binary tree
+ * under `rootUserId` is a perfectly filled (gap-free) binary tree on that side.
+ *
+ * A leg's direct slot under root is level 1. The leg is "filled to level N" only
+ * when every node in levels 1..N-1 has BOTH its LEFT and RIGHT children present.
+ * The classic recurrence `fill(node) = 1 + min(fill(left), fill(right))` yields
+ * exactly this: a missing child contributes 0, capping the depth at the first
+ * gap. An empty direct slot therefore yields fill depth 0 for that leg.
+ *
+ * Used for loan eligibility (see lib/loan.ts). Depth is capped at `maxDepth`
+ * since no loan tier needs more than level 15, keeping the query small.
+ */
+export async function getLegFillDepths(
+  rootUserId: string,
+  maxDepth = 16,
+): Promise<{ leftFillDepth: number; rightFillDepth: number }> {
+  const rows = await prisma.$queryRaw<
+    { id: string; referrerId: string | null; slot: "LEFT" | "RIGHT" | null }[]
+  >`
+    WITH RECURSIVE downline AS (
+      SELECT id, "referrerId", slot, 1 AS depth
+      FROM "User"
+      WHERE "referrerId" = ${rootUserId}
+      UNION ALL
+      SELECT u.id, u."referrerId", u.slot, d.depth + 1
+      FROM "User" u
+      JOIN downline d ON u."referrerId" = d.id
+      WHERE d.depth < ${maxDepth}
+    )
+    SELECT id, "referrerId", slot FROM downline
+  `;
+
+  // parentId -> { LEFT?: childId, RIGHT?: childId }
+  const childByParent = new Map<string, { LEFT?: string; RIGHT?: string }>();
+  let leftRoot: string | undefined;
+  let rightRoot: string | undefined;
+  for (const r of rows) {
+    if (r.referrerId === rootUserId) {
+      if (r.slot === "LEFT") leftRoot = r.id;
+      else if (r.slot === "RIGHT") rightRoot = r.id;
+    }
+    if (r.referrerId) {
+      const entry = childByParent.get(r.referrerId) ?? {};
+      if (r.slot === "LEFT") entry.LEFT = r.id;
+      else if (r.slot === "RIGHT") entry.RIGHT = r.id;
+      childByParent.set(r.referrerId, entry);
+    }
+  }
+
+  const fill = (nodeId: string | undefined): number => {
+    if (!nodeId) return 0;
+    const c = childByParent.get(nodeId);
+    return 1 + Math.min(fill(c?.LEFT), fill(c?.RIGHT));
+  };
+
+  return { leftFillDepth: fill(leftRoot), rightFillDepth: fill(rightRoot) };
+}
+
 /** Convenience: tree + enriched stats + level summary, one call. */
 export async function getNetworkSnapshot(rootUserId: string, maxDepth = MAX_DOWNLINE_DEPTH) {
   const raw = await getDownline(rootUserId, maxDepth);

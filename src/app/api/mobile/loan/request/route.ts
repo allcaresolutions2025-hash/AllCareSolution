@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
 import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE } from "@/lib/loan";
+import { getLegFillDepths } from "@/lib/network";
 
 export const dynamic = "force-dynamic";
 
@@ -28,13 +29,14 @@ export async function POST(req: Request) {
     const tier = tierByKey(parsed.data.tierKey);
     if (!tier) return NextResponse.json({ error: "Unknown tier" }, { status: 400 });
 
-    const [me, directLeftSlots, directRightSlots, openLoan, closedLoans] = await Promise.all([
+    const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.user.id },
         select: { leftLegCount: true, rightLegCount: true },
       }),
       prisma.user.count({ where: { referrerId: auth.user.id, slot: "LEFT" } }),
       prisma.user.count({ where: { referrerId: auth.user.id, slot: "RIGHT" } }),
+      getLegFillDepths(auth.user.id),
       prisma.loan.findFirst({
         where: { userId: auth.user.id, status: { in: ["REQUESTED", "APPROVED"] } },
         select: { id: true, status: true },
@@ -71,6 +73,8 @@ export async function POST(req: Request) {
       rightLegCount: me?.rightLegCount ?? 0,
       directLeftSlots,
       directRightSlots,
+      leftFillDepth: fillDepths.leftFillDepth,
+      rightFillDepth: fillDepths.rightFillDepth,
       completedTierKeys,
     };
     if (!tierIsEligible(tier, ctx)) {

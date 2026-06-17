@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
 import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, loansPaused, LOAN_PAUSE_MESSAGE, LOAN_PAUSE_UNTIL, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE } from "@/lib/loan";
+import { getLegFillDepths } from "@/lib/network";
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +11,14 @@ export async function GET(req: Request) {
     const auth = await authMobile(req);
     if ("response" in auth) return auth.response;
 
-    const [me, directLeftSlots, directRightSlots, openLoan, closedLoans, panConflict] = await Promise.all([
+    const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans, panConflict] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.user.id },
         select: { leftLegCount: true, rightLegCount: true, phone: true, whatsappNumber: true },
       }),
       prisma.user.count({ where: { referrerId: auth.user.id, slot: "LEFT" } }),
       prisma.user.count({ where: { referrerId: auth.user.id, slot: "RIGHT" } }),
+      getLegFillDepths(auth.user.id),
       prisma.loan.findFirst({
         where: { userId: auth.user.id, status: { in: ["REQUESTED", "APPROVED"] } },
         select: { id: true, status: true },
@@ -35,6 +37,8 @@ export async function GET(req: Request) {
       rightLegCount: me?.rightLegCount ?? 0,
       directLeftSlots,
       directRightSlots,
+      leftFillDepth: fillDepths.leftFillDepth,
+      rightFillDepth: fillDepths.rightFillDepth,
       completedTierKeys,
     };
 

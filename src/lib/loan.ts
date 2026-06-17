@@ -3,15 +3,21 @@
 // the codebase (1 INR = 100 paise).
 //
 // Each tier corresponds to a binary-tree level. A user reaches level N when the
-// tree under them has grown to that level's threshold on BOTH sides — i.e.
-// leftLegCount AND rightLegCount are each >= 2^N - 1. Eligibility uses
-// threshold matching (>=) rather than exact pairs because real networks blow
-// past the exact count between referrals (e.g. a user goes 6/7 -> 8/9 with one
-// signup) and would otherwise miss the qualifying window forever.
-// `highestEligibleTier` picks the largest tier the user crosses on both legs.
+// binary tree under them is COMPLETELY FILLED to depth N on BOTH legs — every
+// slot in levels 1..N is occupied, no gaps. A perfect tree of depth N holds
+// 2^N - 1 members, which is why the tier labels read "7 on Left & 7 on Right"
+// (level 3), "31 & 31" (level 5), and so on.
+//
+// Eligibility is measured by each leg's *fill depth* (leftFillDepth /
+// rightFillDepth) — the deepest level to which that leg is a perfect binary
+// tree with no empty slots — NOT by raw leg head-counts. This matters: a deep
+// but lopsided leg (e.g. one child with a long tail, the sibling slot empty)
+// can blow past a raw count threshold while still having a hole near the top.
+// Such a member is NOT eligible until both immediate sides are actually filled.
+// `highestEligibleTier` picks the largest tier whose level both legs fill.
 // Only certain levels grant loans: 1, 3, 5, 7, 9, 10, 11, 12, 13, 14, 15.
 // Level 1 is special-cased to direct slots (1 direct on Left + 1 on Right),
-// which is equivalent to leftLegCount=rightLegCount=1.
+// which is equivalent to leftFillDepth=rightFillDepth>=1.
 
 export type LoanTier = {
   key: string;
@@ -58,6 +64,13 @@ export type EligibilityContext = {
   rightLegCount: number;
   directLeftSlots: number;   // count of direct children with slot=LEFT
   directRightSlots: number;  // count of direct children with slot=RIGHT
+  // Deepest level to which each leg is a *perfectly filled* binary tree (no
+  // empty slots in levels 1..N). This — not the raw leg counts above — decides
+  // legCount-tier eligibility. See getLegFillDepths in lib/network.ts.
+  // Optional for back-compat; when omitted, falls back to the leg-count
+  // threshold (legacy behaviour).
+  leftFillDepth?: number;
+  rightFillDepth?: number;
   // Tier keys the user has already taken & repaid (LoanStatus.CLOSED). Each
   // tier can be claimed only once per user — once closed it is permanently
   // locked, regardless of whether the user still meets the leg requirements.
@@ -73,7 +86,15 @@ export function tierIsEligible(tier: LoanTier, ctx: EligibilityContext): boolean
   if (tier.kind === "directs") {
     return ctx.directLeftSlots >= 1 && ctx.directRightSlots >= 1;
   }
-  // legCount tiers — threshold match on both legs.
+  // legCount tiers require the binary tree to be COMPLETELY filled to this
+  // tier's level on both legs — i.e. each leg's fill depth reaches the level.
+  // A perfect tree of depth `level` holds `legCount` members, so this is the
+  // structural equivalent of the old "leg count >= legCount" rule but without
+  // the hole-tolerating loophole.
+  if (ctx.leftFillDepth !== undefined && ctx.rightFillDepth !== undefined) {
+    return ctx.leftFillDepth >= tier.level && ctx.rightFillDepth >= tier.level;
+  }
+  // Legacy fallback when fill depths weren't supplied (head-count threshold).
   return ctx.leftLegCount >= (tier.legCount ?? 0) && ctx.rightLegCount >= (tier.legCount ?? 0);
 }
 
