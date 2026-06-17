@@ -324,7 +324,7 @@ export function BinaryTreeGraph({
   people,
   allowNodeClick = true,
   embedded = false,
-  maxVisibleDepth = 2,
+  maxVisibleDepth = 3,
   drilldownHrefBuilder,
 }: {
   people: TreePerson[];
@@ -334,9 +334,9 @@ export function BinaryTreeGraph({
   // scroll/zoom container — the inner wrapper would otherwise cap the SVG
   // width and block panning to the right edge of the tree.
   embedded?: boolean;
-  // How many generations below the root to show in one view. Default 2 keeps
-  // the layout legible (root + children + grandchildren) — to see further the
-  // user clicks a grandchild and re-roots the tree there.
+  // How many generations below the root to show in one view. Default 3 shows
+  // root + 3 levels (children, grandchildren, great-grandchildren) — to see
+  // further the user clicks a boundary node and re-roots the tree there.
   maxVisibleDepth?: number;
   // Builds the URL used when the user clicks a depth-cutoff node to drill in.
   // When provided, the boundary node becomes clickable even if
