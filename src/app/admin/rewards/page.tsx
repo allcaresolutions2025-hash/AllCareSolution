@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { RewardRow } from "./reward-row";
 import { Trophy } from "lucide-react";
 import { Pagination } from "@/components/pagination";
+import { ResetPendingRewardsCard } from "./reset-pending-card";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Reward Claims" };
@@ -58,6 +59,9 @@ export default async function AdminRewardsPage({
           </span>
         )}
       </div>
+
+      {/* One-time cleanup: clear pending claims so members re-request under the new rule */}
+      <ResetPendingRewardsCard />
 
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
