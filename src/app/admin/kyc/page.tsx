@@ -1,32 +1,44 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { KycRow } from "./kyc-row";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminKycPage() {
-  const submissions = await prisma.kycDetail.findMany({
-    where: { status: { in: ["PENDING", "APPROVED", "REJECTED"] } },
-    orderBy: [{ status: "asc" }, { submittedAt: "desc" }],
-    include: {
-      user: {
-        select: {
-          name: true,
-          email: true,
-          phone: true,
-          bankAccountName: true,
-          bankAccountNumber: true,
-          bankIfsc: true,
-          bankName: true,
+const PAGE_SIZE = 20;
+
+export default async function AdminKycPage({ searchParams }: { searchParams: { page?: string } }) {
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const where: Prisma.KycDetailWhereInput = { status: { in: ["PENDING", "APPROVED", "REJECTED"] } };
+
+  const [total, submissions] = await Promise.all([
+    prisma.kycDetail.count({ where }),
+    prisma.kycDetail.findMany({
+      where,
+      orderBy: [{ status: "asc" }, { submittedAt: "desc" }],
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+            bankAccountName: true,
+            bankAccountNumber: true,
+            bankIfsc: true,
+            bankName: true,
+          },
         },
       },
-    },
-    take: 200,
-  });
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">KYC submissions</h1>
-      <div className="card overflow-x-auto">
+      <div className="card">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
@@ -61,6 +73,13 @@ export default async function AdminKycPage() {
             )}
           </tbody>
         </table>
+        </div>
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          basePath="/admin/kyc"
+        />
       </div>
     </div>
   );

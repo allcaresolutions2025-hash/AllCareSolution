@@ -3,11 +3,15 @@ import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
 import { PayoutRow } from "./payout-row";
 import { Download, Search } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPayoutsPage({ searchParams }: { searchParams: { q?: string } }) {
+const PAGE_SIZE = 20;
+
+export default async function AdminPayoutsPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
   const q = (searchParams.q ?? "").trim();
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const userFilter = q
     ? {
         user: {
@@ -21,25 +25,33 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
       }
     : {};
 
-  const requests = await prisma.payoutRequest.findMany({
-    where: userFilter,
-    orderBy: [{ status: "asc" }, { requestedAt: "desc" }],
-    include: {
-      user: { select: { name: true, email: true, phone: true } },
-    },
-    take: 200,
-  });
+  // Pending total is computed across ALL matching rows via aggregate — not the
+  // current page — so it stays correct as the admin pages through results.
+  const [total, pendingAgg, requests] = await Promise.all([
+    prisma.payoutRequest.count({ where: userFilter }),
+    prisma.payoutRequest.aggregate({
+      where: { ...userFilter, status: "REQUESTED" },
+      _sum: { amountNet: true },
+    }),
+    prisma.payoutRequest.findMany({
+      where: userFilter,
+      orderBy: [{ status: "asc" }, { requestedAt: "desc" }],
+      include: {
+        user: { select: { name: true, email: true, phone: true } },
+      },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
 
-  const totalPending = requests
-    .filter((r) => r.status === "REQUESTED")
-    .reduce((s, r) => s + r.amountNet, 0);
+  const totalPending = pendingAgg._sum.amountNet ?? 0;
 
   return (
     <div>
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold mb-1">
-            Payout requests{q ? ` — "${q}"` : ""} ({requests.length})
+            Payout requests{q ? ` — "${q}"` : ""} ({total})
           </h1>
           <p className="text-sm text-muted-foreground">
             Total pending net payout: <strong>{formatPoints(totalPending)}</strong>
@@ -68,7 +80,8 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
         )}
       </form>
 
-      <div className="card overflow-x-auto">
+      <div className="card">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
@@ -104,6 +117,14 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
             )}
           </tbody>
         </table>
+        </div>
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          basePath="/admin/payouts"
+          params={{ q }}
+        />
       </div>
     </div>
   );

@@ -2,11 +2,15 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { ImpersonateButton } from "./impersonate-button";
 import { Search, ShieldAlert } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminImpersonatePage({ searchParams }: { searchParams: { q?: string } }) {
+const PAGE_SIZE = 20;
+
+export default async function AdminImpersonatePage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
   const q = (searchParams.q ?? "").trim();
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const where = q
     ? {
         OR: [
@@ -19,20 +23,24 @@ export default async function AdminImpersonatePage({ searchParams }: { searchPar
       }
     : {};
 
-  const users = await prisma.user.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      phone: true,
-      referralCode: true,
-      role: true,
-      isActive: true,
-    },
-  });
+  const [total, users] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        referralCode: true,
+        role: true,
+        isActive: true,
+      },
+    }),
+  ]);
 
   return (
     <div>
@@ -66,7 +74,8 @@ export default async function AdminImpersonatePage({ searchParams }: { searchPar
         )}
       </form>
 
-      <div className="card overflow-x-auto">
+      <div className="card">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
@@ -110,6 +119,14 @@ export default async function AdminImpersonatePage({ searchParams }: { searchPar
             )}
           </tbody>
         </table>
+        </div>
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          basePath="/admin/impersonate"
+          params={{ q }}
+        />
       </div>
     </div>
   );

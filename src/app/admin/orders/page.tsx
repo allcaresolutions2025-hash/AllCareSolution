@@ -2,20 +2,29 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { formatINR } from "@/lib/money";
 import { OrderStatusBadge } from "@/components/order-status-badge";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminOrdersPage({ searchParams }: { searchParams: { status?: string } }) {
+const PAGE_SIZE = 20;
+
+export default async function AdminOrdersPage({ searchParams }: { searchParams: { status?: string; page?: string } }) {
   const statusFilter = searchParams.status;
-  const orders = await prisma.order.findMany({
-    where: statusFilter && statusFilter !== "ALL"
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ? { status: statusFilter as any }
-      : undefined,
-    orderBy: { createdAt: "desc" },
-    include: { user: { select: { name: true, email: true } } },
-    take: 200,
-  });
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const where = statusFilter && statusFilter !== "ALL"
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? { status: statusFilter as any }
+    : undefined;
+  const [total, orders] = await Promise.all([
+    prisma.order.count({ where }),
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: { user: { select: { name: true, email: true } } },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
 
   const tabs = ["ALL", "PENDING_PAYMENT", "PAID", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"];
 
@@ -34,7 +43,8 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         ))}
       </div>
 
-      <div className="card overflow-x-auto">
+      <div className="card">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
@@ -69,6 +79,14 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
             )}
           </tbody>
         </table>
+        </div>
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          basePath="/admin/orders"
+          params={{ status: statusFilter }}
+        />
       </div>
     </div>
   );

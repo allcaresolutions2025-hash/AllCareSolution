@@ -1,15 +1,23 @@
 import { prisma } from "@/lib/db";
 import { RequestRow } from "./request-row";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminTxnPasswordRequestsPage() {
-  const requests = await prisma.txnPasswordResetRequest.findMany({
-    orderBy: [{ status: "asc" }, { requestedAt: "desc" }],
-    include: { user: { select: { id: true, name: true, email: true, phone: true, referralCode: true } } },
-    take: 200,
-  });
-  const pendingCount = requests.filter((r) => r.status === "PENDING").length;
+const PAGE_SIZE = 20;
+
+export default async function AdminTxnPasswordRequestsPage({ searchParams }: { searchParams: { page?: string } }) {
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [total, pendingCount, requests] = await Promise.all([
+    prisma.txnPasswordResetRequest.count(),
+    prisma.txnPasswordResetRequest.count({ where: { status: "PENDING" } }),
+    prisma.txnPasswordResetRequest.findMany({
+      orderBy: [{ status: "asc" }, { requestedAt: "desc" }],
+      include: { user: { select: { id: true, name: true, email: true, phone: true, referralCode: true } } },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
 
   return (
     <div>
@@ -19,7 +27,8 @@ export default async function AdminTxnPasswordRequestsPage() {
         their registered mobile and flags them to choose a new one on next sign-in.
         {pendingCount > 0 && <> · <strong>{pendingCount} pending</strong></>}
       </p>
-      <div className="card overflow-x-auto">
+      <div className="card">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
@@ -48,6 +57,13 @@ export default async function AdminTxnPasswordRequestsPage() {
             )}
           </tbody>
         </table>
+        </div>
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          basePath="/admin/txn-password-requests"
+        />
       </div>
     </div>
   );

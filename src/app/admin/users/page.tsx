@@ -2,11 +2,15 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
 import { Download, ChevronRight, Search, Pencil } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminUsersPage({ searchParams }: { searchParams: { q?: string } }) {
+const PAGE_SIZE = 20;
+
+export default async function AdminUsersPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
   const q = (searchParams.q ?? "").trim();
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const where = q
     ? {
         OR: [
@@ -19,26 +23,30 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: {
       }
     : {};
 
-  const users = await prisma.user.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    take: 200,
-    include: {
-      wallet: true,
-      _count: {
-        select: {
-          referrals: true,
-          orders: { where: { status: { in: ["PAID", "SHIPPED", "DELIVERED"] } } },
+  const [total, users] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: {
+        wallet: true,
+        _count: {
+          select: {
+            referrals: true,
+            orders: { where: { status: { in: ["PAID", "SHIPPED", "DELIVERED"] } } },
+          },
         },
+        referrer: { select: { name: true, email: true } },
       },
-      referrer: { select: { name: true, email: true } },
-    },
-  });
+    }),
+  ]);
 
   return (
     <div>
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
-        <h1 className="text-2xl font-bold">Users{q ? ` — "${q}"` : ""} ({users.length})</h1>
+        <h1 className="text-2xl font-bold">Users{q ? ` — "${q}"` : ""} ({total})</h1>
         <a
           href="/api/admin/users/export"
           className="btn-outline inline-flex items-center gap-2 shrink-0"
@@ -61,7 +69,8 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: {
           <Link href="/admin/users" className="btn-outline">Clear</Link>
         )}
       </form>
-      <div className="card overflow-x-auto">
+      <div className="card">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
@@ -108,6 +117,14 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: {
             ))}
           </tbody>
         </table>
+        </div>
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          basePath="/admin/users"
+          params={{ q }}
+        />
       </div>
     </div>
   );

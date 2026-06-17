@@ -1,20 +1,23 @@
 import { prisma } from "@/lib/db";
 import { RewardRow } from "./reward-row";
 import { Trophy } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Reward Claims" };
 
 const STATUS_ORDER = ["PENDING", "APPROVED", "DISPATCHED", "DELIVERED", "REJECTED"] as const;
+const PAGE_SIZE = 20;
 
 export default async function AdminRewardsPage({
   searchParams,
 }: {
-  searchParams: { status?: string };
+  searchParams: { status?: string; page?: string };
 }) {
   const filterStatus = STATUS_ORDER.includes(searchParams.status as (typeof STATUS_ORDER)[number])
     ? (searchParams.status as (typeof STATUS_ORDER)[number])
     : undefined;
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
 
   const claims = await prisma.rewardClaim.findMany({
     where: filterStatus ? { status: filterStatus } : undefined,
@@ -22,7 +25,8 @@ export default async function AdminRewardsPage({
     include: {
       user: { select: { name: true, email: true, phone: true, referralCode: true } },
     },
-    take: 300,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
   });
 
   const counts = await prisma.rewardClaim.groupBy({
@@ -31,6 +35,8 @@ export default async function AdminRewardsPage({
   });
   const countMap = Object.fromEntries(counts.map((c) => [c.status, c._count.id]));
   const total = Object.values(countMap).reduce((a, b) => a + b, 0);
+  // Total rows for the active filter — drives the pagination bar.
+  const filteredTotal = filterStatus ? (countMap[filterStatus] ?? 0) : total;
 
   const tabs: { label: string; value: string | undefined; count: number }[] = [
     { label: "All", value: undefined, count: total },
@@ -77,7 +83,8 @@ export default async function AdminRewardsPage({
         })}
       </div>
 
-      <div className="card overflow-x-auto">
+      <div className="card">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
@@ -111,6 +118,14 @@ export default async function AdminRewardsPage({
             )}
           </tbody>
         </table>
+        </div>
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={filteredTotal}
+          basePath="/admin/rewards"
+          params={{ status: filterStatus }}
+        />
       </div>
     </div>
   );
