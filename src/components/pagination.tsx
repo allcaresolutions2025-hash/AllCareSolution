@@ -16,12 +16,19 @@ export function Pagination({
   total,
   basePath,
   params = {},
+  pageParam = "page",
 }: {
   page: number;
   pageSize: number;
   total: number;
   basePath: string;
   params?: Record<string, string | undefined>;
+  /**
+   * Query-string key this control writes its page number to. Defaults to
+   * "page"; pass a unique key (e.g. "histPage") when a single page hosts
+   * more than one independent paginated table.
+   */
+  pageParam?: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const current = Math.min(Math.max(1, page), totalPages);
@@ -33,7 +40,7 @@ export function Pagination({
     for (const [k, v] of Object.entries(params)) {
       if (v != null && v !== "") sp.set(k, v);
     }
-    if (p > 1) sp.set("page", String(p));
+    if (p > 1) sp.set(pageParam, String(p));
     const qs = sp.toString();
     return qs ? `${basePath}?${qs}` : basePath;
   }
@@ -126,7 +133,11 @@ function PageLink({
     );
   }
   return (
-    <Link href={href} className={`${base} border-border bg-white hover:bg-muted`}>
+    <Link
+      href={href}
+      scroll={false}
+      className={`${base} border-border bg-white hover:bg-muted`}
+    >
       {children}
     </Link>
   );

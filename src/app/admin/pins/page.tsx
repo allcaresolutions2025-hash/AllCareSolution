@@ -3,11 +3,21 @@ import { PinRequestRow } from "./pin-request-row";
 import { GeneratePinsCard } from "./generate-pins-card";
 import { formatINR } from "@/lib/money";
 import { KeyRound, Clock, CheckCircle2, CreditCard } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPinsPage() {
-  const [pending, recent, totalPinsIssued, totalPinsActive, razorpayPurchases] = await Promise.all([
+const PAGE_SIZE = 20;
+
+export default async function AdminPinsPage({
+  searchParams,
+}: {
+  searchParams: { rzPage?: string; histPage?: string };
+}) {
+  const rzPage = Math.max(1, parseInt(searchParams.rzPage ?? "1", 10) || 1);
+  const histPage = Math.max(1, parseInt(searchParams.histPage ?? "1", 10) || 1);
+
+  const [pending, recent, recentTotal, totalPinsIssued, totalPinsActive, razorpayPurchases, razorpayTotal] = await Promise.all([
     prisma.pinRequest.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
@@ -16,23 +26,27 @@ export default async function AdminPinsPage() {
     prisma.pinRequest.findMany({
       where: { status: { in: ["APPROVED", "REJECTED"] } },
       orderBy: { reviewedAt: "desc" },
-      take: 50,
+      skip: (histPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: {
         user: { select: { name: true, email: true, referralCode: true } },
         _count: { select: { pins: true } },
       },
     }),
+    prisma.pinRequest.count({ where: { status: { in: ["APPROVED", "REJECTED"] } } }),
     prisma.pin.count(),
     prisma.pin.count({ where: { status: "ACTIVE" } }),
     prisma.pinPurchase.findMany({
       where: { status: "PAID" },
       orderBy: { paidAt: "desc" },
-      take: 100,
+      skip: (rzPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: {
         user: { select: { name: true, email: true, referralCode: true, leftLegCount: true, rightLegCount: true } },
         _count: { select: { pins: true } },
       },
     }),
+    prisma.pinPurchase.count({ where: { status: "PAID" } }),
   ]);
 
   return (
@@ -144,6 +158,16 @@ export default async function AdminPinsPage() {
             </table>
           </div>
         )}
+        {razorpayTotal > 0 && (
+          <Pagination
+            page={rzPage}
+            pageParam="rzPage"
+            pageSize={PAGE_SIZE}
+            total={razorpayTotal}
+            basePath="/admin/pins"
+            params={{ histPage: histPage > 1 ? String(histPage) : undefined }}
+          />
+        )}
       </div>
 
       <div className="card overflow-hidden">
@@ -192,6 +216,16 @@ export default async function AdminPinsPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {recentTotal > 0 && (
+          <Pagination
+            page={histPage}
+            pageParam="histPage"
+            pageSize={PAGE_SIZE}
+            total={recentTotal}
+            basePath="/admin/pins"
+            params={{ rzPage: rzPage > 1 ? String(rzPage) : undefined }}
+          />
         )}
       </div>
     </div>

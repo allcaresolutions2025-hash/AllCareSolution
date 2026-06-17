@@ -4,18 +4,26 @@ import { istDateString } from "@/lib/daily-payout";
 import { Clock, CheckCircle2, Coins, Download, RotateCcw } from "lucide-react";
 import { PendingPayoutsTable } from "./pending-payouts-table";
 import { SimulateMidnightButton } from "./simulate-midnight-button";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDailyPayoutsPage() {
+const PAGE_SIZE = 20;
+
+export default async function AdminDailyPayoutsPage({
+  searchParams,
+}: {
+  searchParams: { paidPage?: string };
+}) {
   // Unpaid is a *today only* view: the moment the next IST day's cron runs,
   // restored users get re-evaluated for fresh pending payouts, so yesterday's
   // unpaid rows should fall off this page (they remain in the DB for audit).
   // Match by runDate prefix so synthetic test runs like "2026-05-27-test-1"
   // also count as "today".
   const todayIst = istDateString();
+  const paidPage = Math.max(1, parseInt(searchParams.paidPage ?? "1", 10) || 1);
 
-  const [pending, totalsPending, paid, unpaid, paidTotals] = await Promise.all([
+  const [pending, totalsPending, paid, paidTotal, unpaid, paidTotals] = await Promise.all([
     prisma.dailyPayout.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
@@ -38,9 +46,11 @@ export default async function AdminDailyPayoutsPage() {
     prisma.dailyPayout.findMany({
       where: { status: "PAID" },
       orderBy: [{ paidAt: "desc" }, { runDate: "desc" }],
-      take: 100,
+      skip: (paidPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: { user: { select: { name: true, email: true, referralCode: true } } },
     }),
+    prisma.dailyPayout.count({ where: { status: "PAID" } }),
     prisma.dailyPayout.findMany({
       where: {
         status: "CANCELLED",
@@ -112,7 +122,7 @@ export default async function AdminDailyPayoutsPage() {
       <div className="card overflow-hidden">
         <div className="p-5 border-b flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="font-semibold">Payouts ({paid.length})</h2>
+            <h2 className="font-semibold">Payouts ({paidTotal})</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               Finalized payouts ready to be sent to the bank.
             </p>
@@ -158,6 +168,15 @@ export default async function AdminDailyPayoutsPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {paidTotal > 0 && (
+          <Pagination
+            page={paidPage}
+            pageParam="paidPage"
+            pageSize={PAGE_SIZE}
+            total={paidTotal}
+            basePath="/admin/daily-payouts"
+          />
         )}
       </div>
 

@@ -65,7 +65,8 @@ export default async function AdminLoansPage() {
     prisma.loan.findMany({
       where: { status: { in: ["APPROVED", "CLOSED", "REJECTED"] } },
       orderBy: { updatedAt: "desc" },
-      take: 50,
+      // Loaded in full for client-side search + pagination in RecentLoansSection.
+      take: 500,
       include: {
         user: { select: { name: true, email: true, referralCode: true } },
         _count: { select: { installments: true } },
