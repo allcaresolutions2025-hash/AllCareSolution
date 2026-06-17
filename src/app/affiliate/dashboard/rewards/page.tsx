@@ -6,6 +6,7 @@ import {
   rewardThresholdMet,
   WELCOME_KIT_LEVEL,
 } from "@/lib/rewards";
+import { getLegFillDepths } from "@/lib/network";
 import { RewardCard } from "./reward-card";
 import { WelcomeKitCard } from "./welcome-kit-card";
 import { Trophy, Users } from "lucide-react";
@@ -17,10 +18,13 @@ export default async function RewardsPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const me = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { leftLegCount: true, rightLegCount: true },
-  });
+  const [me, fillDepths] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { leftLegCount: true, rightLegCount: true },
+    }),
+    getLegFillDepths(session.user.id),
+  ]);
   if (!me) return null;
 
   const claims = await prisma.rewardClaim.findMany({
@@ -33,12 +37,14 @@ export default async function RewardsPage() {
   const ctx = {
     leftLegCount: me.leftLegCount,
     rightLegCount: me.rightLegCount,
+    leftFillDepth: fillDepths.leftFillDepth,
+    rightFillDepth: fillDepths.rightFillDepth,
   };
 
-  const minLeg = Math.min(me.leftLegCount, me.rightLegCount);
-  const maxLeg = Math.max(me.leftLegCount, me.rightLegCount);
+  // The gate is the level both legs are filled to — the weaker (min) side.
+  const filledLevel = Math.min(fillDepths.leftFillDepth, fillDepths.rightFillDepth);
   const unlockedCount = REWARD_LEVELS.filter((r) => rewardThresholdMet(r, ctx)).length;
-  const nextThreshold = REWARD_LEVELS.find((r) => !rewardThresholdMet(r, ctx))?.legCount ?? null;
+  const nextLevel = REWARD_LEVELS.find((r) => !rewardThresholdMet(r, ctx))?.level ?? null;
 
   return (
     <div className="space-y-6">
@@ -47,7 +53,7 @@ export default async function RewardsPage() {
           <Trophy className="h-6 w-6 text-amber-500" /> My Rewards
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Build your team equally on both sides to unlock gifts. Each level is independent — claim any unlocked level whenever you like.
+          Fill both legs of your binary tree completely — every slot occupied, no gaps — to unlock gifts. Each level is independent; claim any unlocked level whenever you like.
         </p>
       </div>
 
@@ -86,14 +92,13 @@ export default async function RewardsPage() {
       <WelcomeKitCard claim={welcomeKitClaim} />
 
       {/* Progress banner */}
-      {minLeg > 0 && (
-        <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
-          Your weaker leg has <strong>{minLeg.toLocaleString("en-IN")}</strong> member{minLeg !== 1 ? "s" : ""} and stronger leg has <strong>{maxLeg.toLocaleString("en-IN")}</strong>.
-          {nextThreshold !== null && (
-            <> Next unlock at <strong>{nextThreshold.toLocaleString("en-IN")}</strong> on each side.</>
-          )}
-        </div>
-      )}
+      <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
+        Both legs are completely filled to <strong>level {filledLevel}</strong>
+        {" "}(filled depth — Left <strong>{fillDepths.leftFillDepth}</strong> / Right <strong>{fillDepths.rightFillDepth}</strong>).
+        {nextLevel !== null && (
+          <> Fill both legs to <strong>level {nextLevel}</strong> — every slot occupied — to unlock the next gift.</>
+        )}
+      </div>
 
       {/* Reward cards */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -105,7 +110,7 @@ export default async function RewardsPage() {
               key={reward.level}
               reward={reward}
               thresholdMet={thresholdMet}
-              minLeg={minLeg}
+              filledLevel={filledLevel}
               claim={claim}
             />
           );

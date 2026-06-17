@@ -5,9 +5,11 @@ import { prisma } from "@/lib/db";
 import {
   REWARD_LEVELS,
   rewardThresholdMet,
+  rewardMembersPerSide,
   WELCOME_KIT_LEVEL,
   WELCOME_KIT_REWARD,
 } from "@/lib/rewards";
+import { getLegFillDepths } from "@/lib/network";
 import { z } from "zod";
 
 // level 0    = Welcome Kit (joining gift, no leg-count gate)
@@ -50,15 +52,27 @@ export async function POST(req: Request) {
   const reward = REWARD_LEVELS.find((r) => r.level === level);
   if (!reward) return NextResponse.json({ error: "Unknown reward level" }, { status: 400 });
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { leftLegCount: true, rightLegCount: true },
-  });
+  const [user, fillDepths] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { leftLegCount: true, rightLegCount: true },
+    }),
+    getLegFillDepths(session.user.id),
+  ]);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  if (!rewardThresholdMet(reward, { leftLegCount: user.leftLegCount, rightLegCount: user.rightLegCount })) {
+  if (
+    !rewardThresholdMet(reward, {
+      leftLegCount: user.leftLegCount,
+      rightLegCount: user.rightLegCount,
+      leftFillDepth: fillDepths.leftFillDepth,
+      rightFillDepth: fillDepths.rightFillDepth,
+    })
+  ) {
     return NextResponse.json(
-      { error: `This reward requires ${reward.legCount} members on each side. Grow your weaker leg to unlock.` },
+      {
+        error: `This reward needs both legs completely filled to level ${reward.level} (${rewardMembersPerSide(reward.level)} members on each side, no empty slots). Fill your weaker leg to unlock.`,
+      },
       { status: 403 },
     );
   }

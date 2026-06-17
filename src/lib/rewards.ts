@@ -1,8 +1,15 @@
-// Reward ladder. Each level requires a member-count threshold met on BOTH the
-// LEFT and RIGHT legs (>=, not exact). Levels are INDEPENDENT — there is no
-// sequential lock: as soon as a level's threshold is met it is claimable,
-// regardless of which other levels the user has or hasn't claimed. The only
-// per-level lock is the one-claim-per-user uniqueness on RewardClaim.
+// Reward ladder. A level unlocks when the binary tree under the member is
+// COMPLETELY FILLED to that level on BOTH legs — every slot in levels 1..N is
+// occupied, no gaps (same rule as the loan ladder; see lib/loan.ts). This is
+// measured by each leg's *fill depth* (leftFillDepth / rightFillDepth), NOT by
+// raw leg head-counts: a deep but lopsided leg with an empty slot does not
+// qualify. A perfectly filled leg of depth N holds 2^N - 1 members, so level N
+// effectively needs 2^N - 1 members on each side (see rewardMembersPerSide).
+//
+// Levels are INDEPENDENT — there is no sequential lock: as soon as a level's
+// fill requirement is met it is claimable, regardless of which other levels the
+// user has or hasn't claimed. The only per-level lock is the one-claim-per-user
+// uniqueness on RewardClaim.
 
 // Welcome Kit is a one-time joining gift. It is NOT part of the level ladder —
 // any joined user can apply for it once, independent of leg counts, and it
@@ -43,12 +50,29 @@ export const REWARD_LEVELS: RewardLevel[] = [
 export type RewardEligibilityContext = {
   leftLegCount: number;
   rightLegCount: number;
+  // Deepest level to which each leg is a *perfectly filled* binary tree (no
+  // empty slots). This — not the raw leg counts above — decides eligibility.
+  // See getLegFillDepths in lib/network.ts. Optional for back-compat; when
+  // omitted, falls back to the legacy leg-count threshold.
+  leftFillDepth?: number;
+  rightFillDepth?: number;
   // Levels the user has already claimed (any status — pending counts too).
   // Once a level appears here it is permanently locked for re-claiming.
   claimedLevels?: readonly number[];
 };
 
+// Members on each side once a leg is perfectly filled to a given level
+// (a complete binary tree of depth N has 2^N - 1 nodes). Used for display.
+export function rewardMembersPerSide(level: number): number {
+  return level > 0 ? 2 ** level - 1 : 0;
+}
+
 export function rewardThresholdMet(reward: RewardLevel, ctx: RewardEligibilityContext): boolean {
+  // Both legs must be completely filled to this reward's level.
+  if (ctx.leftFillDepth !== undefined && ctx.rightFillDepth !== undefined) {
+    return ctx.leftFillDepth >= reward.level && ctx.rightFillDepth >= reward.level;
+  }
+  // Legacy fallback when fill depths weren't supplied (head-count threshold).
   return ctx.leftLegCount >= reward.legCount && ctx.rightLegCount >= reward.legCount;
 }
 
@@ -62,12 +86,12 @@ export function rewardCanClaim(reward: RewardLevel, ctx: RewardEligibilityContex
   return rewardThresholdMet(reward, ctx) && !rewardIsClaimed(reward, ctx);
 }
 
-// Highest level whose leg threshold the user satisfies, ignoring claim state.
+// Highest level both legs are completely filled to, ignoring claim state.
 // Used for "X / 15 unlocked" KPI display.
-export function getUnlockedLevel(leftLegCount: number, rightLegCount: number): number {
+export function getUnlockedLevel(leftFillDepth: number, rightFillDepth: number): number {
   let unlocked = 0;
   for (const r of REWARD_LEVELS) {
-    if (leftLegCount >= r.legCount && rightLegCount >= r.legCount) unlocked = r.level;
+    if (leftFillDepth >= r.level && rightFillDepth >= r.level) unlocked = r.level;
     else break;
   }
   return unlocked;

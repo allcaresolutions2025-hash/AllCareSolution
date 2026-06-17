@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Gift, CheckCircle2, Clock, Truck, Package, XCircle, ChevronRight } from "lucide-react";
-import type { RewardLevel } from "@/lib/rewards";
+import { type RewardLevel, rewardMembersPerSide } from "@/lib/rewards";
 import type { RewardClaimStatus } from "@prisma/client";
 
 type ClaimInfo = {
@@ -15,8 +15,8 @@ type ClaimInfo = {
 
 interface Props {
   reward: RewardLevel;
-  thresholdMet: boolean;       // leg counts satisfy this level
-  minLeg: number;
+  thresholdMet: boolean;       // both legs filled to this level
+  filledLevel: number;         // level both legs are currently filled to (weaker side)
   claim: ClaimInfo;
 }
 
@@ -36,12 +36,13 @@ const COLOR_CHIP: Record<string, string> = {
   red:     "bg-red-50 text-red-700 border-red-200",
 };
 
-export function RewardCard({ reward, thresholdMet, minLeg, claim }: Props) {
+export function RewardCard({ reward, thresholdMet, filledLevel, claim }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const progressPct = Math.min(100, Math.round((minLeg / reward.legCount) * 100));
+  const membersPerSide = rewardMembersPerSide(reward.level);
+  const progressPct = Math.min(100, Math.round((filledLevel / reward.level) * 100));
 
   async function handleClaim() {
     setLoading(true);
@@ -88,14 +89,13 @@ export function RewardCard({ reward, thresholdMet, minLeg, claim }: Props) {
 
       {/* Requirement */}
       <div className="text-xs text-muted-foreground">
-        Need <strong>{reward.legCount.toLocaleString("en-IN")}</strong> on each side
-        {" "}({(reward.legCount * 2).toLocaleString("en-IN")} total)
+        Fill both legs to <strong>level {reward.level}</strong> — {membersPerSide.toLocaleString("en-IN")} members each side, no empty slots
       </div>
 
       {/* Progress bar */}
       <div>
         <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-          <span>Your weaker leg: {minLeg.toLocaleString("en-IN")}</span>
+          <span>Filled level: {filledLevel} / {reward.level}</span>
           <span>{progressPct}%</span>
         </div>
         <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
