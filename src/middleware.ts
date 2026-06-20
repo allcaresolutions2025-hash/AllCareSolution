@@ -8,7 +8,7 @@ import type { NextRequest, NextFetchEvent } from "next/server";
 // every request (pages, login, API) gets a 503 maintenance notice — no database
 // is read or written, and no data is changed. This is a pure request-layer gate.
 // ─────────────────────────────────────────────────────────────────────────────
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 // Routes that require authentication — middleware only runs the auth check on
 // these. Everything else is public and passes straight through.
