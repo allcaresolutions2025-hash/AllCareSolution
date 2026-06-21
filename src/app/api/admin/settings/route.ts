@@ -18,6 +18,7 @@ export async function POST(req: Request) {
       setSetting("TDS_THRESHOLD_INR", data.TDS_THRESHOLD_INR),
       setSetting("GST_DEFAULT_PERCENT", data.GST_DEFAULT_PERCENT),
       setSetting("SHIPPING_COST_INR", data.SHIPPING_COST_INR),
+      setSetting("PIN_WALLET_PRICE_INR", data.PIN_WALLET_PRICE_INR),
     ]);
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -87,6 +87,7 @@ model User {
   // Pin system
   pinRequests   PinRequest[]
   pinPurchases  PinPurchase[]
+  pinWalletTxns PinWalletTxn[]
   pinsOwned     Pin[]          @relation("PinOwner")
   pinUsedToJoin Pin?           @relation("PinUsedFor")
 
@@ -160,7 +161,30 @@ model Wallet {
   balancePending      Int      @default(0) // commission accrued, in 30-day cooling-off window (paise)
   balanceAvailable    Int      @default(0) // eligible for payout (paise)
   balancePaidLifetime Int      @default(0) // total paid out historically (paise)
+  pinWalletBalance    Int      @default(0) // points usable only to buy pins (paise); funded by the Rs.2,000 loan or a payout transfer
   updatedAt           DateTime @updatedAt
+}
+
+// Ledger of every credit/debit to a user's Pin Wallet. Append-only audit trail
+// behind pinWalletBalance — admin and the user can see exactly where points came
+// from and went.
+enum PinWalletTxnType {
+  LOAN_CREDIT       // Rs.2,000 (DIRECTS_1_1) loan disbursed into the pin wallet
+  PAYOUT_TRANSFER   // member moved points in from their payout (e-wallet) balance
+  PIN_PURCHASE      // points spent buying pins (debit)
+}
+
+model PinWalletTxn {
+  id           String           @id @default(cuid())
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         PinWalletTxnType
+  amount       Int              // signed paise: positive = credit, negative = debit
+  balanceAfter Int              // pinWalletBalance immediately after this txn (paise)
+  note         String?
+  createdAt    DateTime         @default(now())
+
+  @@index([userId, createdAt])
 }
 
 // ---------- CATALOG ----------
@@ -442,6 +466,13 @@ enum PinPurchaseStatus {
   FAILED
 }
 
+// How a pin purchase was funded. RAZORPAY = leader self-checkout (online card);
+// PIN_WALLET = paid from the member's Pin Wallet points (no admin approval).
+enum PinPurchaseSource {
+  RAZORPAY
+  PIN_WALLET
+}
+
 model PinPurchase {
   id                 String            @id @default(cuid())
   userId             String
@@ -451,7 +482,8 @@ model PinPurchase {
   pricePerPin        Int               // paise, snapshot at purchase time
   totalAmount        Int               // paise: quantity * pricePerPin
   status             PinPurchaseStatus @default(PENDING)
-  razorpayOrderId    String            @unique
+  source             PinPurchaseSource @default(RAZORPAY)
+  razorpayOrderId    String?           @unique // null for PIN_WALLET purchases
   razorpayPaymentId  String?
   razorpaySignature  String?
   pins               Pin[]
@@ -461,6 +493,7 @@ model PinPurchase {
 
   @@index([userId])
   @@index([status, createdAt])
+  @@index([source, paidAt])
 }
 
 // ---------- DAILY POINTS PAYOUT ----------

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 prisma migrate deploy && prisma generate && next build",
     "migrate": "PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 prisma migrate deploy",
     "start": "next start",
     "lint": "next lint",

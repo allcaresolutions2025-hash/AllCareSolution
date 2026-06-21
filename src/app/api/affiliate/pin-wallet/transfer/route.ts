@@ -1,0 +1,70 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { z } from "zod";
+
+export const dynamic = "force-dynamic";
+
+// Points are whole rupees (1 point = ₹1 = 100 paise) everywhere in the app.
+const bodySchema = z.object({
+  points: z.number().int().min(1, "Enter at least 1 point"),
+});
+
+// Move points from the member's payout (e-wallet) balance into their Pin Wallet
+// so they can buy more pins.
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+
+  const parsed = bodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.errors[0]?.message ?? "Invalid request" }, { status: 400 });
+  }
+  const amountPaise = parsed.data.points * 100;
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Conditional debit guards against transferring more than is available
+      // (and against a concurrent payout draining the balance).
+      const dec = await tx.wallet.updateMany({
+        where: { userId: session.user.id, balanceAvailable: { gte: amountPaise } },
+        data: {
+          balanceAvailable: { decrement: amountPaise },
+          pinWalletBalance: { increment: amountPaise },
+        },
+      });
+      if (dec.count === 0) throw new Error("INSUFFICIENT");
+
+      const w = await tx.wallet.findUnique({
+        where: { userId: session.user.id },
+        select: { balanceAvailable: true, pinWalletBalance: true },
+      });
+
+      await tx.pinWalletTxn.create({
+        data: {
+          userId: session.user.id,
+          type: "PAYOUT_TRANSFER",
+          amount: amountPaise,
+          balanceAfter: w?.pinWalletBalance ?? 0,
+          note: "Transferred from payout wallet",
+        },
+      });
+
+      return {
+        payoutBalance: w?.balanceAvailable ?? 0,
+        pinWalletBalance: w?.pinWalletBalance ?? 0,
+      };
+    });
+
+    return NextResponse.json({ ok: true, ...result });
+  } catch (e) {
+    if (e instanceof Error && e.message === "INSUFFICIENT") {
+      return NextResponse.json(
+        { error: "Not enough payout points to transfer." },
+        { status: 400 },
+      );
+    }
+    throw e;
+  }
+}

@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/db";
 import { PinRequestRow } from "./pin-request-row";
 import { GeneratePinsCard } from "./generate-pins-card";
-import { formatINR } from "@/lib/money";
-import { KeyRound, Clock, CheckCircle2, CreditCard } from "lucide-react";
+import { formatINR, formatPoints } from "@/lib/money";
+import { KeyRound, Clock, CheckCircle2, CreditCard, Wallet } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
@@ -12,12 +12,13 @@ const PAGE_SIZE = 20;
 export default async function AdminPinsPage({
   searchParams,
 }: {
-  searchParams: { rzPage?: string; histPage?: string };
+  searchParams: { rzPage?: string; histPage?: string; pwPage?: string };
 }) {
   const rzPage = Math.max(1, parseInt(searchParams.rzPage ?? "1", 10) || 1);
   const histPage = Math.max(1, parseInt(searchParams.histPage ?? "1", 10) || 1);
+  const pwPage = Math.max(1, parseInt(searchParams.pwPage ?? "1", 10) || 1);
 
-  const [pending, recent, recentTotal, totalPinsIssued, totalPinsActive, razorpayPurchases, razorpayTotal] = await Promise.all([
+  const [pending, recent, recentTotal, totalPinsIssued, totalPinsActive, razorpayPurchases, razorpayTotal, walletPurchases, walletTotal] = await Promise.all([
     prisma.pinRequest.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
@@ -37,7 +38,7 @@ export default async function AdminPinsPage({
     prisma.pin.count(),
     prisma.pin.count({ where: { status: "ACTIVE" } }),
     prisma.pinPurchase.findMany({
-      where: { status: "PAID" },
+      where: { status: "PAID", source: "RAZORPAY" },
       orderBy: { paidAt: "desc" },
       skip: (rzPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -46,7 +47,18 @@ export default async function AdminPinsPage({
         _count: { select: { pins: true } },
       },
     }),
-    prisma.pinPurchase.count({ where: { status: "PAID" } }),
+    prisma.pinPurchase.count({ where: { status: "PAID", source: "RAZORPAY" } }),
+    prisma.pinPurchase.findMany({
+      where: { status: "PAID", source: "PIN_WALLET" },
+      orderBy: { paidAt: "desc" },
+      skip: (pwPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: {
+        user: { select: { name: true, email: true, referralCode: true } },
+        _count: { select: { pins: true } },
+      },
+    }),
+    prisma.pinPurchase.count({ where: { status: "PAID", source: "PIN_WALLET" } }),
   ]);
 
   return (
@@ -165,7 +177,75 @@ export default async function AdminPinsPage({
             pageSize={PAGE_SIZE}
             total={razorpayTotal}
             basePath="/admin/pins"
-            params={{ histPage: histPage > 1 ? String(histPage) : undefined }}
+            params={{
+              histPage: histPage > 1 ? String(histPage) : undefined,
+              pwPage: pwPage > 1 ? String(pwPage) : undefined,
+            }}
+          />
+        )}
+      </div>
+
+      {/* Pin Wallet purchases — auto-issued, paid from members' Pin Wallet points */}
+      <div className="card overflow-hidden">
+        <div className="p-5 border-b flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-brand-700" />
+          <h2 className="font-semibold">Pin Wallet purchases</h2>
+          <span className="ml-auto text-xs text-muted-foreground">
+            Paid from Pin Wallet points. Auto-issued, no admin approval.
+          </span>
+        </div>
+        {walletPurchases.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            No Pin Wallet purchases yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Paid</th>
+                  <th className="px-4 py-2 font-medium">Member</th>
+                  <th className="px-4 py-2 font-medium">Mobile</th>
+                  <th className="px-4 py-2 font-medium text-right">Qty</th>
+                  <th className="px-4 py-2 font-medium text-right">Points spent</th>
+                  <th className="px-4 py-2 font-medium">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {walletPurchases.map((p) => (
+                  <tr key={p.id} className="border-t">
+                    <td className="px-4 py-2 text-muted-foreground text-xs">
+                      {p.paidAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }) ?? "—"}
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="font-medium">{p.user.name}</div>
+                      <div className="text-xs font-mono text-muted-foreground">{p.user.referralCode}</div>
+                    </td>
+                    <td className="px-4 py-2 text-xs font-mono">{p.mobileNumber}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{p._count.pins}</td>
+                    <td className="px-4 py-2 text-right tabular-nums font-medium">{formatPoints(p.totalAmount)}</td>
+                    <td className="px-4 py-2">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200">
+                        <Wallet className="h-3 w-3" /> Pin Wallet
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {walletTotal > 0 && (
+          <Pagination
+            page={pwPage}
+            pageParam="pwPage"
+            pageSize={PAGE_SIZE}
+            total={walletTotal}
+            basePath="/admin/pins"
+            params={{
+              rzPage: rzPage > 1 ? String(rzPage) : undefined,
+              histPage: histPage > 1 ? String(histPage) : undefined,
+            }}
           />
         )}
       </div>
@@ -224,7 +304,10 @@ export default async function AdminPinsPage({
             pageSize={PAGE_SIZE}
             total={recentTotal}
             basePath="/admin/pins"
-            params={{ rzPage: rzPage > 1 ? String(rzPage) : undefined }}
+            params={{
+              rzPage: rzPage > 1 ? String(rzPage) : undefined,
+              pwPage: pwPage > 1 ? String(pwPage) : undefined,
+            }}
           />
         )}
       </div>

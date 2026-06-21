@@ -12,6 +12,7 @@ export function SettingsForm({ initial }: { initial: Record<string, number> }) {
     TDS_THRESHOLD_INR: initial.TDS_THRESHOLD_INR,
     GST_DEFAULT_PERCENT: initial.GST_DEFAULT_PERCENT,
     SHIPPING_COST_INR: initial.SHIPPING_COST_INR,
+    PIN_WALLET_PRICE_INR: initial.PIN_WALLET_PRICE_INR,
   });
   const [loading, setLoading] = useState(false);
 
@@ -75,6 +76,13 @@ export function SettingsForm({ initial }: { initial: Record<string, number> }) {
           label="Shipping (₹)"
           value={form.SHIPPING_COST_INR}
           onChange={(v) => setForm({ ...form, SHIPPING_COST_INR: v })}
+        />
+      </Section>
+      <Section title="Pin Wallet" caption="Price of one pin when bought from a member's Pin Wallet points (₹1 = 1 point). The ₹2,000 loan credits 2,000 points into the Pin Wallet.">
+        <Field
+          label="Pin Wallet price per pin (₹)"
+          value={form.PIN_WALLET_PRICE_INR}
+          onChange={(v) => setForm({ ...form, PIN_WALLET_PRICE_INR: v })}
         />
       </Section>
       <button type="submit" disabled={loading} className="btn-primary">

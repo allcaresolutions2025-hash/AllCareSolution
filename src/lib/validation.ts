@@ -80,4 +80,5 @@ export const settingsSchema = z.object({
   TDS_THRESHOLD_INR: z.number().min(0),
   GST_DEFAULT_PERCENT: z.number().min(0).max(28),
   SHIPPING_COST_INR: z.number().min(0),
+  PIN_WALLET_PRICE_INR: z.number().min(1),
 });
