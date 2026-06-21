@@ -18,13 +18,17 @@ export function PinWalletActions({
   maxBuyable: number;
 }) {
   const router = useRouter();
-  const [qty, setQty] = useState(1);
+  // Kept as a raw string so the field can be cleared/retyped freely; parsed to
+  // a number only where we need it. Forcing a numeric min on the value made the
+  // "1" impossible to delete.
+  const [qty, setQty] = useState("1");
   const [transferPts, setTransferPts] = useState(0);
   const [buying, setBuying] = useState(false);
   const [transferring, setTransferring] = useState(false);
 
-  const cost = qty * pricePerPin;
-  const canAfford = cost <= pinWalletBalance && qty > 0;
+  const qtyNum = parseInt(qty, 10) || 0;
+  const cost = qtyNum * pricePerPin;
+  const canAfford = qtyNum >= 1 && cost <= pinWalletBalance;
 
   async function buyPins(e: React.FormEvent) {
     e.preventDefault();
@@ -34,12 +38,12 @@ export function PinWalletActions({
       const res = await fetch("/api/affiliate/pin-wallet/buy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: qty }),
+        body: JSON.stringify({ quantity: qtyNum }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to buy pins");
       toast.success(`${json.pinsIssued} pin${json.pinsIssued === 1 ? "" : "s"} added to your account.`);
-      setQty(1);
+      setQty("1");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to buy pins");
@@ -87,11 +91,11 @@ export function PinWalletActions({
         <div>
           <label className="label">Quantity</label>
           <input
-            type="number"
-            min={1}
-            max={Math.max(1, maxBuyable)}
+            type="text"
+            inputMode="numeric"
             value={qty}
-            onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            onChange={(e) => setQty(e.target.value.replace(/[^0-9]/g, ""))}
+            onBlur={() => setQty((q) => (parseInt(q, 10) >= 1 ? String(parseInt(q, 10)) : "1"))}
             className="input"
           />
           <p className="mt-1 text-xs text-muted-foreground">
