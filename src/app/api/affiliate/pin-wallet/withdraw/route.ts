@@ -6,14 +6,13 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-// Points are whole rupees (1 point = ₹1 = 100 paise) everywhere in the app.
-const MIN_TRANSFER_POINTS = 500;
+// Points are whole rupees (1 point = ₹1 = 100 paise). Moving points the other
+// way — Pin Wallet back into the payout (e-wallet) balance — has a higher floor.
+const MIN_WITHDRAW_POINTS = 3000;
 const bodySchema = z.object({
-  points: z.number().int().min(MIN_TRANSFER_POINTS, `Minimum transfer is ${MIN_TRANSFER_POINTS} points`),
+  points: z.number().int().min(MIN_WITHDRAW_POINTS, `Minimum transfer is ${MIN_WITHDRAW_POINTS} points`),
 });
 
-// Move points from the member's payout (e-wallet) balance into their Pin Wallet
-// so they can buy more pins.
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
@@ -26,13 +25,12 @@ export async function POST(req: Request) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // Conditional debit guards against transferring more than is available
-      // (and against a concurrent payout draining the balance).
+      // Conditional debit guards against withdrawing more than the Pin Wallet holds.
       const dec = await tx.wallet.updateMany({
-        where: { userId: session.user.id, balanceAvailable: { gte: amountPaise } },
+        where: { userId: session.user.id, pinWalletBalance: { gte: amountPaise } },
         data: {
-          balanceAvailable: { decrement: amountPaise },
-          pinWalletBalance: { increment: amountPaise },
+          pinWalletBalance: { decrement: amountPaise },
+          balanceAvailable: { increment: amountPaise },
         },
       });
       if (dec.count === 0) throw new Error("INSUFFICIENT");
@@ -42,13 +40,15 @@ export async function POST(req: Request) {
         select: { balanceAvailable: true, pinWalletBalance: true },
       });
 
+      // Recorded on the Pin Wallet ledger as a negative PAYOUT_TRANSFER (points
+      // leaving the pin wallet toward the payout balance).
       await tx.pinWalletTxn.create({
         data: {
           userId: session.user.id,
           type: "PAYOUT_TRANSFER",
-          amount: amountPaise,
+          amount: -amountPaise,
           balanceAfter: w?.pinWalletBalance ?? 0,
-          note: "Transferred from payout wallet",
+          note: "Transferred to payout wallet",
         },
       });
 
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof Error && e.message === "INSUFFICIENT") {
       return NextResponse.json(
-        { error: "Not enough payout points to transfer." },
+        { error: "Not enough Pin Wallet points to transfer." },
         { status: 400 },
       );
     }

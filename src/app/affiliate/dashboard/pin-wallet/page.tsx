@@ -9,11 +9,19 @@ import { PinWalletActions } from "./pin-wallet-actions";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pin Wallet" };
 
-const TXN_LABEL: Record<string, string> = {
-  LOAN_CREDIT: "₹2,000 loan credit",
-  PAYOUT_TRANSFER: "Transfer from payout wallet",
-  PIN_PURCHASE: "Pin purchase",
-};
+function txnLabel(type: string, amount: number): string {
+  switch (type) {
+    case "LOAN_CREDIT":
+      return "₹2,000 loan credit";
+    case "PAYOUT_TRANSFER":
+      // Positive = money came in from payout; negative = sent back to payout.
+      return amount >= 0 ? "Transfer from payout wallet" : "Transfer to payout wallet";
+    case "PIN_PURCHASE":
+      return "Pin purchase";
+    default:
+      return type;
+  }
+}
 
 export default async function PinWalletPage() {
   const session = await getServerSession(authOptions);
@@ -116,7 +124,7 @@ export default async function PinWalletPage() {
                           ) : (
                             <ArrowUpRight className="h-3.5 w-3.5 text-red-500" />
                           )}
-                          {TXN_LABEL[t.type] ?? t.type}
+                          {txnLabel(t.type, t.amount)}
                         </span>
                       </td>
                       <td className={`px-4 py-2 text-right font-medium tabular-nums ${credit ? "text-emerald-700" : "text-red-600"}`}>
