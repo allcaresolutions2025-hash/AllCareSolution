@@ -12,7 +12,7 @@ export const metadata = { title: "Pin Wallet" };
 function txnLabel(type: string, amount: number): string {
   switch (type) {
     case "LOAN_CREDIT":
-      return "₹2,000 loan credit";
+      return "Loan credit";
     case "PAYOUT_TRANSFER":
       // Positive = money came in from payout; negative = sent back to payout.
       return amount >= 0 ? "Transfer from payout wallet" : "Transfer to payout wallet";
@@ -53,7 +53,7 @@ export default async function PinWalletPage() {
           <Wallet className="h-6 w-6 text-brand-600" /> Pin Wallet
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Use Pin Wallet points to buy pins instantly — no admin approval needed. Your ₹2,000 loan is
+          Use Pin Wallet points to buy pins instantly — no admin approval needed. Your approved loan is
           credited here, and you can top up anytime from your payout wallet.
         </p>
       </div>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { z } from "zod";
-import { buildInstallmentPlan } from "@/lib/loan";
+import { buildInstallmentPlan, formatRupees } from "@/lib/loan";
 
 const bodySchema = z.object({
   action: z.enum(["approve", "reject"]),
@@ -39,9 +39,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const plan = buildInstallmentPlan(loan.amount, loan.totalWeeks, now);
   const finalDue = plan[plan.length - 1]?.dueDate ?? now;
 
-  // The Rs.2,000 (DIRECTS_1_1) loan is disbursed as points into the member's
-  // Pin Wallet instead of offline cash. Every other tier disburses as today.
-  const creditsPinWallet = loan.tierKey === "DIRECTS_1_1";
+  // Every approved loan is disbursed as points into the member's Pin Wallet
+  // (instead of offline cash), regardless of tier/amount.
+  const creditsPinWallet = true;
 
   await prisma.$transaction(async (tx) => {
     await tx.loan.update({
@@ -77,7 +77,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           type: "LOAN_CREDIT",
           amount: loan.amount,
           balanceAfter: wallet.pinWalletBalance,
-          note: "Rs.2,000 loan credited to Pin Wallet",
+          note: `${formatRupees(loan.amount)} loan credited to Pin Wallet`,
         },
       });
     }
