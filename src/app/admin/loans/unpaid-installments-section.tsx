@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Bell, MessageCircle, Phone, AlertTriangle } from "lucide-react";
+import { Bell, MessageCircle, Phone, AlertTriangle, Download } from "lucide-react";
 import { formatRupees, calcTotalPenalty } from "@/lib/loan";
 import { SearchBox } from "./pending-loans-section";
 
@@ -39,6 +39,81 @@ function matches(row: UnpaidInstallmentRow, q: string): boolean {
   );
 }
 
+// Quote a single CSV cell — wrap in quotes and double any embedded quotes so
+// commas, quotes and newlines survive. Always quoted to keep things simple and
+// to stop Excel auto-converting codes/PANs into numbers/dates.
+function csvCell(value: string | number): string {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function istDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" });
+}
+
+function istDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Kolkata" });
+}
+
+const EXPORT_HEADERS = [
+  "Due Date",
+  "Overdue (days)",
+  "Member",
+  "Member Code",
+  "Email",
+  "Phone",
+  "WhatsApp",
+  "PAN",
+  "Tier",
+  "Week",
+  "Amount (₹)",
+  "Penalty (₹)",
+  "Total Unpaid (₹)",
+  "Payment Status",
+  "Last Reminder",
+];
+
+function toExportRow(r: UnpaidInstallmentRow): (string | number)[] {
+  const penalty = r.daysOverdue > 0 ? calcTotalPenalty(r.loanAmount, r.daysOverdue) : 0;
+  return [
+    istDate(r.dueDate),
+    r.daysOverdue,
+    r.userName,
+    r.userCode,
+    r.userEmail,
+    r.userPhone ?? "",
+    r.userWhatsapp ?? "",
+    r.userPan ?? "",
+    r.tierLabel,
+    r.weekNumber,
+    (r.amount / 100).toFixed(2),
+    (penalty / 100).toFixed(2),
+    (r.totalUnpaid / 100).toFixed(2),
+    r.status === "RECEIPT_UPLOADED" ? "Receipt uploaded" : "Not paid",
+    r.lastReminderAt ? istDateTime(r.lastReminderAt) : "No reminder sent",
+  ];
+}
+
+// Build a UTF-8 CSV (with BOM so Excel reads ₹ and other characters correctly)
+// and trigger a client-side download. CSV opens natively in Excel and avoids
+// pulling in a spreadsheet dependency.
+function downloadExcel(rows: UnpaidInstallmentRow[], title: string) {
+  const lines = [
+    EXPORT_HEADERS.map(csvCell).join(","),
+    ...rows.map((r) => toExportRow(r).map(csvCell).join(",")),
+  ];
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); // YYYY-MM-DD
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slug}-${today}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function UnpaidInstallmentsSection({
   title,
   description,
@@ -68,7 +143,17 @@ export function UnpaidInstallmentsSection({
             <h2 className="font-semibold">{title} ({rows.length})</h2>
             <p className="text-xs text-muted-foreground mt-1">{description}</p>
           </div>
-          <SearchBox value={q} onChange={setQ} placeholder="Search name / code / phone / PAN…" />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => downloadExcel(filtered, title)}
+              disabled={filtered.length === 0}
+              title="Download the shown installments as a spreadsheet (CSV — opens in Excel)"
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 whitespace-nowrap"
+            >
+              <Download className="h-3.5 w-3.5" /> Download Excel
+            </button>
+            <SearchBox value={q} onChange={setQ} placeholder="Search name / code / phone / PAN…" />
+          </div>
         </div>
         {filtered.length > 0 && (
           <div className="mt-3 text-xs text-muted-foreground">
