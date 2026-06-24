@@ -7,7 +7,7 @@ import { KeyRound, ArrowRightLeft, ArrowLeftRight } from "lucide-react";
 import { formatPoints } from "@/lib/money";
 
 // Per-transfer minimums (points = whole rupees).
-const MIN_TOPUP = 500;     // payout -> pin wallet
+const MIN_TOPUP = 200;     // payout -> pin wallet
 const MIN_WITHDRAW = 3000; // pin wallet -> payout
 
 export function PinWalletActions({
@@ -161,7 +161,7 @@ export function PinWalletActions({
             value={transferPts || ""}
             onChange={(e) => setTransferPts(Math.max(0, parseInt(e.target.value, 10) || 0))}
             className="input"
-            placeholder="e.g. 500"
+            placeholder="e.g. 200"
           />
           <p className="mt-1 text-xs text-muted-foreground">
             Moves points from payout into the Pin Wallet (1 point = ₹1). Minimum <strong>{MIN_TOPUP.toLocaleString("en-IN")}</strong> points per transfer.

@@ -7,7 +7,7 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 // Points are whole rupees (1 point = ₹1 = 100 paise) everywhere in the app.
-const MIN_TRANSFER_POINTS = 500;
+const MIN_TRANSFER_POINTS = 200;
 const bodySchema = z.object({
   points: z.number().int().min(MIN_TRANSFER_POINTS, `Minimum transfer is ${MIN_TRANSFER_POINTS} points`),
 });
