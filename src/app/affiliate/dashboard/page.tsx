@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getNetworkSnapshot, type DownlineNode } from "@/lib/network";
+import { getProMaxNewUsersUnderChildren } from "@/lib/network-promax";
 import { formatPoints } from "@/lib/money";
 import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
@@ -91,6 +92,11 @@ export default async function AffiliateDashboardPage() {
   const proMaxRight = me.proMaxRightLegCount;
   const proMaxBalance = me.wallet?.proMaxBalanceAvailable ?? 0;
   const showProMaxWallet = me.isProMax || proMaxBalance > 0 || proMaxLeft > 0 || proMaxRight > 0;
+
+  // New Pro Max users created under each direct child's Pro Max tree (Pro Max
+  // grandchildren) — these new users have no main-tree position, so they're
+  // counted via the separate Pro Max tree and shown per child below.
+  const proMaxGrand = await getProMaxNewUsersUnderChildren(leftIds, rightIds);
 
   // Note: public self-signup is disabled. New members are placed by their
   // upline via /affiliate/dashboard/add-member using this Refer ID and a pin.
@@ -316,6 +322,61 @@ export default async function AffiliateDashboardPage() {
       <div className="grid grid-cols-2 gap-2 sm:gap-4">
         <TeamCounter color="amber" icon={<Crown className="h-5 w-5" />} label="PRO MAX L" value={proMaxLeft} />
         <TeamCounter color="violet" icon={<Crown className="h-5 w-5" />} label="PRO MAX R" value={proMaxRight} />
+      </div>
+
+      {/* New Pro Max users created under each direct child (Pro Max grandchildren) */}
+      {(leftRoot || rightRoot) && (
+        <div>
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+            <Crown className="h-3.5 w-3.5 text-amber-600" /> New Pro Max users under your children
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <ChildProMaxBox side="LEFT" child={leftRoot} l={proMaxGrand.leftL} r={proMaxGrand.leftR} />
+            <ChildProMaxBox side="RIGHT" child={rightRoot} l={proMaxGrand.rightL} r={proMaxGrand.rightR} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChildProMaxBox({
+  side,
+  child,
+  l,
+  r,
+}: {
+  side: "LEFT" | "RIGHT";
+  child?: DownlineNode;
+  l: number;
+  r: number;
+}) {
+  const tone = side === "LEFT"
+    ? { ring: "border-emerald-200", chip: "bg-emerald-100 text-emerald-800" }
+    : { ring: "border-sky-200", chip: "bg-sky-100 text-sky-800" };
+  return (
+    <div className={`card p-4 border ${tone.ring}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${tone.chip}`}>{side} child</span>
+        {child ? (
+          <span className="text-xs text-muted-foreground font-mono truncate">{child.referralCode}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">Empty</span>
+        )}
+      </div>
+      {child && <div className="text-sm font-medium mt-1 truncate">{child.name}</div>}
+      <div className="mt-3 grid grid-cols-2 gap-2 text-center">
+        <div>
+          <div className="text-2xl font-bold tabular-nums text-amber-700">{l}</div>
+          <div className="text-[11px] text-muted-foreground">Pro Max L</div>
+        </div>
+        <div className="border-l">
+          <div className="text-2xl font-bold tabular-nums text-amber-700">{r}</div>
+          <div className="text-[11px] text-muted-foreground">Pro Max R</div>
+        </div>
+      </div>
+      <div className="text-[11px] text-muted-foreground mt-2 text-center">
+        {l + r} new Pro Max user{l + r === 1 ? "" : "s"} created
       </div>
     </div>
   );
