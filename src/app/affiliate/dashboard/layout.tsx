@@ -1,8 +1,11 @@
-import { DashboardShell } from "@/components/dashboard-shell";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { DashboardShell, type DashboardNavItem } from "@/components/dashboard-shell";
 import { BreakingNewsTicker } from "@/components/breaking-news-ticker";
-import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy, Smartphone, WalletCards, Crown } from "lucide-react";
+import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy, Smartphone, WalletCards, Crown, GitFork } from "lucide-react";
 
-const nav = [
+const baseNav: DashboardNavItem[] = [
   { href: "/affiliate/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/news", label: "News", icon: <Megaphone className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/rewards", label: "My Rewards", icon: <Trophy className="h-4 w-4" /> },
@@ -22,7 +25,30 @@ const nav = [
   { href: "/affiliate/dashboard/settings", label: "Settings", icon: <SettingsIcon className="h-4 w-4" /> },
 ];
 
-export default function AffiliateLayout({ children }: { children: React.ReactNode }) {
+// "Pro Max Tree" is a Pro-Max-only section — inserted after "Pin Pro Max".
+const proMaxTreeItem: DashboardNavItem = {
+  href: "/affiliate/dashboard/pro-max-tree",
+  label: "Pro Max Tree",
+  icon: <GitFork className="h-4 w-4" />,
+};
+
+export default async function AffiliateLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions);
+  let isProMax = false;
+  if (session) {
+    const me = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isProMax: true },
+    });
+    isProMax = me?.isProMax ?? false;
+  }
+
+  let nav = baseNav;
+  if (isProMax) {
+    const i = baseNav.findIndex((n) => n.href === "/affiliate/dashboard/pin-pro-max");
+    nav = [...baseNav.slice(0, i + 1), proMaxTreeItem, ...baseNav.slice(i + 1)];
+  }
+
   return (
     <>
       <BreakingNewsTicker />
