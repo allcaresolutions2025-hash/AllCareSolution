@@ -14,9 +14,11 @@ export function RequestProMaxPinForm({
   pricePerPinPaise: number;
 }) {
   const router = useRouter();
-  const [quantity, setQuantity] = useState(1);
+  const [qty, setQty] = useState("1");
   const [mobile, setMobile] = useState(defaultMobile);
   const [loading, setLoading] = useState(false);
+
+  const quantity = parseInt(qty, 10) || 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,12 +56,18 @@ export function RequestProMaxPinForm({
         <div>
           <label className="label">Quantity</label>
           <input
-            type="number"
-            min={1}
-            max={100}
+            type="text"
+            inputMode="numeric"
             className="input tabular-nums"
-            value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, Math.min(100, parseInt(e.target.value || "1", 10) || 1)))}
+            value={qty}
+            onChange={(e) => setQty(e.target.value.replace(/[^0-9]/g, ""))}
+            onBlur={() =>
+              setQty((q) => {
+                const n = parseInt(q, 10);
+                if (!(n >= 1)) return "1";
+                return String(Math.min(100, n));
+              })
+            }
           />
         </div>
         <div>
