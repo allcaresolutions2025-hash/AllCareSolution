@@ -22,6 +22,7 @@ export default async function AdminProMaxGenealogyPage() {
       email: true,
       referralCode: true,
       isActive: true,
+      isProMax: true,
       gender: true,
       proMaxLeftLegCount: true,
       proMaxRightLegCount: true,
@@ -49,18 +50,23 @@ export default async function AdminProMaxGenealogyPage() {
   const totalMembers = snapshot.totalMembers + 1;
   const maxDepth = snapshot.nodes.length > 0 ? Math.max(...snapshot.nodes.map((n) => n.depth)) : 0;
 
-  // Count how many members across the tree are Pro Max, and per-node Pro Max points.
+  // Per-node Pro Max points + which members are Pro Max (for the node badge).
   const downlineIds = snapshot.nodes.map((n) => n.id);
-  const [wallets, proMaxCount] = await Promise.all([
+  const [wallets, proMaxMembers] = await Promise.all([
     downlineIds.length
       ? prisma.wallet.findMany({
           where: { userId: { in: downlineIds } },
           select: { userId: true, proMaxBalanceAvailable: true },
         })
       : Promise.resolve([]),
-    prisma.user.count({ where: { id: { in: [leader.id, ...downlineIds] }, isProMax: true } }),
+    prisma.user.findMany({
+      where: { id: { in: [leader.id, ...downlineIds] }, isProMax: true },
+      select: { id: true },
+    }),
   ]);
   const pointsByUser = new Map(wallets.map((w) => [w.userId, w.proMaxBalanceAvailable]));
+  const proMaxIds = new Set(proMaxMembers.map((m) => m.id));
+  const proMaxCount = proMaxIds.size;
 
   const treePeople: TreePerson[] = [
     {
@@ -74,6 +80,7 @@ export default async function AdminProMaxGenealogyPage() {
       gender: leader.gender,
       pointsPaise: leader.wallet?.proMaxBalanceAvailable ?? 0,
       isRoot: true,
+      isProMax: leader.isProMax,
     },
     ...snapshot.nodes.map((n) => ({
       id: n.id,
@@ -87,6 +94,7 @@ export default async function AdminProMaxGenealogyPage() {
       gender: n.gender,
       createdAt: n.createdAt,
       pointsPaise: pointsByUser.get(n.id) ?? 0,
+      isProMax: proMaxIds.has(n.id),
     })),
   ];
 

@@ -13,6 +13,7 @@ export type TreePerson = {
   gender?: "MALE" | "FEMALE" | null;
   createdAt?: Date;
   isRoot?: boolean;
+  isProMax?: boolean;
 };
 
 type LaidOutNode = {
@@ -28,6 +29,7 @@ type LaidOutNode = {
   pointsPaise: number;
   gender?: "MALE" | "FEMALE" | null;
   isRoot?: boolean;
+  isProMax?: boolean;
   isPlaceholder?: boolean;
   placeholderSide?: "LEFT" | "RIGHT";
   placeholderParentCode?: string;
@@ -486,6 +488,13 @@ function RealNode({
         className={isClickable ? "transition-opacity hover:opacity-90" : undefined}
         style={!isClickable ? { cursor: "default" } : undefined}
       />
+      {n.isProMax && (
+        <foreignObject x={x + NODE_W - 30} y={y - 9} width={28} height={18}>
+          <div className="text-[9px] font-bold leading-none px-1.5 py-1 rounded-full bg-amber-500 text-white text-center shadow-sm">
+            👑
+          </div>
+        </foreignObject>
+      )}
       <foreignObject x={x} y={y} width={NODE_W} height={NODE_H}>
         <div
           className={`h-full px-3 py-2 flex items-center gap-2 ${isRoot ? "text-white" : "text-slate-900"}`}

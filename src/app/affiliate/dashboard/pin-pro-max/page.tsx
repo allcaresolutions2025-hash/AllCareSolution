@@ -87,9 +87,7 @@ export default async function PinProMaxPage() {
           <div className="flex-1">
             <div className="font-semibold text-emerald-900">You&apos;re a Pro Max member</div>
             <div className="text-sm text-emerald-800 mt-0.5">
-              You earn Pro Max points as your team goes Pro Max. Track it on your{" "}
-              <Link href="/affiliate/dashboard/pro-max-tree" className="underline font-medium">Pro Max Tree</Link>{" "}
-              and claim the Acht Mart Combo from{" "}
+              You earn Pro Max points as your team goes Pro Max. Claim the Acht Mart Combo from{" "}
               <Link href="/affiliate/dashboard/rewards" className="underline font-medium">My Rewards</Link>.
             </div>
           </div>
