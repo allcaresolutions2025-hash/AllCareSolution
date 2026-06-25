@@ -16,6 +16,7 @@
     "db:seed-20": "tsx scripts/seed-20-users.ts",
     "db:studio": "prisma studio",
     "db:release-commissions": "tsx scripts/release-commissions.ts",
+    "db:backfill-promax": "tsx scripts/backfill-promax-counts.ts",
     "demo:seed-payout": "tsx scripts/seed-payout-test.ts"
   },
   "prisma": {

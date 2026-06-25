@@ -40,7 +40,8 @@ export async function POST(req: Request) {
   } = parsed.data;
 
   // 1. Pin must belong to caller, be ACTIVE, and be a standard (non-Pro Max)
-  //    pin. Pro Max pins build the separate Pro Max tree via /api/members/pro-max.
+  //    pin. Pro Max pins are an upgrade (handled at admin approval), never used
+  //    to add a member here.
   const pin = await prisma.pin.findUnique({ where: { code: pinCode } });
   if (!pin || pin.ownerId !== session.user.id || pin.status !== "ACTIVE" || pin.proMax) {
     return NextResponse.json({ error: "Pin not found or already used" }, { status: 400 });

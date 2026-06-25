@@ -83,35 +83,14 @@ export default async function AffiliateDashboardPage() {
 
   const personalPts = me.wallet?.balanceAvailable ?? 0;
 
-  // Pin Pro Max counts (shown for EVERY user):
-  //  - A Pro Max member sees their REAL Pro Max-tree leg counts.
-  //  - A non-member sees how many of their standard LEFT/RIGHT team have gone
-  //    Pro Max (awareness — e.g. Priya can tell a teammate subscribed).
+  // Pin Pro Max — count of Pro Max members in my LEFT / RIGHT main-tree legs.
+  // The Pro Max engine maintains these on every upline (not just Pro Max
+  // members), so a member like Priya sees the count grow as her team goes Pro
+  // Max. Shown for all users.
+  const proMaxLeft = me.proMaxLeftLegCount;
+  const proMaxRight = me.proMaxRightLegCount;
   const proMaxBalance = me.wallet?.proMaxBalanceAvailable ?? 0;
-  const isProMaxMember =
-    me.isProMax || me.proMaxLeftLegCount > 0 || me.proMaxRightLegCount > 0 || proMaxBalance > 0;
-
-  let proMaxLeft: number;
-  let proMaxRight: number;
-  if (isProMaxMember) {
-    proMaxLeft = me.proMaxLeftLegCount;
-    proMaxRight = me.proMaxRightLegCount;
-  } else {
-    const proMaxMembers = downlineIds.length
-      ? await prisma.user.findMany({
-          where: { id: { in: downlineIds }, isProMax: true },
-          select: { id: true },
-        })
-      : [];
-    let tl = 0;
-    let tr = 0;
-    for (const m of proMaxMembers) {
-      if (leftIds.has(m.id)) tl += 1;
-      else if (rightIds.has(m.id)) tr += 1;
-    }
-    proMaxLeft = tl;
-    proMaxRight = tr;
-  }
+  const showProMaxWallet = me.isProMax || proMaxBalance > 0 || proMaxLeft > 0 || proMaxRight > 0;
 
   // Note: public self-signup is disabled. New members are placed by their
   // upline via /affiliate/dashboard/add-member using this Refer ID and a pin.
@@ -309,14 +288,14 @@ export default async function AffiliateDashboardPage() {
       </div>
 
       {/* Wallet stats */}
-      <div className={`grid gap-4 ${isProMaxMember ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
+      <div className={`grid gap-4 ${showProMaxWallet ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
         <BigStat
           color="emerald"
           icon={<Wallet className="h-5 w-5" />}
           label="E-WALLET BALANCE"
           value={formatPoints(personalPts)}
         />
-        {isProMaxMember && (
+        {showProMaxWallet && (
           <BigStat
             color="orange"
             icon={<Crown className="h-5 w-5" />}

@@ -1,33 +1,33 @@
-// Real-time points engine for the PIN PRO MAX binary tree.
+// PIN PRO MAX points engine — OVERLAY on the existing 1000-pt binary tree.
 //
-// This is a parallel copy of src/lib/points.ts that operates ONLY on the Pro
-// Max placement fields (proMaxReferrerId / proMaxSlot / proMaxLeftLegCount /
-// proMaxRightLegCount) and credits ONLY the Pro Max wallet
-// (Wallet.proMaxBalanceAvailable). The 1000-pt engine in points.ts is never
-// touched, and this engine never reads or writes the 1000-pt fields.
+// Pro Max is NOT a separate tree. A member "becomes Pro Max" (an upgrade flag,
+// User.isProMax) while keeping their existing position in the main tree
+// (referrerId / slot). When that happens, Pro Max value cascades UP the main
+// tree to their uplines — exactly like the 1000-pt engine, but it fires on the
+// upgrade event rather than on a new join, credits the Pro Max wallet
+// (Wallet.proMaxBalanceAvailable), and counts Pro Max members per leg
+// (User.proMaxLeftLegCount / proMaxRightLegCount).
 //
-// Rules (applied when a new Pro Max joiner N is inserted):
+// Rules (applied when member M flips to Pro Max):
 //
 //   RULE 1 — Direct referral bonus (+2,000)
-//     Credited to the owner of the Refer ID typed at signup (the placement
-//     starting point — may differ from the placement parent when spillover
-//     happens). Paid immediately, once per join.
+//     M's direct upline (M.referrerId) earns +2,000 for a direct downline
+//     going Pro Max.
 //
 //   RULE 2 — Pair-match cascade (+2,000 / +1,000)
-//     For EVERY ancestor at or above the placement parent, N adds 1 to that
-//     ancestor's proMaxLeftLegCount or proMaxRightLegCount. If this grows the
-//     ancestor's min(L, R), the ancestor earns one pair match:
-//        - +2,000 when the ancestor sits within 15 levels of N (depth ≤ 15)
-//        - +1,000 when the ancestor is 16+ levels above N
-//     The direct parent is included, so completing your own Left + Right pair
-//     earns +2,000. (There is no separate first-pair bonus.)
+//     For EVERY ancestor of M in the main tree, M adds 1 to that ancestor's
+//     proMaxLeftLegCount or proMaxRightLegCount (whichever side M sits on). If
+//     this grows the ancestor's min(L, R), the ancestor earns a pair match:
+//        - +2,000 within 15 levels of M (depth ≤ 15)
+//        - +1,000 at 16+ levels
+//     Ancestors earn regardless of whether they are Pro Max themselves — so a
+//     non-Pro-Max upline (e.g. Priya) still earns when her team goes Pro Max.
 //
 // All points are stored as paise in Wallet.proMaxBalanceAvailable.
 
 import { Prisma, PrismaClient, Slot } from "@prisma/client";
 import { PAISE_PER_POINT } from "./money";
 
-// Pro Max award scale.
 export const PROMAX_POINTS_PER_DIRECT_REFERRAL = 2000;
 export const PROMAX_PAIR_MATCH_POINTS_NEAR = 2000; // ancestors ≤15 levels above
 export const PROMAX_PAIR_MATCH_POINTS_FAR = 1000;  // ancestors 16+ levels above
@@ -36,56 +36,49 @@ export const PROMAX_PAIR_MATCH_DEPTH_THRESHOLD = 15;
 type Tx = Prisma.TransactionClient | PrismaClient;
 
 /**
- * Award Pro Max points triggered by a newly-added Pro Max user.
- * Caller is responsible for opening the transaction.
- *
- * @param referralBeneficiaryId - The user who owns the Refer ID typed at
- *   signup. Receives the +2,000 direct-referral bonus (Rule 1). Defaults to the
- *   placement parent when omitted.
+ * Award Pro Max points when member `memberId` becomes Pro Max. Walks the MAIN
+ * binary tree (referrerId / slot). Caller opens the transaction and is
+ * responsible for only calling this once per member (on the flip to Pro Max).
  */
-export async function awardProMaxUplinePoints(
-  tx: Tx,
-  newUserId: string,
-  referralBeneficiaryId?: string,
-): Promise<void> {
-  const newUser = await tx.user.findUnique({
-    where: { id: newUserId },
-    select: { proMaxReferrerId: true, proMaxSlot: true },
+export async function awardProMaxOnUpgrade(tx: Tx, memberId: string): Promise<void> {
+  const member = await tx.user.findUnique({
+    where: { id: memberId },
+    select: { referrerId: true, slot: true },
   });
-  if (!newUser?.proMaxReferrerId || !newUser.proMaxSlot) return;
+  // Root / unplaced members have no upline to credit.
+  if (!member?.referrerId || !member.slot) return;
 
   const directPaise = PROMAX_POINTS_PER_DIRECT_REFERRAL * PAISE_PER_POINT;
   const nearPaise = PROMAX_PAIR_MATCH_POINTS_NEAR * PAISE_PER_POINT;
   const farPaise = PROMAX_PAIR_MATCH_POINTS_FAR * PAISE_PER_POINT;
 
-  // RULE 1 — Refer ID owner gets +2,000 immediately for this direct join.
-  const directBeneficiaryId = referralBeneficiaryId ?? newUser.proMaxReferrerId;
+  // RULE 1 — direct upline gets +2,000 for this direct Pro Max conversion.
   await tx.wallet.upsert({
-    where: { userId: directBeneficiaryId },
-    create: { userId: directBeneficiaryId, proMaxBalanceAvailable: directPaise },
+    where: { userId: member.referrerId },
+    create: { userId: member.referrerId, proMaxBalanceAvailable: directPaise },
     update: { proMaxBalanceAvailable: { increment: directPaise } },
   });
 
-  // Walk up the Pro Max upline chain. For each ancestor (including the direct
-  // parent): bump leg counts, then award a pair match when min(L, R) grows.
-  let ancestorId: string | null = newUser.proMaxReferrerId;
-  let slotFromBelow: Slot = newUser.proMaxSlot;
+  // Walk up the main tree. For each ancestor: bump the Pro Max leg count on the
+  // side M sits, then award a pair match when min(L, R) grows.
+  let ancestorId: string | null = member.referrerId;
+  let slotFromBelow: Slot = member.slot;
   let depth = 1;
   let safety = 0;
 
   while (ancestorId && safety++ < 1000) {
     const ancestor: {
       id: string;
-      proMaxReferrerId: string | null;
-      proMaxSlot: Slot | null;
+      referrerId: string | null;
+      slot: Slot | null;
       proMaxLeftLegCount: number;
       proMaxRightLegCount: number;
     } | null = await tx.user.findUnique({
       where: { id: ancestorId },
       select: {
         id: true,
-        proMaxReferrerId: true,
-        proMaxSlot: true,
+        referrerId: true,
+        slot: true,
         proMaxLeftLegCount: true,
         proMaxRightLegCount: true,
       },
@@ -100,7 +93,6 @@ export async function awardProMaxUplinePoints(
     const oldMin = Math.min(oldL, oldR);
     const newMin = Math.min(newL, newR);
 
-    // Persist the cached leg count change.
     await tx.user.update({
       where: { id: ancestor.id },
       data: isLeftSide
@@ -108,21 +100,19 @@ export async function awardProMaxUplinePoints(
         : { proMaxRightLegCount: { increment: 1 } },
     });
 
-    // RULE 2 — pair match. Only triggers when the SHORTER leg grew.
-    const delta = newMin - oldMin;
-    if (delta > 0) {
+    // RULE 2 — pair match when the SHORTER leg grew.
+    if (newMin > oldMin) {
       const matchPaise = depth <= PROMAX_PAIR_MATCH_DEPTH_THRESHOLD ? nearPaise : farPaise;
       await tx.wallet.upsert({
         where: { userId: ancestor.id },
-        create: { userId: ancestor.id, proMaxBalanceAvailable: delta * matchPaise },
-        update: { proMaxBalanceAvailable: { increment: delta * matchPaise } },
+        create: { userId: ancestor.id, proMaxBalanceAvailable: matchPaise },
+        update: { proMaxBalanceAvailable: { increment: matchPaise } },
       });
     }
 
-    // Move up one level.
-    if (!ancestor.proMaxReferrerId || !ancestor.proMaxSlot) break;
-    slotFromBelow = ancestor.proMaxSlot;
-    ancestorId = ancestor.proMaxReferrerId;
+    if (!ancestor.referrerId || !ancestor.slot) break;
+    slotFromBelow = ancestor.slot;
+    ancestorId = ancestor.referrerId;
     depth++;
   }
 }

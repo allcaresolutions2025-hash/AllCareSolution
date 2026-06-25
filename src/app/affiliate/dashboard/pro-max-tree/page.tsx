@@ -24,12 +24,20 @@ export default async function ProMaxTreePage() {
       isActive: true,
       isProMax: true,
       gender: true,
+      proMaxLeftLegCount: true,
+      proMaxRightLegCount: true,
       wallet: { select: { proMaxBalanceAvailable: true } },
     },
   });
   if (!me) return null;
 
-  if (!me.isProMax) {
+  const hasProMax =
+    me.isProMax ||
+    me.proMaxLeftLegCount > 0 ||
+    me.proMaxRightLegCount > 0 ||
+    (me.wallet?.proMaxBalanceAvailable ?? 0) > 0;
+
+  if (!hasProMax) {
     return (
       <div className="space-y-6">
         <div>
@@ -141,11 +149,7 @@ export default async function ProMaxTreePage() {
         </div>
       </div>
 
-      <BinaryTreeGraph
-        people={treePeople}
-        allowNodeClick={false}
-        addMemberPath="/affiliate/dashboard/add-member/pro-max"
-      />
+      <BinaryTreeGraph people={treePeople} allowNodeClick={false} />
     </div>
   );
 }

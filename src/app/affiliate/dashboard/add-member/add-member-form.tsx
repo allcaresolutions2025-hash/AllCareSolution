@@ -22,8 +22,7 @@ export function AddMemberForm({
   defaultSide: "LEFT" | "RIGHT" | "";
   myReferralCode: string;
   lockReferId?: boolean;
-  // Where to POST the registration. Defaults to the 1000-pt flow; the Pro Max
-  // page passes "/api/members/pro-max" to place into the Pro Max tree.
+  // Where to POST the registration. Defaults to the 1000-pt members endpoint.
   endpoint?: string;
   successHref?: string;
 }) {
