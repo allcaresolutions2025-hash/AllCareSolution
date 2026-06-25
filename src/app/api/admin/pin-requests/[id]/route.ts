@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { generateUniquePinCode } from "@/lib/referral";
-import { awardProMaxOnUpgrade } from "@/lib/points-promax";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -61,28 +60,20 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         status: "ACTIVE" as const,
       })),
     });
-    // Approving a Pro Max pin request UPGRADES the requester in place: they flip
-    // to Pro Max while keeping their existing main-tree position. Pro Max value
-    // then cascades up the main tree to their uplines (+2,000 direct, +2,000 /
-    // +1,000 pair match). Only fire the cascade the first time they flip — a
-    // member with multiple/again-approved Pro Max pins must not double-earn.
+    // Approving a Pro Max pin request enrolls the requester into the Pro Max
+    // program — they become a Pro Max tree root and unlock the Pro Max wallet,
+    // tree graph, and the Acht Mart Combo welcome reward. Ensure a wallet row
+    // exists so the points engine can credit proMaxBalanceAvailable later.
     if (request.proMax) {
-      const member = await tx.user.findUnique({
+      await tx.user.update({
         where: { id: request.userId },
-        select: { isProMax: true },
+        data: { isProMax: true },
       });
       await tx.wallet.upsert({
         where: { userId: request.userId },
         create: { userId: request.userId },
         update: {},
       });
-      if (!member?.isProMax) {
-        await tx.user.update({
-          where: { id: request.userId },
-          data: { isProMax: true },
-        });
-        await awardProMaxOnUpgrade(tx, request.userId);
-      }
     }
   });
 

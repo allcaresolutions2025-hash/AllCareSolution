@@ -84,14 +84,36 @@ export default async function AffiliateDashboardPage() {
 
   const personalPts = me.wallet?.balanceAvailable ?? 0;
 
-  // Pin Pro Max — count of Pro Max members in my LEFT / RIGHT main-tree legs.
-  // The Pro Max engine maintains these on every upline (not just Pro Max
-  // members), so a member like Priya sees the count grow as her team goes Pro
-  // Max. Shown for all users.
-  const proMaxLeft = me.proMaxLeftLegCount;
-  const proMaxRight = me.proMaxRightLegCount;
+  // Pin Pro Max counts (shown for EVERY user):
+  //  - A Pro Max member sees their own Pro Max-tree leg counts.
+  //  - A non-member sees how many of their main-tree LEFT/RIGHT team have gone
+  //    Pro Max (awareness — e.g. Priya can tell a teammate subscribed).
   const proMaxBalance = me.wallet?.proMaxBalanceAvailable ?? 0;
-  const showProMaxWallet = me.isProMax || proMaxBalance > 0 || proMaxLeft > 0 || proMaxRight > 0;
+  const isProMaxMember =
+    me.isProMax || me.proMaxLeftLegCount > 0 || me.proMaxRightLegCount > 0 || proMaxBalance > 0;
+
+  let proMaxLeft: number;
+  let proMaxRight: number;
+  if (isProMaxMember) {
+    proMaxLeft = me.proMaxLeftLegCount;
+    proMaxRight = me.proMaxRightLegCount;
+  } else {
+    const proMaxMembers = downlineIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: downlineIds }, isProMax: true },
+          select: { id: true },
+        })
+      : [];
+    let tl = 0;
+    let tr = 0;
+    for (const m of proMaxMembers) {
+      if (leftIds.has(m.id)) tl += 1;
+      else if (rightIds.has(m.id)) tr += 1;
+    }
+    proMaxLeft = tl;
+    proMaxRight = tr;
+  }
+  const showProMaxWallet = isProMaxMember;
 
   // New Pro Max users created under each direct child's Pro Max tree (Pro Max
   // grandchildren) — these new users have no main-tree position, so they're

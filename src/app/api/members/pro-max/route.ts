@@ -3,9 +3,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { generateUniqueReferralCode } from "@/lib/referral";
-import { awardUplinePoints } from "@/lib/points";
+import { awardProMaxUplinePoints } from "@/lib/points-promax";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+
+// Pro Max add-member — a parallel copy of /api/members that places the new
+// member into the SEPARATE Pro Max binary tree (proMaxReferrerId/proMaxSlot)
+// using a Pro Max pin, and awards Pro Max points. The 1000-pt placement of the
+// new member is left null; the two trees are independent.
 
 const MAX_USES = 15; // email, phone, and PAN can each be shared across up to 15 member IDs
 
@@ -39,41 +44,43 @@ export async function POST(req: Request) {
     bankAccountName, bankAccountNumber, bankIfsc, bankName, referId, side,
   } = parsed.data;
 
-  // 1. Pin must belong to caller, be ACTIVE, and be a standard (non-Pro Max)
-  //    pin. Pro Max pins build the separate Pro Max tree via /api/members/pro-max.
+  // 1. Pin must belong to caller, be ACTIVE, and be a Pro Max pin.
   const pin = await prisma.pin.findUnique({ where: { code: pinCode } });
-  if (!pin || pin.ownerId !== session.user.id || pin.status !== "ACTIVE" || pin.proMax) {
-    return NextResponse.json({ error: "Pin not found or already used" }, { status: 400 });
+  if (!pin || pin.ownerId !== session.user.id || pin.status !== "ACTIVE" || !pin.proMax) {
+    return NextResponse.json({ error: "Pro Max pin not found or already used" }, { status: 400 });
   }
 
-  // 2. Resolve Refer ID; ensure it's caller or in caller's downline.
+  // 2. Resolve Refer ID; ensure it's caller or in caller's Pro Max downline.
   const parent = await prisma.user.findUnique({
     where: { referralCode: referId },
-    select: { id: true, referrerId: true },
+    select: { id: true, proMaxReferrerId: true, isProMax: true },
   });
   if (!parent) {
     return NextResponse.json({ error: "Refer ID does not match any member" }, { status: 400 });
   }
   if (parent.id !== session.user.id) {
-    let cursor: string | null = parent.referrerId;
+    if (!parent.isProMax) {
+      return NextResponse.json({ error: "Refer ID is not a Pro Max member" }, { status: 400 });
+    }
+    let cursor: string | null = parent.proMaxReferrerId;
     let allowed = false;
     let safety = 0;
     while (cursor && safety++ < 100) {
       if (cursor === session.user.id) { allowed = true; break; }
-      const next = await prisma.user.findUnique({ where: { id: cursor }, select: { referrerId: true } });
-      cursor = next?.referrerId ?? null;
+      const next = await prisma.user.findUnique({ where: { id: cursor }, select: { proMaxReferrerId: true } });
+      cursor = next?.proMaxReferrerId ?? null;
     }
     if (!allowed) {
-      return NextResponse.json({ error: "Refer ID is not in your downline" }, { status: 403 });
+      return NextResponse.json({ error: "Refer ID is not in your Pro Max downline" }, { status: 403 });
     }
   }
 
-  // 3. Spillover to next open slot on the chosen side.
+  // 3. Spillover to next open Pro Max slot on the chosen side.
   let placementParentId = parent.id;
   let spillover = 0;
   for (let safety = 0; safety < 100; safety++) {
     const taken = await prisma.user.findFirst({
-      where: { referrerId: placementParentId, slot: side },
+      where: { proMaxReferrerId: placementParentId, proMaxSlot: side },
       select: { id: true },
     });
     if (!taken) break;
@@ -94,9 +101,7 @@ export async function POST(req: Request) {
   if (panCount >= MAX_USES)
     return NextResponse.json({ error: `This PAN has already been used for ${MAX_USES} member IDs.` }, { status: 400 });
 
-  // 5. Create user, consume pin, award upline points — single transaction.
-  // Default password = the member's own mobile number. They will be prompted
-  // to change it on first login.
+  // 5. Create Pro Max member, consume pin, award Pro Max points — single txn.
   const passwordHash = await bcrypt.hash(mobile, 12);
   const memberCode = await generateUniqueReferralCode();
 
@@ -119,8 +124,10 @@ export async function POST(req: Request) {
           passwordHash,
           mustChangePassword: true,
           referralCode: memberCode,
-          referrerId: placementParentId,
-          slot: side,
+          // Pro Max placement only — the 1000-pt tree is left untouched.
+          isProMax: true,
+          proMaxReferrerId: placementParentId,
+          proMaxSlot: side,
           agreedToTermsAt: new Date(),
           wallet: { create: {} },
         },
@@ -129,19 +136,13 @@ export async function POST(req: Request) {
         where: { id: pin.id },
         data: { status: "USED", usedAt: new Date(), usedForUserId: created.id },
       });
-      // +200 direct-referral bonus goes to the typed Refer ID's owner
-      // (parent.id) — NOT the PIN owner, and NOT the spillover placement
-      // parent. This matches member expectation that "the referral code's
-      // owner gets the money."
-      await awardUplinePoints(tx, created.id, parent.id);
-      await tx.user.update({
-        where: { id: session.user.id },
-        data: { mustOnboard: false },
-      });
+      // +2,000 direct-referral bonus goes to the typed Refer ID owner
+      // (parent.id), matching the 1000-pt flow.
+      await awardProMaxUplinePoints(tx, created.id, parent.id);
       return created;
     });
   } catch (err) {
-    console.error("[MEMBER_CREATE]", err);
+    console.error("[PROMAX_MEMBER_CREATE]", err);
     return NextResponse.json({ error: "Could not create member. Please try again." }, { status: 500 });
   }
 
