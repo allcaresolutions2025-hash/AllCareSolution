@@ -9,6 +9,7 @@ type Props = {
   allowNodeClick?: boolean;
   maxVisibleDepth?: number;
   drilldownHrefBuilder?: (id: string) => string;
+  addMemberPath?: string;
 };
 
 const MIN_ZOOM = 0.4;
@@ -26,6 +27,7 @@ export function BinaryTreeZoomable({
   allowNodeClick = true,
   maxVisibleDepth,
   drilldownHrefBuilder,
+  addMemberPath,
 }: Props) {
   const [zoom, setZoom] = useState(1);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -115,6 +117,7 @@ export function BinaryTreeZoomable({
             embedded
             maxVisibleDepth={maxVisibleDepth}
             drilldownHrefBuilder={drilldownHrefBuilder}
+            addMemberPath={addMemberPath}
           />
         </div>
       </div>
