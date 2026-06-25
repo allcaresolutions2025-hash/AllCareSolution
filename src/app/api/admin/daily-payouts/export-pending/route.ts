@@ -20,12 +20,16 @@ import { csvResponse, toCsv } from "@/lib/csv";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 
+  // ?scope=standard|proMax|all (default all) — separate pending sheets per program.
+  const scope = new URL(req.url).searchParams.get("scope");
+  const proMaxFilter = scope === "proMax" ? { proMax: true } : scope === "standard" ? { proMax: false } : {};
+
   const payouts = await prisma.dailyPayout.findMany({
-    where: { status: "PENDING" },
+    where: { status: "PENDING", ...proMaxFilter },
     orderBy: [{ runDate: "desc" }, { createdAt: "asc" }],
     include: {
       user: {
@@ -68,5 +72,6 @@ export async function GET() {
   }
 
   const stamp = new Date().toISOString().slice(0, 10);
-  return csvResponse(`daily-payouts-pending-${stamp}.csv`, toCsv(rows));
+  const tag = scope === "proMax" ? "promax-" : scope === "standard" ? "standard-" : "";
+  return csvResponse(`daily-payouts-pending-${tag}${stamp}.csv`, toCsv(rows));
 }

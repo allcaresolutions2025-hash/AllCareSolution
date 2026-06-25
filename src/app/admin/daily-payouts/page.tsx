@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
 import { istDateString } from "@/lib/daily-payout";
-import { Clock, CheckCircle2, Coins, Download, RotateCcw } from "lucide-react";
+import { Clock, Coins, Download, RotateCcw, Crown } from "lucide-react";
 import { PendingPayoutsTable } from "./pending-payouts-table";
 import { SimulateMidnightButton } from "./simulate-midnight-button";
 import { Pagination } from "@/components/pagination";
@@ -23,25 +23,38 @@ export default async function AdminDailyPayoutsPage({
   const todayIst = istDateString();
   const paidPage = Math.max(1, parseInt(searchParams.paidPage ?? "1", 10) || 1);
 
-  const [pending, totalsPending, paid, paidTotal, unpaid, paidTotals] = await Promise.all([
-    prisma.dailyPayout.findMany({
-      where: { status: "PENDING" },
-      orderBy: { createdAt: "asc" },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            referralCode: true,
-            leftLegCount: true,
-            rightLegCount: true,
-          },
-        },
+  const pendingInclude = {
+    user: {
+      select: {
+        name: true,
+        email: true,
+        referralCode: true,
+        leftLegCount: true,
+        rightLegCount: true,
+        proMaxLeftLegCount: true,
+        proMaxRightLegCount: true,
       },
+    },
+  };
+
+  const [pendingStd, pendingPro, owedStd, owedPro, paid, paidTotal, unpaid] = await Promise.all([
+    prisma.dailyPayout.findMany({
+      where: { status: "PENDING", proMax: false },
+      orderBy: { createdAt: "asc" },
+      include: pendingInclude,
+    }),
+    prisma.dailyPayout.findMany({
+      where: { status: "PENDING", proMax: true },
+      orderBy: { createdAt: "asc" },
+      include: pendingInclude,
     }),
     prisma.dailyPayout.aggregate({
-      where: { status: "PENDING" },
-      _sum: { paidAmount: true, forfeitAmount: true },
+      where: { status: "PENDING", proMax: false },
+      _sum: { paidAmount: true },
+    }),
+    prisma.dailyPayout.aggregate({
+      where: { status: "PENDING", proMax: true },
+      _sum: { paidAmount: true },
     }),
     prisma.dailyPayout.findMany({
       where: { status: "PAID" },
@@ -60,11 +73,25 @@ export default async function AdminDailyPayoutsPage({
       take: 50,
       include: { user: { select: { name: true, email: true, referralCode: true } } },
     }),
-    prisma.dailyPayout.aggregate({
-      where: { status: "PAID" },
-      _sum: { paidAmount: true },
-    }),
   ]);
+
+  // Map a DailyPayout (+user) row to the shape PendingPayoutsTable expects.
+  // Pro Max rows show the Pro Max leg counts so the L/R column is meaningful.
+  type PendingRow = (typeof pendingStd)[number];
+  const toRows = (list: PendingRow[]) =>
+    list.map((p) => ({
+      id: p.id,
+      runDate: p.runDate,
+      userName: p.user.name,
+      userEmail: p.user.email,
+      userCode: p.user.referralCode,
+      leftLegCount: p.proMax ? p.user.proMaxLeftLegCount : p.user.leftLegCount,
+      rightLegCount: p.proMax ? p.user.proMaxRightLegCount : p.user.rightLegCount,
+      startBalance: p.startBalance,
+      paidAmount: p.paidAmount,
+      forfeitAmount: p.forfeitAmount,
+      proMax: p.proMax,
+    }));
 
   return (
     <div className="space-y-6">
@@ -74,49 +101,74 @@ export default async function AdminDailyPayoutsPage({
           Every night at 00:00 IST the cron job pays out 90% of each user&apos;s available points
           and resets their balance to 0 — but only for users with at least 500 pts.
           Sub-500 balances keep accumulating until they cross the threshold. Disburse offline, then mark as paid.
+          The 1000-pt and Pin Pro Max wallets are tracked separately below.
         </p>
       </div>
 
-      <SimulateMidnightButton />
-
-      <div className="grid sm:grid-cols-3 gap-4">
-        <Kpi icon={<Clock className="h-5 w-5" />} label="Pending payouts" value={pending.length} tone="amber" />
-        <Kpi icon={<Coins className="h-5 w-5" />} label="Owed (pending)" value={formatPoints(totalsPending._sum.paidAmount ?? 0)} tone="sky" />
-        <Kpi icon={<CheckCircle2 className="h-5 w-5" />} label="Paid lifetime" value={formatPoints(paidTotals._sum.paidAmount ?? 0)} tone="emerald" />
+      <div className="grid lg:grid-cols-2 gap-4">
+        <SimulateMidnightButton
+          scope="standard"
+          title="Simulate payout (1000-pt)"
+          description="Runs the 1000-pt payout: pays 90% of each user's e-wallet balance, resets to 0, and clears the gated-points cache. Demo only."
+          tone="amber"
+        />
+        <SimulateMidnightButton
+          scope="proMax"
+          title="Simulate payout (Pin Pro Max)"
+          description="Runs the Pin Pro Max payout: pays 90% of each member's Pro Max wallet balance and resets it to 0. Demo only."
+          tone="violet"
+        />
       </div>
 
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Kpi icon={<Clock className="h-5 w-5" />} label="Pending (1000-pt)" value={pendingStd.length} tone="amber" />
+        <Kpi icon={<Coins className="h-5 w-5" />} label="Owed (1000-pt)" value={formatPoints(owedStd._sum.paidAmount ?? 0)} tone="sky" />
+        <Kpi icon={<Clock className="h-5 w-5" />} label="Pending (Pro Max)" value={pendingPro.length} tone="amber" />
+        <Kpi icon={<Coins className="h-5 w-5" />} label="Owed (Pro Max)" value={formatPoints(owedPro._sum.paidAmount ?? 0)} tone="sky" />
+      </div>
+
+      {/* 1000-pt pending */}
       <div className="card overflow-hidden">
         <div className="p-5 border-b flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="font-semibold">Pending ({pending.length})</h2>
+            <h2 className="font-semibold">Pending — 1000-pt ({pendingStd.length})</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               Download this list before disbursing — send the money offline using the bank details, then return here and mark each row paid.
             </p>
           </div>
-          {pending.length > 0 && (
+          {pendingStd.length > 0 && (
             <a
-              href="/api/admin/daily-payouts/export-pending"
+              href="/api/admin/daily-payouts/export-pending?scope=standard"
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 shrink-0"
             >
-              <Download className="h-3.5 w-3.5" /> Download Excel (pending)
+              <Download className="h-3.5 w-3.5" /> Download Excel (1000-pt)
             </a>
           )}
         </div>
-        <PendingPayoutsTable
-          payouts={pending.map((p) => ({
-            id: p.id,
-            runDate: p.runDate,
-            userName: p.user.name,
-            userEmail: p.user.email,
-            userCode: p.user.referralCode,
-            leftLegCount: p.user.leftLegCount,
-            rightLegCount: p.user.rightLegCount,
-            startBalance: p.startBalance,
-            paidAmount: p.paidAmount,
-            forfeitAmount: p.forfeitAmount,
-            proMax: p.proMax,
-          }))}
-        />
+        <PendingPayoutsTable payouts={toRows(pendingStd)} />
+      </div>
+
+      {/* Pin Pro Max pending */}
+      <div className="card overflow-hidden border-violet-200">
+        <div className="p-5 border-b flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="font-semibold flex items-center gap-2">
+              <Crown className="h-4 w-4 text-violet-600" /> Pending — Pin Pro Max ({pendingPro.length})
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Pro Max wallet payouts, tracked and disbursed separately from the 1000-pt program.
+            </p>
+          </div>
+          {pendingPro.length > 0 && (
+            <a
+              href="/api/admin/daily-payouts/export-pending?scope=proMax"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 shrink-0"
+            >
+              <Download className="h-3.5 w-3.5" /> Download Excel (Pro Max)
+            </a>
+          )}
+        </div>
+        <PendingPayoutsTable payouts={toRows(pendingPro)} />
       </div>
 
       {/* Payouts (paid) — bank-transfer register, downloadable as Excel */}
@@ -125,15 +177,24 @@ export default async function AdminDailyPayoutsPage({
           <div>
             <h2 className="font-semibold">Payouts ({paidTotal})</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Finalized payouts ready to be sent to the bank.
+              Finalized payouts ready to be sent to the bank. Pro Max rows are badged; use the
+              program-specific buttons to download separate Excel registers.
             </p>
           </div>
-          <a
-            href="/api/admin/daily-payouts/export"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700"
-          >
-            <Download className="h-3.5 w-3.5" /> Download Excel
-          </a>
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href="/api/admin/daily-payouts/export?scope=standard"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700"
+            >
+              <Download className="h-3.5 w-3.5" /> Excel (1000-pt)
+            </a>
+            <a
+              href="/api/admin/daily-payouts/export?scope=proMax"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700"
+            >
+              <Download className="h-3.5 w-3.5" /> Excel (Pro Max)
+            </a>
+          </div>
         </div>
         {paid.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">No paid payouts yet.</div>

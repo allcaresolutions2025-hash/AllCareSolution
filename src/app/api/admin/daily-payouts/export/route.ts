@@ -18,12 +18,17 @@ import { csvResponse, toCsv } from "@/lib/csv";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 
+  // ?scope=standard|proMax|all (default all) — lets the admin pull the 1000-pt
+  // and Pro Max payout registers as separate sheets.
+  const scope = new URL(req.url).searchParams.get("scope");
+  const proMaxFilter = scope === "proMax" ? { proMax: true } : scope === "standard" ? { proMax: false } : {};
+
   const payouts = await prisma.dailyPayout.findMany({
-    where: { status: "PAID" },
+    where: { status: "PAID", ...proMaxFilter },
     orderBy: [{ paidAt: "desc" }, { runDate: "desc" }],
     include: {
       user: {
@@ -66,5 +71,6 @@ export async function GET() {
   }
 
   const stamp = new Date().toISOString().slice(0, 10);
-  return csvResponse(`daily-payouts-${stamp}.csv`, toCsv(rows));
+  const tag = scope === "proMax" ? "promax-" : scope === "standard" ? "standard-" : "";
+  return csvResponse(`daily-payouts-${tag}${stamp}.csv`, toCsv(rows));
 }
