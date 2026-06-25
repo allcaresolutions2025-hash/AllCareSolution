@@ -114,6 +114,7 @@ export default async function AdminDailyPayoutsPage({
             startBalance: p.startBalance,
             paidAmount: p.paidAmount,
             forfeitAmount: p.forfeitAmount,
+            proMax: p.proMax,
           }))}
         />
       </div>
@@ -157,7 +158,14 @@ export default async function AdminDailyPayoutsPage({
                     </td>
                     <td className="px-4 py-2 text-xs font-mono">{p.runDate}</td>
                     <td className="px-4 py-2">
-                      <div className="font-medium">{p.user.name}</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {p.user.name}
+                        {p.proMax && (
+                          <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                            PRO MAX
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs font-mono text-muted-foreground">{p.user.referralCode}</div>
                     </td>
                     <td className="px-4 py-2 text-right font-bold tabular-nums text-brand-700">{formatPoints(p.paidAmount)}</td>

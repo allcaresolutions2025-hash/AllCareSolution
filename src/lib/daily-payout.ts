@@ -92,6 +92,39 @@ export async function runDailyPayout(opts: { force?: boolean } = {}): Promise<Da
       data: { gatedPointsEarned: 0 },
     });
 
+    // ---- PIN PRO MAX wallet — same nightly 90/10 cycle, tracked separately.
+    // Pro Max payout rows carry proMax=true and share the same runDate; the
+    // @@unique([userId, runDate, proMax]) lets them coexist with standard rows.
+    const proMaxWallets = await tx.wallet.findMany({
+      where: { proMaxBalanceAvailable: { gte: MIN_PAYOUT_PAISE } },
+      select: { userId: true, proMaxBalanceAvailable: true },
+    });
+    const proMaxPayouts = proMaxWallets.map((w) => {
+      const paid = Math.floor(w.proMaxBalanceAvailable * PAY_RATIO);
+      const forfeit = w.proMaxBalanceAvailable - paid;
+      totalPaid += paid;
+      totalForfeit += forfeit;
+      return {
+        userId: w.userId,
+        runDate,
+        proMax: true,
+        startBalance: w.proMaxBalanceAvailable,
+        paidAmount: paid,
+        forfeitAmount: forfeit,
+      };
+    });
+    if (proMaxPayouts.length > 0) {
+      const out = await tx.dailyPayout.createMany({ data: proMaxPayouts, skipDuplicates: true });
+      created += out.count;
+    }
+    const proMaxUserIds = proMaxWallets.map((w) => w.userId);
+    if (proMaxUserIds.length > 0) {
+      await tx.wallet.updateMany({
+        where: { userId: { in: proMaxUserIds } },
+        data: { proMaxBalanceAvailable: 0 },
+      });
+    }
+
     if (!force) {
       await tx.setting.upsert({
         where: { key: SETTING_KEY },

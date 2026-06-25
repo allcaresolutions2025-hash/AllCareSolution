@@ -69,7 +69,7 @@ function TabLink({ current, value, label }: { current: Tab; value: Tab; label: s
 
 async function UnusedPanel({ userId }: { userId: string }) {
   const pins = await prisma.pin.findMany({
-    where: { ownerId: userId, status: "ACTIVE" },
+    where: { ownerId: userId, status: "ACTIVE", proMax: false },
     orderBy: { createdAt: "asc" },
     include: { request: { select: { createdAt: true, reviewedAt: true } } },
   });
@@ -120,7 +120,7 @@ async function UnusedPanel({ userId }: { userId: string }) {
 
 async function UsedPanel({ userId }: { userId: string }) {
   const pins = await prisma.pin.findMany({
-    where: { ownerId: userId, status: "USED" },
+    where: { ownerId: userId, status: "USED", proMax: false },
     orderBy: { usedAt: "desc" },
     include: {
       usedForUser: { select: { name: true, email: true, referralCode: true, slot: true } },
@@ -200,7 +200,7 @@ async function TransferPanel({
   myCode: string;
 }) {
   const activePins = await prisma.pin.findMany({
-    where: { ownerId: userId, status: "ACTIVE" },
+    where: { ownerId: userId, status: "ACTIVE", proMax: false },
     select: { id: true, code: true },
     orderBy: { createdAt: "asc" },
   });

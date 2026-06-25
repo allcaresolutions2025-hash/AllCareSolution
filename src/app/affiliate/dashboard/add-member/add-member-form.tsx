@@ -14,12 +14,18 @@ export function AddMemberForm({
   defaultSide,
   myReferralCode,
   lockReferId = false,
+  endpoint = "/api/members",
+  successHref = "/affiliate/dashboard/referrals",
 }: {
   pins: string[];
   defaultReferId: string;
   defaultSide: "LEFT" | "RIGHT" | "";
   myReferralCode: string;
   lockReferId?: boolean;
+  // Where to POST the registration. Defaults to the 1000-pt flow; the Pro Max
+  // page passes "/api/members/pro-max" to place into the Pro Max tree.
+  endpoint?: string;
+  successHref?: string;
 }) {
   const router = useRouter();
   const { update: updateSession } = useSession();
@@ -75,7 +81,7 @@ export function AddMemberForm({
     if (side !== "LEFT" && side !== "RIGHT") return toast.error("Choose Left or Right slot");
 
     setLoading(true);
-    const res = await fetch("/api/members", {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -114,7 +120,7 @@ export function AddMemberForm({
 
   function dismissSuccess() {
     setSuccess(null);
-    router.push("/affiliate/dashboard/referrals");
+    router.push(successHref);
     router.refresh();
   }
 

@@ -5,10 +5,12 @@ import {
   REWARD_LEVELS,
   rewardThresholdMet,
   WELCOME_KIT_LEVEL,
+  PROMAX_COMBO_LEVEL,
 } from "@/lib/rewards";
 import { getLegFillDepths } from "@/lib/network";
 import { RewardCard } from "./reward-card";
 import { WelcomeKitCard } from "./welcome-kit-card";
+import { ProMaxComboCard } from "./pro-max-combo-card";
 import { Trophy, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +23,7 @@ export default async function RewardsPage() {
   const [me, fillDepths] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { leftLegCount: true, rightLegCount: true },
+      select: { leftLegCount: true, rightLegCount: true, isProMax: true },
     }),
     getLegFillDepths(session.user.id),
   ]);
@@ -33,6 +35,7 @@ export default async function RewardsPage() {
   });
   const claimByLevel = new Map(claims.map((c) => [c.level, c]));
   const welcomeKitClaim = claimByLevel.get(WELCOME_KIT_LEVEL) ?? null;
+  const proMaxComboClaim = claimByLevel.get(PROMAX_COMBO_LEVEL) ?? null;
 
   const ctx = {
     leftLegCount: me.leftLegCount,
@@ -90,6 +93,9 @@ export default async function RewardsPage() {
 
       {/* Joining gift — Welcome Kit (not part of the L1-L15 ladder) */}
       <WelcomeKitCard claim={welcomeKitClaim} />
+
+      {/* Pin Pro Max welcome reward — only for Pro Max members */}
+      {me.isProMax && <ProMaxComboCard claim={proMaxComboClaim} />}
 
       {/* Progress banner */}
       <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">

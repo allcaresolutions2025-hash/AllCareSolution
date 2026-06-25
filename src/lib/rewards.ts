@@ -22,6 +22,17 @@ export const WELCOME_KIT_REWARD = {
   icon: "🎁",
 } as const;
 
+// Pin Pro Max welcome reward — the "Acht Mart Combo". Claimable once by any
+// Pro Max member, independent of the L1-L15 ladder. Stored at a distinct level
+// (100) so it never collides with Welcome Kit (0) or L1-15 on the
+// RewardClaim @@unique([userId, level]) constraint.
+export const PROMAX_COMBO_LEVEL = 100;
+export const PROMAX_COMBO_REWARD = {
+  level: PROMAX_COMBO_LEVEL,
+  gift: "Acht Mart Combo",
+  icon: "👑",
+} as const;
+
 export type RewardLevel = {
   level: number;
   legCount: number;   // members required on EACH leg

@@ -18,7 +18,7 @@ export default async function AddMemberPage({ searchParams }: { searchParams: { 
   if (!me) return null;
 
   const pins = await prisma.pin.findMany({
-    where: { ownerId: me.id, status: "ACTIVE" },
+    where: { ownerId: me.id, status: "ACTIVE", proMax: false },
     orderBy: { createdAt: "asc" },
     select: { code: true },
   });

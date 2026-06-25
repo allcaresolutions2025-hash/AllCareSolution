@@ -16,7 +16,8 @@ type SettingKey =
   | "GST_DEFAULT_PERCENT"
   | "SHIPPING_COST_INR"
   | "PIN_PRICE_INR"
-  | "PIN_WALLET_PRICE_INR";
+  | "PIN_WALLET_PRICE_INR"
+  | "PIN_PRO_MAX_PRICE_INR";
 
 const ENV_DEFAULTS: Record<SettingKey, string> = {
   COMMISSION_L1_PERCENT: process.env.COMMISSION_L1_PERCENT ?? "20",
@@ -28,6 +29,7 @@ const ENV_DEFAULTS: Record<SettingKey, string> = {
   SHIPPING_COST_INR: process.env.SHIPPING_COST_INR ?? "0",
   PIN_PRICE_INR: process.env.PIN_PRICE_INR ?? "1000",
   PIN_WALLET_PRICE_INR: process.env.PIN_WALLET_PRICE_INR ?? "1070",
+  PIN_PRO_MAX_PRICE_INR: process.env.PIN_PRO_MAX_PRICE_INR ?? "10000",
 };
 
 async function readAllSettings(): Promise<Record<SettingKey, number>> {
@@ -41,6 +43,7 @@ async function readAllSettings(): Promise<Record<SettingKey, number>> {
     "SHIPPING_COST_INR",
     "PIN_PRICE_INR",
     "PIN_WALLET_PRICE_INR",
+    "PIN_PRO_MAX_PRICE_INR",
   ];
   const rows = await prisma.setting.findMany({ where: { key: { in: keys } } });
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));

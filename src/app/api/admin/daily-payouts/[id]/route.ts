@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (parsed.data.action === "unpaid") {
     // Reverse the payout: restore the user's balance to what it was before the
     // nightly run (incrementing rather than setting, so any points earned in
-    // the meantime are preserved).
+    // the meantime are preserved). Pro Max rows restore the Pro Max wallet.
     await prisma.$transaction(async (tx) => {
       await tx.dailyPayout.update({
         where: { id: payout.id },
@@ -32,13 +32,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       });
       await tx.wallet.update({
         where: { userId: payout.userId },
-        data: { balanceAvailable: { increment: payout.startBalance } },
+        data: payout.proMax
+          ? { proMaxBalanceAvailable: { increment: payout.startBalance } }
+          : { balanceAvailable: { increment: payout.startBalance } },
       });
     });
     return NextResponse.json({ ok: true });
   }
 
-  // Mark paid: roll the paidAmount into balancePaidLifetime.
+  // Mark paid: roll the paidAmount into the matching lifetime-paid total.
   await prisma.$transaction(async (tx) => {
     await tx.dailyPayout.update({
       where: { id: payout.id },
@@ -50,7 +52,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     });
     await tx.wallet.update({
       where: { userId: payout.userId },
-      data: { balancePaidLifetime: { increment: payout.paidAmount } },
+      data: payout.proMax
+        ? { proMaxBalancePaidLifetime: { increment: payout.paidAmount } }
+        : { balancePaidLifetime: { increment: payout.paidAmount } },
     });
   });
 

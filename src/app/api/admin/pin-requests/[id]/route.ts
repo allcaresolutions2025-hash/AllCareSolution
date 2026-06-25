@@ -56,9 +56,25 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         code,
         ownerId: request.userId,
         requestId: request.id,
+        proMax: request.proMax,
         status: "ACTIVE" as const,
       })),
     });
+    // Approving a Pro Max pin request enrolls the requester into the Pro Max
+    // program — they become a Pro Max tree root and unlock the Pro Max wallet,
+    // tree graph, and the Acht Mart Combo welcome reward. Ensure a wallet row
+    // exists so the points engine can credit proMaxBalanceAvailable later.
+    if (request.proMax) {
+      await tx.user.update({
+        where: { id: request.userId },
+        data: { isProMax: true },
+      });
+      await tx.wallet.upsert({
+        where: { userId: request.userId },
+        create: { userId: request.userId },
+        update: {},
+      });
+    }
   });
 
   return NextResponse.json({ ok: true, pinsIssued: codes.length });

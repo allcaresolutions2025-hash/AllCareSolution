@@ -17,6 +17,7 @@ export type PendingPayout = {
   startBalance: number;
   paidAmount: number;
   forfeitAmount: number;
+  proMax: boolean;
 };
 
 export function PendingPayoutsTable({ payouts }: { payouts: PendingPayout[] }) {
@@ -205,7 +206,14 @@ export function PendingPayoutsTable({ payouts }: { payouts: PendingPayout[] }) {
                   </td>
                   <td className="px-4 py-2 text-xs font-mono">{p.runDate}</td>
                   <td className="px-4 py-2">
-                    <div className="font-medium">{p.userName}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {p.userName}
+                      {p.proMax && (
+                        <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                          PRO MAX
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {p.userEmail} · <code className="font-mono">{p.userCode}</code>
                     </div>

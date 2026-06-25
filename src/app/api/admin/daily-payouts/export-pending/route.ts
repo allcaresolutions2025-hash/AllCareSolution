@@ -43,6 +43,7 @@ export async function GET() {
   const header = [
     "ID Number",
     "Name",
+    "Program",
     "Mobile Number",
     "Bank Account Number",
     "IFSC Code",
@@ -56,6 +57,7 @@ export async function GET() {
     rows.push([
       p.user.referralCode,
       p.user.name,
+      p.proMax ? "Pro Max" : "Standard",
       p.user.phone ?? "",
       p.user.bankAccountNumber ?? "",
       p.user.bankIfsc ?? "",

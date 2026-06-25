@@ -16,17 +16,20 @@ export async function POST(req: Request) {
 
   const pendings = await prisma.dailyPayout.findMany({
     where: { id: { in: parsed.data.ids }, status: "PENDING" },
-    select: { id: true, userId: true, startBalance: true },
+    select: { id: true, userId: true, startBalance: true, proMax: true },
   });
 
   if (pendings.length === 0) {
     return NextResponse.json({ ok: true, restoredCount: 0, totalRestored: 0 });
   }
 
-  // Aggregate restore deltas per-user so each wallet gets exactly one update.
-  const perUser = new Map<string, number>();
+  // Aggregate restore deltas per-user, keyed separately by program so the
+  // standard balance and the Pro Max balance each get the right increment.
+  const perUserStd = new Map<string, number>();
+  const perUserProMax = new Map<string, number>();
   for (const p of pendings) {
-    perUser.set(p.userId, (perUser.get(p.userId) ?? 0) + p.startBalance);
+    const bucket = p.proMax ? perUserProMax : perUserStd;
+    bucket.set(p.userId, (bucket.get(p.userId) ?? 0) + p.startBalance);
   }
 
   const totalRestored = pendings.reduce((sum, p) => sum + p.startBalance, 0);
@@ -36,10 +39,16 @@ export async function POST(req: Request) {
       where: { id: { in: pendings.map((p) => p.id) } },
       data: { status: "CANCELLED" },
     });
-    for (const [userId, delta] of Array.from(perUser.entries())) {
+    for (const [userId, delta] of Array.from(perUserStd.entries())) {
       await tx.wallet.update({
         where: { userId },
         data: { balanceAvailable: { increment: delta } },
+      });
+    }
+    for (const [userId, delta] of Array.from(perUserProMax.entries())) {
+      await tx.wallet.update({
+        where: { userId },
+        data: { proMaxBalanceAvailable: { increment: delta } },
       });
     }
   });

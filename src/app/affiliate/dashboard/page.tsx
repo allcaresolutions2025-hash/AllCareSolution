@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
   Star,
   KeyRound,
+  Crown,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -258,13 +259,21 @@ export default async function AffiliateDashboardPage() {
       </div>
 
       {/* Wallet stats */}
-      <div className="grid sm:grid-cols-1 gap-4">
+      <div className={`grid gap-4 ${me.isProMax ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
         <BigStat
           color="emerald"
           icon={<Wallet className="h-5 w-5" />}
           label="E-WALLET BALANCE"
           value={formatPoints(personalPts)}
         />
+        {me.isProMax && (
+          <BigStat
+            color="orange"
+            icon={<Crown className="h-5 w-5" />}
+            label="PRO MAX WALLET"
+            value={formatPoints(me.wallet?.proMaxBalanceAvailable ?? 0)}
+          />
+        )}
       </div>
 
       {/* Team counters */}

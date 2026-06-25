@@ -37,7 +37,7 @@ export default async function PinWalletPage() {
       orderBy: { createdAt: "desc" },
       take: 25,
     }),
-    prisma.pin.count({ where: { ownerId: session.user.id, status: "ACTIVE" } }),
+    prisma.pin.count({ where: { ownerId: session.user.id, status: "ACTIVE", proMax: false } }),
     getSetting("PIN_WALLET_PRICE_INR"),
   ]);
 

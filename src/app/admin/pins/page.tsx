@@ -109,6 +109,7 @@ export default async function AdminPinsPage({
                     userCode={r.user.referralCode}
                     mobile={r.mobileNumber}
                     quantity={r.quantity}
+                    proMax={r.proMax}
                   />
                 ))}
               </tbody>
@@ -278,7 +279,14 @@ export default async function AdminPinsPage({
                       {r.reviewedAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }) ?? "—"}
                     </td>
                     <td className="px-4 py-2">
-                      <div className="font-medium">{r.user.name}</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {r.user.name}
+                        {r.proMax && (
+                          <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                            PRO MAX
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs font-mono text-muted-foreground">{r.user.referralCode}</div>
                     </td>
                     <td className="px-4 py-2 text-xs font-mono">{r.mobileNumber}</td>

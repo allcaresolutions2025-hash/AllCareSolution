@@ -59,7 +59,11 @@ export function RewardRow({ id, user, level, rewardName, status, adminNote, requ
       </td>
       <td className="px-4 py-3">
         <span className="inline-flex items-center gap-1 font-semibold text-brand-700">
-          {GIFT_ICONS[level]} L{level}
+          {level === 100
+            ? <>👑 Combo</>
+            : level === 0
+            ? <>🎁 Welcome</>
+            : <>{GIFT_ICONS[level]} L{level}</>}
         </span>
       </td>
       <td className="px-4 py-3 text-sm">{rewardName}</td>

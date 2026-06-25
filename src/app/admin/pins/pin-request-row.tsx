@@ -13,6 +13,7 @@ export function PinRequestRow({
   userCode,
   mobile,
   quantity,
+  proMax = false,
 }: {
   id: string;
   createdAt: string;
@@ -21,6 +22,7 @@ export function PinRequestRow({
   userCode: string;
   mobile: string;
   quantity: number;
+  proMax?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -51,7 +53,14 @@ export function PinRequestRow({
         {new Date(createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
       </td>
       <td className="px-4 py-2">
-        <div className="font-medium">{userName}</div>
+        <div className="font-medium flex items-center gap-2">
+          {userName}
+          {proMax && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+              PRO MAX
+            </span>
+          )}
+        </div>
         <div className="text-xs text-muted-foreground">
           {userEmail} · <code className="font-mono">{userCode}</code>
         </div>
