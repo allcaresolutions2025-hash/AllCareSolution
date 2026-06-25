@@ -326,9 +326,14 @@ export function BinaryTreeGraph({
   embedded = false,
   maxVisibleDepth = 3,
   drilldownHrefBuilder,
+  addMemberPath = "/affiliate/dashboard/add-member",
 }: {
   people: TreePerson[];
   allowNodeClick?: boolean;
+  // Base path the "Add member" placeholder slots link to. Defaults to the
+  // 1000-pt registration; the Pro Max tree passes its own registration path so
+  // open slots lead to the Pro Max form (with referId + side prefilled).
+  addMemberPath?: string;
   // When true, render only the raw SVG (no card, header, or inner
   // overflow-x-auto). Used by BinaryTreeZoomable, which supplies its own
   // scroll/zoom container — the inner wrapper would otherwise cap the SVG
@@ -409,7 +414,7 @@ export function BinaryTreeGraph({
             const x = centerX(n) - NODE_W / 2;
             const y = topY(n);
             if (n.isPlaceholder) {
-              return <PlaceholderNode key={n.id} x={x} y={y} node={n} />;
+              return <PlaceholderNode key={n.id} x={x} y={y} node={n} addMemberPath={addMemberPath} />;
             }
             return (
               <RealNode
@@ -521,12 +526,12 @@ function RealNode({
   return <a href={href!} style={{ filter: "url(#treeShadow)" }}>{inner}</a>;
 }
 
-function PlaceholderNode({ x, y, node: n }: { x: number; y: number; node: LaidOutNode }) {
+function PlaceholderNode({ x, y, node: n, addMemberPath }: { x: number; y: number; node: LaidOutNode; addMemberPath: string }) {
   const isLeft = n.placeholderSide === "LEFT";
   const tone = isLeft
     ? { stroke: "#10b981", fill: "#ecfdf5", chip: "bg-emerald-500 text-white", text: "text-emerald-800" }
     : { stroke: "#0ea5e9", fill: "#f0f9ff", chip: "bg-sky-500 text-white", text: "text-sky-800" };
-  const href = `/affiliate/dashboard/add-member?referId=${n.placeholderParentCode}&side=${n.placeholderSide}`;
+  const href = `${addMemberPath}?referId=${n.placeholderParentCode}&side=${n.placeholderSide}`;
   return (
     <a href={href} style={{ filter: "url(#treeShadow)" }}>
       <rect

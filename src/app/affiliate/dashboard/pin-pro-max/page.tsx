@@ -4,8 +4,8 @@ import { prisma } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { toPaise, formatPoints } from "@/lib/money";
 import { RequestProMaxPinForm } from "./request-pro-max-pin-form";
-import { AddMemberForm } from "../add-member/add-member-form";
-import { Crown, KeyRound, Clock, Wallet, CheckCircle2, XCircle, UserPlus } from "lucide-react";
+import Link from "next/link";
+import { Crown, KeyRound, Clock, Wallet, CheckCircle2, XCircle, UserPlus, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pin Pro Max" };
@@ -94,19 +94,29 @@ export default async function PinProMaxPage() {
       />
 
       {/* Add a Pro Max member — only when the member has Pro Max pins to spend. */}
-      {pinCodes.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="font-semibold flex items-center gap-2">
-            <UserPlus className="h-4 w-4 text-amber-700" /> Add a Pro Max member
-          </h2>
-          <AddMemberForm
-            pins={pinCodes}
-            defaultReferId={user.referralCode}
-            defaultSide=""
-            myReferralCode={user.referralCode}
-            endpoint="/api/members/pro-max"
-            successHref="/affiliate/dashboard/pro-max-tree"
-          />
+      {pinCodes.length > 0 ? (
+        <Link
+          href="/affiliate/dashboard/add-member/pro-max"
+          className="card p-5 flex items-center gap-3 border-2 border-amber-200 hover:border-amber-300 transition-colors"
+        >
+          <div className="h-10 w-10 rounded-lg grid place-items-center bg-amber-100 text-amber-700">
+            <UserPlus className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <div className="font-semibold">Add a Pro Max member</div>
+            <div className="text-xs text-muted-foreground">
+              Use one of your {pinCodes.length} Pro Max pin{pinCodes.length === 1 ? "" : "s"} to register a member into your Pro Max tree.
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-amber-700" />
+        </Link>
+      ) : (
+        <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 text-sm text-amber-800 flex items-start gap-2">
+          <UserPlus className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            You need an active Pro Max pin before adding a member. Request one above —
+            once admin approves it, you can register Pro Max members.
+          </div>
         </div>
       )}
 
