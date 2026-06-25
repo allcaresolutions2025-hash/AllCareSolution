@@ -50,9 +50,10 @@ export default async function PinProMaxPage() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           A premium parallel program. Each Pro Max pin ({formatPoints(pricePerPinPaise)}) places a
-          member into your separate Pro Max tree. Earn <strong>+5,000</strong> the first time both
-          your Pro Max legs fill, and <strong>+2,000</strong> per pair match as it grows
-          (+1,000 past level 15).
+          member into your separate Pro Max tree. Earn <strong>+2,000</strong> per direct referral,
+          a one-time <strong>+5,000</strong> the first time both your Pro Max legs fill, and
+          <strong>+2,000</strong> per pair match as it grows (+1,000 past level 15) — so referring
+          a Left and a Right nets <strong>9,000</strong> pts.
         </p>
       </div>
 

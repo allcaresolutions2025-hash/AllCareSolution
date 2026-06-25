@@ -124,7 +124,7 @@ export default async function ProMaxTreePage() {
             {formatPoints(me.wallet?.proMaxBalanceAvailable ?? 0)}
           </div>
           <div className="text-[11px] text-muted-foreground mt-1">
-            +5,000 one-time when both Pro Max legs first fill · +2,000 per pair match (1,000 past depth 15)
+            +2,000 per direct referral · +5,000 one-time when both Pro Max legs first fill · +2,000 per pair match (1,000 past depth 15)
           </div>
         </div>
 

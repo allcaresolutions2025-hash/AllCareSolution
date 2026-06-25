@@ -136,7 +136,9 @@ export async function POST(req: Request) {
         where: { id: pin.id },
         data: { status: "USED", usedAt: new Date(), usedForUserId: created.id },
       });
-      await awardProMaxUplinePoints(tx, created.id);
+      // +2,000 direct-referral bonus goes to the typed Refer ID owner
+      // (parent.id), matching the 1000-pt flow.
+      await awardProMaxUplinePoints(tx, created.id, parent.id);
       return created;
     });
   } catch (err) {
