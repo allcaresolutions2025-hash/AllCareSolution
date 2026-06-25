@@ -83,26 +83,35 @@ export default async function AffiliateDashboardPage() {
 
   const personalPts = me.wallet?.balanceAvailable ?? 0;
 
-  // Pin Pro Max awareness — count how many of my LEFT / RIGHT team members are
-  // Pro Max. Shown for EVERY user (even one who never bought a Pro Max pin), so
-  // a member like Priya can tell that someone in her team has gone Pro Max.
-  const proMaxMembers = downlineIds.length
-    ? await prisma.user.findMany({
-        where: { id: { in: downlineIds }, isProMax: true },
-        select: { id: true },
-      })
-    : [];
-  let proMaxLeft = 0;
-  let proMaxRight = 0;
-  for (const m of proMaxMembers) {
-    if (leftIds.has(m.id)) proMaxLeft += 1;
-    else if (rightIds.has(m.id)) proMaxRight += 1;
-  }
-
-  // My OWN Pro Max wallet — only surfaced when I personally participate.
+  // Pin Pro Max counts (shown for EVERY user):
+  //  - A Pro Max member sees their REAL Pro Max-tree leg counts.
+  //  - A non-member sees how many of their standard LEFT/RIGHT team have gone
+  //    Pro Max (awareness — e.g. Priya can tell a teammate subscribed).
   const proMaxBalance = me.wallet?.proMaxBalanceAvailable ?? 0;
   const isProMaxMember =
     me.isProMax || me.proMaxLeftLegCount > 0 || me.proMaxRightLegCount > 0 || proMaxBalance > 0;
+
+  let proMaxLeft: number;
+  let proMaxRight: number;
+  if (isProMaxMember) {
+    proMaxLeft = me.proMaxLeftLegCount;
+    proMaxRight = me.proMaxRightLegCount;
+  } else {
+    const proMaxMembers = downlineIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: downlineIds }, isProMax: true },
+          select: { id: true },
+        })
+      : [];
+    let tl = 0;
+    let tr = 0;
+    for (const m of proMaxMembers) {
+      if (leftIds.has(m.id)) tl += 1;
+      else if (rightIds.has(m.id)) tr += 1;
+    }
+    proMaxLeft = tl;
+    proMaxRight = tr;
+  }
 
   // Note: public self-signup is disabled. New members are placed by their
   // upline via /affiliate/dashboard/add-member using this Refer ID and a pin.
