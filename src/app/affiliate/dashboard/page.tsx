@@ -282,6 +282,14 @@ export default async function AffiliateDashboardPage() {
         <TeamCounter color="pink" icon={<UserSquare2 className="h-5 w-5" />} label="TEAM L" value={teamLCount} />
         <TeamCounter color="blue" icon={<UserSquare2 className="h-5 w-5" />} label="TEAM R" value={teamRCount} />
       </div>
+
+      {/* Pro Max team counters — only for Pro Max members */}
+      {me.isProMax && (
+        <div className="grid grid-cols-2 gap-2 sm:gap-4">
+          <TeamCounter color="amber" icon={<Crown className="h-5 w-5" />} label="PRO MAX L" value={me.proMaxLeftLegCount} />
+          <TeamCounter color="violet" icon={<Crown className="h-5 w-5" />} label="PRO MAX R" value={me.proMaxRightLegCount} />
+        </div>
+      )}
     </div>
   );
 }
@@ -422,7 +430,7 @@ function TeamCounter({
   label,
   value,
 }: {
-  color: "teal" | "pink" | "blue";
+  color: "teal" | "pink" | "blue" | "amber" | "violet";
   icon: React.ReactNode;
   label: string;
   value: number;
@@ -431,6 +439,8 @@ function TeamCounter({
     teal: { iconBg: "bg-teal-100 text-teal-700", value: "text-teal-700" },
     pink: { iconBg: "bg-pink-100 text-pink-700", value: "text-pink-700" },
     blue: { iconBg: "bg-blue-100 text-blue-700", value: "text-blue-700" },
+    amber: { iconBg: "bg-amber-100 text-amber-700", value: "text-amber-700" },
+    violet: { iconBg: "bg-violet-100 text-violet-700", value: "text-violet-700" },
   }[color];
   return (
     <div className="card p-3 sm:p-5 min-w-0 flex flex-col items-center text-center gap-1 sm:flex-row sm:items-center sm:text-left sm:justify-between sm:gap-3">
