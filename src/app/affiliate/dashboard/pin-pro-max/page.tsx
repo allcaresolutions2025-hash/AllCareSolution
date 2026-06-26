@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { toPaise, formatPoints } from "@/lib/money";
 import { RequestProMaxPinForm } from "./request-pro-max-pin-form";
-import { GetProMaxPinsForm } from "./get-pro-max-pins-form";
+import { RequestProMaxPinsForm } from "./request-pro-max-pins-form";
 import { UpgradeDownlineForm } from "./upgrade-downline-form";
 import { Crown, KeyRound, Clock, Wallet, CheckCircle2, XCircle, BadgeCheck } from "lucide-react";
 
@@ -51,9 +51,9 @@ export default async function PinProMaxPage() {
         <p className="text-sm text-muted-foreground mt-1">
           {user.isProMax ? (
             <>
-              You&apos;re a Pro Max member. Issue Pro Max pins instantly and upgrade your downline —
-              no admin approval. Your uplines earn <strong>+2,000</strong> per direct Pro Max referral
-              and <strong>+2,000</strong> per pair match as their team goes Pro Max.
+              You&apos;re a Pro Max member. Request Pro Max pins from admin, then apply each approved
+              pin to a downline to upgrade them instantly. Your uplines earn <strong>+2,000</strong> per
+              direct Pro Max referral and <strong>+2,000</strong> per pair match as their team goes Pro Max.
             </>
           ) : (
             <>
@@ -98,13 +98,13 @@ export default async function PinProMaxPage() {
 
       {user.isProMax ? (
         <>
-          <GetProMaxPinsForm />
+          <RequestProMaxPinsForm defaultMobile={user.phone ?? ""} />
           {pinCodes.length > 0 ? (
             <UpgradeDownlineForm pins={pinCodes} />
           ) : (
             <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 text-sm text-amber-800 flex items-start gap-2">
               <Crown className="h-4 w-4 mt-0.5 shrink-0" />
-              <div>Issue Pro Max pins above, then apply them to your downline members to upgrade them.</div>
+              <div>Request Pro Max pins above. Once admin approves them, apply each pin to a downline member to upgrade them.</div>
             </div>
           )}
         </>

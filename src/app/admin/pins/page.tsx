@@ -22,7 +22,7 @@ export default async function AdminPinsPage({
     prisma.pinRequest.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
-      include: { user: { select: { name: true, email: true, referralCode: true } } },
+      include: { user: { select: { name: true, email: true, referralCode: true, isProMax: true } } },
     }),
     prisma.pinRequest.findMany({
       where: { status: { in: ["APPROVED", "REJECTED"] } },
@@ -78,45 +78,21 @@ export default async function AdminPinsPage({
         <Kpi icon={<CheckCircle2 className="h-5 w-5" />} label="Total pins issued" value={totalPinsIssued} tone="brand" />
       </div>
 
-      <div className="card overflow-hidden">
-        <div className="p-5 border-b">
-          <h2 className="font-semibold">Pending requests ({pending.length})</h2>
-        </div>
-        {pending.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            No pending requests.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Requested</th>
-                  <th className="px-4 py-2 font-medium">Member</th>
-                  <th className="px-4 py-2 font-medium">Mobile</th>
-                  <th className="px-4 py-2 font-medium text-right">Quantity</th>
-                  <th className="px-4 py-2 font-medium">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pending.map((r) => (
-                  <PinRequestRow
-                    key={r.id}
-                    id={r.id}
-                    createdAt={r.createdAt.toISOString()}
-                    userName={r.user.name}
-                    userEmail={r.user.email}
-                    userCode={r.user.referralCode}
-                    mobile={r.mobileNumber}
-                    quantity={r.quantity}
-                    proMax={r.proMax}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {/* Pending requests, split by kind:
+          - standard pin requests
+          - Pro Max UPGRADE requests (requester not yet Pro Max)
+          - Pro Max PIN requests (requester already Pro Max, wants pins) */}
+      <PendingSection title="Standard pin requests" rows={pending.filter((r) => !r.proMax)} />
+      <PendingSection
+        title="Pro Max upgrade requests"
+        subtitle="Members requesting to become Pro Max — approving flips them to Pro Max (no pins)."
+        rows={pending.filter((r) => r.proMax && !r.user.isProMax)}
+      />
+      <PendingSection
+        title="Pro Max pin requests"
+        subtitle="Pro Max members requesting pins to upgrade their downline — approving issues the pins."
+        rows={pending.filter((r) => r.proMax && r.user.isProMax)}
+      />
 
       <div className="card overflow-hidden">
         <div className="p-5 border-b flex items-center gap-2">
@@ -319,6 +295,64 @@ export default async function AdminPinsPage({
           />
         )}
       </div>
+    </div>
+  );
+}
+
+function PendingSection({
+  title,
+  subtitle,
+  rows,
+}: {
+  title: string;
+  subtitle?: string;
+  rows: {
+    id: string;
+    createdAt: Date;
+    mobileNumber: string;
+    quantity: number;
+    proMax: boolean;
+    user: { name: string; email: string; referralCode: string };
+  }[];
+}) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="p-5 border-b">
+        <h2 className="font-semibold">{title} ({rows.length})</h2>
+        {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+      </div>
+      {rows.length === 0 ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">No pending requests.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 font-medium">Requested</th>
+                <th className="px-4 py-2 font-medium">Member</th>
+                <th className="px-4 py-2 font-medium">Mobile</th>
+                <th className="px-4 py-2 font-medium text-right">Quantity</th>
+                <th className="px-4 py-2 font-medium">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <PinRequestRow
+                  key={r.id}
+                  id={r.id}
+                  createdAt={r.createdAt.toISOString()}
+                  userName={r.user.name}
+                  userEmail={r.user.email}
+                  userCode={r.user.referralCode}
+                  mobile={r.mobileNumber}
+                  quantity={r.quantity}
+                  proMax={r.proMax}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

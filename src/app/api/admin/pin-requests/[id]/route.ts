@@ -37,29 +37,53 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ ok: true });
   }
 
-  // A Pro Max request is a "request to BECOME Pro Max" — approving it flips the
-  // member to Pro Max in place (cascade fires up the main tree). No pins are
-  // minted here; once Pro Max, the member issues their own pins instantly and
-  // upgrades downlines without admin approval.
+  // A Pro Max request means one of two things, decided by whether the requester
+  // is already Pro Max:
+  //   - NOT Pro Max yet → "request to become Pro Max": flip them to Pro Max in
+  //     place (cascade fires up the main tree). No pins minted.
+  //   - Already Pro Max → "request Pro Max pins": mint `quantity` Pro Max pins
+  //     they can apply to downlines.
   if (request.proMax) {
+    const member = await prisma.user.findUnique({
+      where: { id: request.userId },
+      select: { isProMax: true },
+    });
+
+    if (member?.isProMax) {
+      // Pin request from an existing Pro Max member — mint pins.
+      const codes: string[] = [];
+      for (let i = 0; i < request.quantity; i++) codes.push(await generateUniquePinCode());
+      await prisma.$transaction(async (tx) => {
+        await tx.pinRequest.update({
+          where: { id: request.id },
+          data: { status: "APPROVED", reviewerNotes: parsed.data.notes ?? null, reviewedAt: new Date() },
+        });
+        await tx.pin.createMany({
+          data: codes.map((code) => ({
+            code,
+            ownerId: request.userId,
+            requestId: request.id,
+            proMax: true,
+            status: "ACTIVE" as const,
+          })),
+        });
+      });
+      return NextResponse.json({ ok: true, pinsIssued: codes.length });
+    }
+
+    // Become-Pro-Max request — flip the flag + cascade, no pins.
     await prisma.$transaction(async (tx) => {
       await tx.pinRequest.update({
         where: { id: request.id },
         data: { status: "APPROVED", reviewerNotes: parsed.data.notes ?? null, reviewedAt: new Date() },
-      });
-      const member = await tx.user.findUnique({
-        where: { id: request.userId },
-        select: { isProMax: true },
       });
       await tx.wallet.upsert({
         where: { userId: request.userId },
         create: { userId: request.userId },
         update: {},
       });
-      if (!member?.isProMax) {
-        await tx.user.update({ where: { id: request.userId }, data: { isProMax: true } });
-        await awardProMaxOnUpgrade(tx, request.userId);
-      }
+      await tx.user.update({ where: { id: request.userId }, data: { isProMax: true } });
+      await awardProMaxOnUpgrade(tx, request.userId);
     });
     return NextResponse.json({ ok: true, proMaxApproved: true });
   }
