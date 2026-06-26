@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { PinRequestRow } from "./pin-request-row";
 import { GeneratePinsCard } from "./generate-pins-card";
 import { formatINR, formatPoints } from "@/lib/money";
+import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { KeyRound, Clock, CheckCircle2, CreditCard, Wallet } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 
@@ -82,17 +83,24 @@ export default async function AdminPinsPage({
           - standard pin requests
           - Pro Max UPGRADE requests (requester not yet Pro Max)
           - Pro Max PIN requests (requester already Pro Max, wants pins) */}
-      <PendingSection title="Standard pin requests" rows={pending.filter((r) => !r.proMax)} />
       <PendingSection
-        title="Pro Max upgrade requests"
-        subtitle="Members requesting to become Pro Max — approving flips them to Pro Max (no pins)."
-        rows={pending.filter((r) => r.proMax && !r.user.isProMax)}
+        title={PRO_MAX_ENABLED ? "Standard pin requests" : "Pending requests"}
+        rows={pending.filter((r) => !r.proMax)}
       />
-      <PendingSection
-        title="Pro Max pin requests"
-        subtitle="Pro Max members requesting pins to upgrade their downline — approving issues the pins."
-        rows={pending.filter((r) => r.proMax && r.user.isProMax)}
-      />
+      {PRO_MAX_ENABLED && (
+        <>
+          <PendingSection
+            title="Pro Max upgrade requests"
+            subtitle="Members requesting to become Pro Max — approving flips them to Pro Max (no pins)."
+            rows={pending.filter((r) => r.proMax && !r.user.isProMax)}
+          />
+          <PendingSection
+            title="Pro Max pin requests"
+            subtitle="Pro Max members requesting pins to upgrade their downline — approving issues the pins."
+            rows={pending.filter((r) => r.proMax && r.user.isProMax)}
+          />
+        </>
+      )}
 
       <div className="card overflow-hidden">
         <div className="p-5 border-b flex items-center gap-2">

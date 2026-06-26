@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { PAISE_PER_POINT } from "./money";
+import { PRO_MAX_ENABLED } from "./pro-max";
 
 // Shared payout-and-reset logic used by both the nightly cron and the admin
 // "Simulate midnight" button.
@@ -48,7 +49,8 @@ export async function runDailyPayout(
   const force = opts.force ?? false;
   const scope = opts.scope ?? "all";
   const doStandard = scope !== "proMax";
-  const doProMax = scope !== "standard";
+  // Pro Max payouts only run when the feature is enabled.
+  const doProMax = PRO_MAX_ENABLED && scope !== "standard";
   const today = istDateString();
 
   // The IST-date checkpoint only governs the nightly all-scope run.

@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { DashboardShell, type DashboardNavItem } from "@/components/dashboard-shell";
 import { BreakingNewsTicker } from "@/components/breaking-news-ticker";
 import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy, Smartphone, WalletCards, Crown, GitFork } from "lucide-react";
@@ -13,7 +14,8 @@ const baseNav: DashboardNavItem[] = [
   { href: "/affiliate/dashboard/request-pin", label: "Request Pin", icon: <KeyRound className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/pin-status", label: "Pin Status", icon: <ListChecks className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/pin-wallet", label: "Pin Wallet", icon: <WalletCards className="h-4 w-4" /> },
-  { href: "/affiliate/dashboard/pin-pro-max", label: "Pin Pro Max", icon: <Crown className="h-4 w-4" /> },
+  // Pin Pro Max — disabled via PRO_MAX_ENABLED.
+  { href: "/affiliate/dashboard/pin-pro-max", label: "Pin Pro Max", icon: <Crown className="h-4 w-4" />, proMax: true },
   { href: "/affiliate/dashboard/add-member", label: "Add Member", icon: <UserPlus className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/commissions", label: "Commissions", icon: <Wallet className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/share", label: "Share & Earn", icon: <Share2 className="h-4 w-4" /> },
@@ -34,19 +36,19 @@ const proMaxTreeItem: DashboardNavItem = {
 
 export default async function AffiliateLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
-  let isProMax = false;
-  if (session) {
+
+  // Pro Max fully off → drop all Pro Max nav. (Flip PRO_MAX_ENABLED to restore.)
+  let nav: DashboardNavItem[] = baseNav.filter((n) => PRO_MAX_ENABLED || !("proMax" in n && n.proMax));
+
+  if (PRO_MAX_ENABLED && session) {
     const me = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { isProMax: true },
     });
-    isProMax = me?.isProMax ?? false;
-  }
-
-  let nav = baseNav;
-  if (isProMax) {
-    const i = baseNav.findIndex((n) => n.href === "/affiliate/dashboard/pin-pro-max");
-    nav = [...baseNav.slice(0, i + 1), proMaxTreeItem, ...baseNav.slice(i + 1)];
+    if (me?.isProMax) {
+      const i = nav.findIndex((n) => n.href === "/affiliate/dashboard/pin-pro-max");
+      nav = [...nav.slice(0, i + 1), proMaxTreeItem, ...nav.slice(i + 1)];
+    }
   }
 
   return (

@@ -8,6 +8,7 @@ import {
   PROMAX_COMBO_LEVEL,
 } from "@/lib/rewards";
 import { getLegFillDepths } from "@/lib/network";
+import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { RewardCard } from "./reward-card";
 import { WelcomeKitCard } from "./welcome-kit-card";
 import { ProMaxComboCard } from "./pro-max-combo-card";
@@ -95,7 +96,7 @@ export default async function RewardsPage() {
       <WelcomeKitCard claim={welcomeKitClaim} />
 
       {/* Pin Pro Max welcome reward — only for Pro Max members */}
-      {me.isProMax && <ProMaxComboCard claim={proMaxComboClaim} />}
+      {PRO_MAX_ENABLED && me.isProMax && <ProMaxComboCard claim={proMaxComboClaim} />}
 
       {/* Progress banner */}
       <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">

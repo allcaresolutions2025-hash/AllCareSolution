@@ -2,7 +2,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getNetworkSnapshot, type DownlineNode } from "@/lib/network";
+import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { formatPoints } from "@/lib/money";
+import { NotificationBanners } from "@/components/notification-banners";
 import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
 import {
@@ -23,12 +25,17 @@ export default async function AffiliateDashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [me, kyc] = await Promise.all([
+  const [me, kyc, notifications] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       include: { wallet: true },
     }),
     prisma.kycDetail.findUnique({ where: { userId: session.user.id } }),
+    prisma.notification.findMany({
+      where: { userId: session.user.id, read: false },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
   ]);
   if (!me) return null;
 
@@ -83,35 +90,32 @@ export default async function AffiliateDashboardPage() {
 
   const personalPts = me.wallet?.balanceAvailable ?? 0;
 
-  // Pin Pro Max counts (shown for EVERY user):
+  // Pin Pro Max counts (only when the feature is enabled):
   //  - A Pro Max member sees their own Pro Max-tree leg counts.
-  //  - A non-member sees how many of their main-tree LEFT/RIGHT team are Pro Max
-  //    (awareness — e.g. Priya can tell teammates subscribed).
+  //  - A non-member sees how many of their main-tree LEFT/RIGHT team are Pro Max.
   const proMaxBalance = me.wallet?.proMaxBalanceAvailable ?? 0;
   const isProMaxMember =
     me.isProMax || me.proMaxLeftLegCount > 0 || me.proMaxRightLegCount > 0 || proMaxBalance > 0;
-  let proMaxLeft: number;
-  let proMaxRight: number;
-  if (isProMaxMember) {
-    proMaxLeft = me.proMaxLeftLegCount;
-    proMaxRight = me.proMaxRightLegCount;
-  } else {
-    const proMaxMembers = downlineIds.length
-      ? await prisma.user.findMany({
-          where: { id: { in: downlineIds }, isProMax: true },
-          select: { id: true },
-        })
-      : [];
-    let tl = 0;
-    let tr = 0;
-    for (const m of proMaxMembers) {
-      if (leftIds.has(m.id)) tl += 1;
-      else if (rightIds.has(m.id)) tr += 1;
+  let proMaxLeft = 0;
+  let proMaxRight = 0;
+  if (PRO_MAX_ENABLED) {
+    if (isProMaxMember) {
+      proMaxLeft = me.proMaxLeftLegCount;
+      proMaxRight = me.proMaxRightLegCount;
+    } else {
+      const proMaxMembers = downlineIds.length
+        ? await prisma.user.findMany({
+            where: { id: { in: downlineIds }, isProMax: true },
+            select: { id: true },
+          })
+        : [];
+      for (const m of proMaxMembers) {
+        if (leftIds.has(m.id)) proMaxLeft += 1;
+        else if (rightIds.has(m.id)) proMaxRight += 1;
+      }
     }
-    proMaxLeft = tl;
-    proMaxRight = tr;
   }
-  const showProMaxWallet = isProMaxMember;
+  const showProMaxWallet = PRO_MAX_ENABLED && isProMaxMember;
 
   // Note: public self-signup is disabled. New members are placed by their
   // upline via /affiliate/dashboard/add-member using this Refer ID and a pin.
@@ -124,6 +128,15 @@ export default async function AffiliateDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <NotificationBanners
+        items={notifications.map((n) => ({
+          id: n.id,
+          title: n.title,
+          body: n.body,
+          createdAt: n.createdAt.toISOString(),
+        }))}
+      />
+
       {me.mustChangePassword && (
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 flex flex-wrap items-start gap-3">
           <div className="h-10 w-10 rounded-lg bg-amber-100 text-amber-700 grid place-items-center shrink-0">
@@ -287,24 +300,26 @@ export default async function AffiliateDashboardPage() {
             </div>
           </div>
 
-          {/* Pin Pro Max — team counts, shown for every user */}
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3">
-            <div className="text-center">
-              <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500 text-white">
-                <Crown className="h-3 w-3" /> Pin Pro Max Team
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-              <div>
-                <div className="text-2xl font-bold tabular-nums text-amber-700">{proMaxLeft}</div>
-                <div className="text-xs text-muted-foreground">Pro Max L</div>
+          {/* Pin Pro Max — team counts (hidden when Pro Max is disabled) */}
+          {PRO_MAX_ENABLED && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3">
+              <div className="text-center">
+                <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500 text-white">
+                  <Crown className="h-3 w-3" /> Pin Pro Max Team
+                </span>
               </div>
-              <div className="border-l border-amber-200">
-                <div className="text-2xl font-bold tabular-nums text-amber-700">{proMaxRight}</div>
-                <div className="text-xs text-muted-foreground">Pro Max R</div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-center">
+                <div>
+                  <div className="text-2xl font-bold tabular-nums text-amber-700">{proMaxLeft}</div>
+                  <div className="text-xs text-muted-foreground">Pro Max L</div>
+                </div>
+                <div className="border-l border-amber-200">
+                  <div className="text-2xl font-bold tabular-nums text-amber-700">{proMaxRight}</div>
+                  <div className="text-xs text-muted-foreground">Pro Max R</div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -333,11 +348,13 @@ export default async function AffiliateDashboardPage() {
         <TeamCounter color="blue" icon={<UserSquare2 className="h-5 w-5" />} label="TEAM R" value={teamRCount} />
       </div>
 
-      {/* Pro Max team counters — shown for every user */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-4">
-        <TeamCounter color="amber" icon={<Crown className="h-5 w-5" />} label="PRO MAX L" value={proMaxLeft} />
-        <TeamCounter color="violet" icon={<Crown className="h-5 w-5" />} label="PRO MAX R" value={proMaxRight} />
-      </div>
+      {/* Pro Max team counters (hidden when Pro Max is disabled) */}
+      {PRO_MAX_ENABLED && (
+        <div className="grid grid-cols-2 gap-2 sm:gap-4">
+          <TeamCounter color="amber" icon={<Crown className="h-5 w-5" />} label="PRO MAX L" value={proMaxLeft} />
+          <TeamCounter color="violet" icon={<Crown className="h-5 w-5" />} label="PRO MAX R" value={proMaxRight} />
+        </div>
+      )}
     </div>
   );
 }

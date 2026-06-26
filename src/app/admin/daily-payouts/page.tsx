@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
 import { istDateString } from "@/lib/daily-payout";
+import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { Clock, Coins, Download, RotateCcw, Crown } from "lucide-react";
 import { PendingPayoutsTable } from "./pending-payouts-table";
 import { SimulateMidnightButton } from "./simulate-midnight-button";
@@ -101,37 +102,43 @@ export default async function AdminDailyPayoutsPage({
           Every night at 00:00 IST the cron job pays out 90% of each user&apos;s available points
           and resets their balance to 0 — but only for users with at least 500 pts.
           Sub-500 balances keep accumulating until they cross the threshold. Disburse offline, then mark as paid.
-          The 1000-pt and Pin Pro Max wallets are tracked separately below.
+          {PRO_MAX_ENABLED && " The 1000-pt and Pin Pro Max wallets are tracked separately below."}
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${PRO_MAX_ENABLED ? "lg:grid-cols-2" : ""}`}>
         <SimulateMidnightButton
           scope="standard"
-          title="Simulate payout (1000-pt)"
-          description="Runs the 1000-pt payout: pays 90% of each user's e-wallet balance, resets to 0, and clears the gated-points cache. Demo only."
+          title={PRO_MAX_ENABLED ? "Simulate payout (1000-pt)" : "Simulate midnight payout"}
+          description="Pays 90% of each user's e-wallet balance, resets to 0, and clears the gated-points cache. Demo only."
           tone="amber"
         />
-        <SimulateMidnightButton
-          scope="proMax"
-          title="Simulate payout (Pin Pro Max)"
-          description="Runs the Pin Pro Max payout: pays 90% of each member's Pro Max wallet balance and resets it to 0. Demo only."
-          tone="violet"
-        />
+        {PRO_MAX_ENABLED && (
+          <SimulateMidnightButton
+            scope="proMax"
+            title="Simulate payout (Pin Pro Max)"
+            description="Runs the Pin Pro Max payout: pays 90% of each member's Pro Max wallet balance and resets it to 0. Demo only."
+            tone="violet"
+          />
+        )}
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Kpi icon={<Clock className="h-5 w-5" />} label="Pending (1000-pt)" value={pendingStd.length} tone="amber" />
-        <Kpi icon={<Coins className="h-5 w-5" />} label="Owed (1000-pt)" value={formatPoints(owedStd._sum.paidAmount ?? 0)} tone="sky" />
-        <Kpi icon={<Clock className="h-5 w-5" />} label="Pending (Pro Max)" value={pendingPro.length} tone="amber" />
-        <Kpi icon={<Coins className="h-5 w-5" />} label="Owed (Pro Max)" value={formatPoints(owedPro._sum.paidAmount ?? 0)} tone="sky" />
+      <div className={`grid gap-4 ${PRO_MAX_ENABLED ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-2"}`}>
+        <Kpi icon={<Clock className="h-5 w-5" />} label={PRO_MAX_ENABLED ? "Pending (1000-pt)" : "Pending payouts"} value={pendingStd.length} tone="amber" />
+        <Kpi icon={<Coins className="h-5 w-5" />} label={PRO_MAX_ENABLED ? "Owed (1000-pt)" : "Owed (pending)"} value={formatPoints(owedStd._sum.paidAmount ?? 0)} tone="sky" />
+        {PRO_MAX_ENABLED && (
+          <>
+            <Kpi icon={<Clock className="h-5 w-5" />} label="Pending (Pro Max)" value={pendingPro.length} tone="amber" />
+            <Kpi icon={<Coins className="h-5 w-5" />} label="Owed (Pro Max)" value={formatPoints(owedPro._sum.paidAmount ?? 0)} tone="sky" />
+          </>
+        )}
       </div>
 
-      {/* 1000-pt pending */}
+      {/* Pending payouts (1000-pt) */}
       <div className="card overflow-hidden">
         <div className="p-5 border-b flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="font-semibold">Pending — 1000-pt ({pendingStd.length})</h2>
+            <h2 className="font-semibold">{PRO_MAX_ENABLED ? "Pending — 1000-pt" : "Pending"} ({pendingStd.length})</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               Download this list before disbursing — send the money offline using the bank details, then return here and mark each row paid.
             </p>
@@ -141,35 +148,37 @@ export default async function AdminDailyPayoutsPage({
               href="/api/admin/daily-payouts/export-pending?scope=standard"
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 shrink-0"
             >
-              <Download className="h-3.5 w-3.5" /> Download Excel (1000-pt)
+              <Download className="h-3.5 w-3.5" /> Download Excel{PRO_MAX_ENABLED ? " (1000-pt)" : ""}
             </a>
           )}
         </div>
         <PendingPayoutsTable payouts={toRows(pendingStd)} />
       </div>
 
-      {/* Pin Pro Max pending */}
-      <div className="card overflow-hidden border-violet-200">
-        <div className="p-5 border-b flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <h2 className="font-semibold flex items-center gap-2">
-              <Crown className="h-4 w-4 text-violet-600" /> Pending — Pin Pro Max ({pendingPro.length})
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Pro Max wallet payouts, tracked and disbursed separately from the 1000-pt program.
-            </p>
+      {/* Pin Pro Max pending (hidden when Pro Max is disabled) */}
+      {PRO_MAX_ENABLED && (
+        <div className="card overflow-hidden border-violet-200">
+          <div className="p-5 border-b flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="font-semibold flex items-center gap-2">
+                <Crown className="h-4 w-4 text-violet-600" /> Pending — Pin Pro Max ({pendingPro.length})
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Pro Max wallet payouts, tracked and disbursed separately from the 1000-pt program.
+              </p>
+            </div>
+            {pendingPro.length > 0 && (
+              <a
+                href="/api/admin/daily-payouts/export-pending?scope=proMax"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 shrink-0"
+              >
+                <Download className="h-3.5 w-3.5" /> Download Excel (Pro Max)
+              </a>
+            )}
           </div>
-          {pendingPro.length > 0 && (
-            <a
-              href="/api/admin/daily-payouts/export-pending?scope=proMax"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 shrink-0"
-            >
-              <Download className="h-3.5 w-3.5" /> Download Excel (Pro Max)
-            </a>
-          )}
+          <PendingPayoutsTable payouts={toRows(pendingPro)} />
         </div>
-        <PendingPayoutsTable payouts={toRows(pendingPro)} />
-      </div>
+      )}
 
       {/* Payouts (paid) — bank-transfer register, downloadable as Excel */}
       <div className="card overflow-hidden">
@@ -177,23 +186,24 @@ export default async function AdminDailyPayoutsPage({
           <div>
             <h2 className="font-semibold">Payouts ({paidTotal})</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Finalized payouts ready to be sent to the bank. Pro Max rows are badged; use the
-              program-specific buttons to download separate Excel registers.
+              Finalized payouts ready to be sent to the bank.
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <a
-              href="/api/admin/daily-payouts/export?scope=standard"
+              href={PRO_MAX_ENABLED ? "/api/admin/daily-payouts/export?scope=standard" : "/api/admin/daily-payouts/export"}
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700"
             >
-              <Download className="h-3.5 w-3.5" /> Excel (1000-pt)
+              <Download className="h-3.5 w-3.5" /> Download Excel{PRO_MAX_ENABLED ? " (1000-pt)" : ""}
             </a>
-            <a
-              href="/api/admin/daily-payouts/export?scope=proMax"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700"
-            >
-              <Download className="h-3.5 w-3.5" /> Excel (Pro Max)
-            </a>
+            {PRO_MAX_ENABLED && (
+              <a
+                href="/api/admin/daily-payouts/export?scope=proMax"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700"
+              >
+                <Download className="h-3.5 w-3.5" /> Excel (Pro Max)
+              </a>
+            )}
           </div>
         </div>
         {paid.length === 0 ? (

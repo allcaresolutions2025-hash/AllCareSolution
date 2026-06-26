@@ -10,6 +10,7 @@ export type DashboardNavItem = {
   href: string;
   label: string;
   icon: React.ReactNode;
+  proMax?: boolean; // Pro Max-only item; filtered out when the feature is off
 };
 
 export function DashboardShell({

@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
+import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { LayoutDashboard, Package, ShoppingBag, Users, FileCheck2, Wallet, Settings, Network, KeyRound, BadgeIndianRupee, Coins, Megaphone, Trophy, GitBranch, LogIn, BookOpen, Smartphone, ShieldQuestion, Crown } from "lucide-react";
 
 const nav = [
@@ -12,7 +13,8 @@ const nav = [
   { href: "/admin/impersonate", label: "Login as User", icon: <LogIn className="h-4 w-4" /> },
   { href: "/admin/network", label: "Network", icon: <Network className="h-4 w-4" /> },
   { href: "/admin/genealogy", label: "Genealogy", icon: <GitBranch className="h-4 w-4" /> },
-  { href: "/admin/pro-max-genealogy", label: "Pro Max Tree", icon: <Crown className="h-4 w-4" /> },
+  // Pro Max Tree — disabled via PRO_MAX_ENABLED.
+  ...(PRO_MAX_ENABLED ? [{ href: "/admin/pro-max-genealogy", label: "Pro Max Tree", icon: <Crown className="h-4 w-4" /> }] : []),
   { href: "/admin/pins", label: "PIN Management", icon: <KeyRound className="h-4 w-4" /> },
   { href: "/admin/kyc", label: "KYC Reviews", icon: <FileCheck2 className="h-4 w-4" /> },
   { href: "/admin/txn-password-requests", label: "Txn PW Resets", icon: <ShieldQuestion className="h-4 w-4" /> },

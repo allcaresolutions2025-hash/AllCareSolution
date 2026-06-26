@@ -18,6 +18,8 @@ function txnLabel(type: string, amount: number): string {
       return amount >= 0 ? "Transfer from payout wallet" : "Transfer to payout wallet";
     case "PIN_PURCHASE":
       return "Pin purchase";
+    case "ADMIN_CREDIT":
+      return "Admin credit";
     default:
       return type;
   }
