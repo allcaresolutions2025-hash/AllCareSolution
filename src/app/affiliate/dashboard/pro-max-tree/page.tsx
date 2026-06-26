@@ -149,7 +149,11 @@ export default async function ProMaxTreePage() {
         </div>
       </div>
 
-      <BinaryTreeGraph people={treePeople} allowNodeClick={false} />
+      <BinaryTreeGraph
+        people={treePeople}
+        allowNodeClick={false}
+        addMemberPath="/affiliate/dashboard/pin-pro-max"
+      />
     </div>
   );
 }
