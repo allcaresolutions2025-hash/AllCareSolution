@@ -113,18 +113,13 @@ export function RewardCard({ reward, thresholdMet, filledLevel, claim }: Props) 
             <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${COLOR_CHIP[statusCfg!.color]}`}>
               {statusCfg!.icon} {statusCfg!.label}
             </div>
+            {(claim.status === "APPROVED" || claim.status === "DISPATCHED" || claim.status === "DELIVERED") && (
+              <p className="text-xs text-emerald-700 flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" /> {reward.pinWalletPoints.toLocaleString("en-IN")} pts added to your Pin Wallet
+              </p>
+            )}
             {claim.status === "REJECTED" && claim.adminNote && (
               <p className="text-xs text-red-600">{claim.adminNote}</p>
-            )}
-            {claim.status === "DISPATCHED" && (
-              <p className="text-xs text-sky-700 flex items-center gap-1">
-                <Truck className="h-3 w-3" /> Your gift is on its way!
-              </p>
-            )}
-            {claim.status === "DELIVERED" && (
-              <p className="text-xs text-emerald-700 flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" /> Gift delivered. Enjoy!
-              </p>
             )}
           </div>
         ) : thresholdMet ? (
@@ -135,7 +130,7 @@ export function RewardCard({ reward, thresholdMet, filledLevel, claim }: Props) 
               disabled={loading}
               className="w-full btn-primary flex items-center justify-center gap-1.5 text-sm"
             >
-              {loading ? "Submitting…" : (<><Gift className="h-4 w-4" /> Request Gift <ChevronRight className="h-3.5 w-3.5" /></>)}
+              {loading ? "Submitting…" : (<><Gift className="h-4 w-4" /> Claim Reward <ChevronRight className="h-3.5 w-3.5" /></>)}
             </button>
           </div>
         ) : (

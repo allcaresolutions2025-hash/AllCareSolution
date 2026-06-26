@@ -57,7 +57,7 @@ export default async function RewardsPage() {
           <Trophy className="h-6 w-6 text-amber-500" /> My Rewards
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Fill both legs of your binary tree completely — every slot occupied, no gaps — to unlock gifts. Each level is independent; claim any unlocked level whenever you like.
+          Fill both legs of your binary tree completely — every slot occupied, no gaps — to unlock Pin Wallet rewards. Each level is independent; claim any unlocked level whenever you like. Approved rewards are credited to your Pin Wallet for buying pins.
         </p>
       </div>
 
@@ -86,7 +86,7 @@ export default async function RewardsPage() {
             <Trophy className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">Gifts Unlocked</div>
+            <div className="text-xs text-muted-foreground">Rewards Unlocked</div>
             <div className="text-2xl font-bold tabular-nums text-amber-700">{unlockedCount} / 15</div>
           </div>
         </div>
@@ -103,7 +103,7 @@ export default async function RewardsPage() {
         Both legs are completely filled to <strong>level {filledLevel}</strong>
         {" "}(filled depth — Left <strong>{fillDepths.leftFillDepth}</strong> / Right <strong>{fillDepths.rightFillDepth}</strong>).
         {nextLevel !== null && (
-          <> Fill both legs to <strong>level {nextLevel}</strong> — every slot occupied — to unlock the next gift.</>
+          <> Fill both legs to <strong>level {nextLevel}</strong> — every slot occupied — to unlock the next reward.</>
         )}
       </div>
 

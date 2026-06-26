@@ -35,28 +35,36 @@ export const PROMAX_COMBO_REWARD = {
 
 export type RewardLevel = {
   level: number;
-  legCount: number;   // members required on EACH leg
-  gift: string;
+  legCount: number;        // members required on EACH leg
+  pinWalletPoints: number; // credited to the member's Pin Wallet on admin approval
+  gift: string;            // display label
   icon: string;
 };
 
+// Each level rewards Pin Wallet points (usable to buy pins) once both legs are
+// filled to that level AND admin approves the claim.
 export const REWARD_LEVELS: RewardLevel[] = [
-  { level: 1,  legCount: 1,     gift: "Product 1",                              icon: "🌿" },
-  { level: 2,  legCount: 2,     gift: "Product 2",                              icon: "🌿" },
-  { level: 3,  legCount: 4,     gift: "Product 2",                              icon: "🌿" },
-  { level: 4,  legCount: 8,     gift: "Product 2",                              icon: "🌿" },
-  { level: 5,  legCount: 16,    gift: "Product 2",                              icon: "🌿" },
-  { level: 6,  legCount: 32,    gift: "Product 5",                              icon: "🌿" },
-  { level: 7,  legCount: 64,    gift: "Power Bank",                             icon: "🔋" },
-  { level: 8,  legCount: 128,   gift: "Air Buds",                               icon: "🎧" },
-  { level: 9,  legCount: 256,   gift: "Mobile (10K class)",                     icon: "📱" },
-  { level: 10, legCount: 512,   gift: "Laptop (20K class)",                     icon: "💻" },
-  { level: 11, legCount: 1024,  gift: "Two-Wheeler (1 Lakh class)",             icon: "🛵" },
-  { level: 12, legCount: 2048,  gift: "Car (3 Lakh class)",                     icon: "🚗" },
-  { level: 13, legCount: 4096,  gift: "Gold (5 Lakh class)",                    icon: "🥇" },
-  { level: 14, legCount: 8192,  gift: "House (20 Lakh class)",                  icon: "🏠" },
-  { level: 15, legCount: 16384, gift: "Villa + Gold + Luxury Car (1 Cr class)", icon: "🏆" },
+  { level: 1,  legCount: 1,     pinWalletPoints: 100,        gift: "100 pts → Pin Wallet",        icon: "💰" },
+  { level: 2,  legCount: 2,     pinWalletPoints: 200,        gift: "200 pts → Pin Wallet",        icon: "💰" },
+  { level: 3,  legCount: 4,     pinWalletPoints: 200,        gift: "200 pts → Pin Wallet",        icon: "💰" },
+  { level: 4,  legCount: 8,     pinWalletPoints: 200,        gift: "200 pts → Pin Wallet",        icon: "💰" },
+  { level: 5,  legCount: 16,    pinWalletPoints: 300,        gift: "300 pts → Pin Wallet",        icon: "💰" },
+  { level: 6,  legCount: 32,    pinWalletPoints: 500,        gift: "500 pts → Pin Wallet",        icon: "💰" },
+  { level: 7,  legCount: 64,    pinWalletPoints: 1000,       gift: "1,000 pts → Pin Wallet",      icon: "💰" },
+  { level: 8,  legCount: 128,   pinWalletPoints: 2000,       gift: "2,000 pts → Pin Wallet",      icon: "💰" },
+  { level: 9,  legCount: 256,   pinWalletPoints: 10000,      gift: "10,000 pts → Pin Wallet",     icon: "💰" },
+  { level: 10, legCount: 512,   pinWalletPoints: 20000,      gift: "20,000 pts → Pin Wallet",     icon: "💰" },
+  { level: 11, legCount: 1024,  pinWalletPoints: 100000,     gift: "1 Lakh pts → Pin Wallet",     icon: "💎" },
+  { level: 12, legCount: 2048,  pinWalletPoints: 300000,     gift: "3 Lakh pts → Pin Wallet",     icon: "💎" },
+  { level: 13, legCount: 4096,  pinWalletPoints: 500000,     gift: "5 Lakh pts → Pin Wallet",     icon: "💎" },
+  { level: 14, legCount: 8192,  pinWalletPoints: 2000000,    gift: "20 Lakh pts → Pin Wallet",    icon: "🏆" },
+  { level: 15, legCount: 16384, pinWalletPoints: 10000000,   gift: "1 Crore pts → Pin Wallet",    icon: "🏆" },
 ];
+
+// Pin Wallet points for a reward level (0 if not an L1-15 reward).
+export function rewardPinWalletPoints(level: number): number {
+  return REWARD_LEVELS.find((r) => r.level === level)?.pinWalletPoints ?? 0;
+}
 
 export type RewardEligibilityContext = {
   leftLegCount: number;
