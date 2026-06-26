@@ -4,8 +4,9 @@ import { prisma } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { toPaise, formatPoints } from "@/lib/money";
 import { RequestProMaxPinForm } from "./request-pro-max-pin-form";
-import Link from "next/link";
-import { Crown, Clock, Wallet, CheckCircle2, XCircle, BadgeCheck } from "lucide-react";
+import { GetProMaxPinsForm } from "./get-pro-max-pins-form";
+import { UpgradeDownlineForm } from "./upgrade-downline-form";
+import { Crown, KeyRound, Clock, Wallet, CheckCircle2, XCircle, BadgeCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pin Pro Max" };
@@ -14,7 +15,7 @@ export default async function PinProMaxPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [user, wallet, requests, pricePerPinInr] = await Promise.all([
+  const [user, wallet, activePins, requests, pricePerPinInr] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { phone: true, referralCode: true, isProMax: true },
@@ -22,6 +23,11 @@ export default async function PinProMaxPage() {
     prisma.wallet.findUnique({
       where: { userId: session.user.id },
       select: { proMaxBalanceAvailable: true },
+    }),
+    prisma.pin.findMany({
+      where: { ownerId: session.user.id, status: "ACTIVE", proMax: true },
+      select: { code: true },
+      orderBy: { createdAt: "asc" },
     }),
     prisma.pinRequest.findMany({
       where: { userId: session.user.id, proMax: true },
@@ -33,6 +39,7 @@ export default async function PinProMaxPage() {
   if (!user) return null;
 
   const pricePerPinPaise = toPaise(pricePerPinInr);
+  const pinCodes = activePins.map((p) => p.code);
   const pendingCount = requests.filter((r) => r.status === "PENDING").length;
 
   return (
@@ -42,10 +49,18 @@ export default async function PinProMaxPage() {
           <Crown className="h-6 w-6 text-amber-500" /> Pin Pro Max
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          A premium upgrade ({formatPoints(pricePerPinPaise)}). Going Pro Max keeps your existing
-          position in the tree and unlocks Pro Max earnings: your uplines earn <strong>+2,000</strong>
-          per direct Pro Max referral and <strong>+2,000</strong> per pair match (+1,000 past level 15)
-          as their team goes Pro Max.
+          {user.isProMax ? (
+            <>
+              You&apos;re a Pro Max member. Issue Pro Max pins instantly and upgrade your downline —
+              no admin approval. Your uplines earn <strong>+2,000</strong> per direct Pro Max referral
+              and <strong>+2,000</strong> per pair match as their team goes Pro Max.
+            </>
+          ) : (
+            <>
+              A premium upgrade ({formatPoints(pricePerPinPaise)}). Request to become Pro Max — once admin
+              approves, you can issue Pro Max pins yourself and upgrade your downline instantly.
+            </>
+          )}
         </p>
       </div>
 
@@ -61,11 +76,11 @@ export default async function PinProMaxPage() {
         </div>
         <div className="card p-5 flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg grid place-items-center bg-amber-100 text-amber-700">
-            <Clock className="h-5 w-5" />
+            <KeyRound className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-2xl font-bold tabular-nums">{pendingCount}</div>
-            <div className="text-xs text-muted-foreground">Pending requests</div>
+            <div className="text-2xl font-bold tabular-nums">{user.isProMax ? pinCodes.length : pendingCount}</div>
+            <div className="text-xs text-muted-foreground">{user.isProMax ? "Pro Max pins ready" : "Pending requests"}</div>
           </div>
         </div>
         <div className="card p-5 flex items-center gap-3">
@@ -82,23 +97,19 @@ export default async function PinProMaxPage() {
       </div>
 
       {user.isProMax ? (
-        <div className="card p-5 border-2 border-emerald-200 bg-emerald-50/50 flex items-start gap-3">
-          <BadgeCheck className="h-5 w-5 text-emerald-600 mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <div className="font-semibold text-emerald-900">You&apos;re a Pro Max member</div>
-            <div className="text-sm text-emerald-800 mt-0.5">
-              You earn Pro Max points as your team goes Pro Max. Track it on your{" "}
-              <Link href="/affiliate/dashboard/pro-max-tree" className="underline font-medium">Pro Max Tree</Link>{" "}
-              and claim the Acht Mart Combo from{" "}
-              <Link href="/affiliate/dashboard/rewards" className="underline font-medium">My Rewards</Link>.
+        <>
+          <GetProMaxPinsForm />
+          {pinCodes.length > 0 ? (
+            <UpgradeDownlineForm pins={pinCodes} />
+          ) : (
+            <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 text-sm text-amber-800 flex items-start gap-2">
+              <Crown className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>Issue Pro Max pins above, then apply them to your downline members to upgrade them.</div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       ) : (
-        <RequestProMaxPinForm
-          defaultMobile={user.phone ?? ""}
-          pricePerPinPaise={pricePerPinPaise}
-        />
+        <RequestProMaxPinForm defaultMobile={user.phone ?? ""} pricePerPinPaise={pricePerPinPaise} />
       )}
 
       <div className="card overflow-hidden">

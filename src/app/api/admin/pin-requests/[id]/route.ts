@@ -37,7 +37,34 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ ok: true });
   }
 
-  // Approve: generate `quantity` unique AM-prefixed pins, assign to requester.
+  // A Pro Max request is a "request to BECOME Pro Max" — approving it flips the
+  // member to Pro Max in place (cascade fires up the main tree). No pins are
+  // minted here; once Pro Max, the member issues their own pins instantly and
+  // upgrades downlines without admin approval.
+  if (request.proMax) {
+    await prisma.$transaction(async (tx) => {
+      await tx.pinRequest.update({
+        where: { id: request.id },
+        data: { status: "APPROVED", reviewerNotes: parsed.data.notes ?? null, reviewedAt: new Date() },
+      });
+      const member = await tx.user.findUnique({
+        where: { id: request.userId },
+        select: { isProMax: true },
+      });
+      await tx.wallet.upsert({
+        where: { userId: request.userId },
+        create: { userId: request.userId },
+        update: {},
+      });
+      if (!member?.isProMax) {
+        await tx.user.update({ where: { id: request.userId }, data: { isProMax: true } });
+        await awardProMaxOnUpgrade(tx, request.userId);
+      }
+    });
+    return NextResponse.json({ ok: true, proMaxApproved: true });
+  }
+
+  // Standard pin request: generate `quantity` unique AM-prefixed pins.
   const codes: string[] = [];
   for (let i = 0; i < request.quantity; i++) {
     codes.push(await generateUniquePinCode());
@@ -57,33 +84,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         code,
         ownerId: request.userId,
         requestId: request.id,
-        proMax: request.proMax,
         status: "ACTIVE" as const,
       })),
     });
-    // Approving a Pro Max pin request UPGRADES the requester in place: they flip
-    // to Pro Max while keeping their existing main-tree position. Pro Max value
-    // then cascades up the main tree to their uplines (+2,000 direct, +2,000 /
-    // +1,000 pair match). Only fire the cascade the first time they flip — a
-    // member with multiple/again-approved Pro Max pins must not double-earn.
-    if (request.proMax) {
-      const member = await tx.user.findUnique({
-        where: { id: request.userId },
-        select: { isProMax: true },
-      });
-      await tx.wallet.upsert({
-        where: { userId: request.userId },
-        create: { userId: request.userId },
-        update: {},
-      });
-      if (!member?.isProMax) {
-        await tx.user.update({
-          where: { id: request.userId },
-          data: { isProMax: true },
-        });
-        await awardProMaxOnUpgrade(tx, request.userId);
-      }
-    }
   });
 
   return NextResponse.json({ ok: true, pinsIssued: codes.length });
