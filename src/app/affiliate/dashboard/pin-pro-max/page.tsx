@@ -108,6 +108,17 @@ export default async function PinProMaxPage() {
             </div>
           )}
         </>
+      ) : pendingCount > 0 ? (
+        <div className="card p-6 border-2 border-amber-200 flex items-start gap-3">
+          <Clock className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <div className="font-semibold">Your Pro Max request is pending</div>
+            <div className="text-sm text-muted-foreground mt-0.5">
+              Admin is reviewing your request to become Pro Max. Once approved, you can issue Pro Max
+              pins and upgrade your downline from here. You can&apos;t submit another request until then.
+            </div>
+          </div>
+        </div>
       ) : (
         <RequestProMaxPinForm defaultMobile={user.phone ?? ""} pricePerPinPaise={pricePerPinPaise} />
       )}
