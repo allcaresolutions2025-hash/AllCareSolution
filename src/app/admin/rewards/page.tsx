@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/db";
 import { RewardRow } from "./reward-row";
-import { Trophy } from "lucide-react";
+import { Trophy, Download, PackageCheck } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 import { ResetPendingRewardsCard } from "./reset-pending-card";
+import { WELCOME_KIT_LEVEL } from "@/lib/rewards";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Reward Claims" };
@@ -13,12 +14,13 @@ const PAGE_SIZE = 20;
 export default async function AdminRewardsPage({
   searchParams,
 }: {
-  searchParams: { status?: string; page?: string };
+  searchParams: { status?: string; page?: string; dpage?: string };
 }) {
   const filterStatus = STATUS_ORDER.includes(searchParams.status as (typeof STATUS_ORDER)[number])
     ? (searchParams.status as (typeof STATUS_ORDER)[number])
     : undefined;
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const dpage = Math.max(1, parseInt(searchParams.dpage ?? "1", 10) || 1);
 
   const claims = await prisma.rewardClaim.findMany({
     where: filterStatus ? { status: filterStatus } : undefined,
@@ -29,6 +31,19 @@ export default async function AdminRewardsPage({
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
   });
+
+  // Welcome Kit (level 0) is the only physical reward to dispatch.
+  const [wkApprovedCount, deliveredWelcomeKits, deliveredWkTotal] = await Promise.all([
+    prisma.rewardClaim.count({ where: { level: WELCOME_KIT_LEVEL, status: "APPROVED" } }),
+    prisma.rewardClaim.findMany({
+      where: { level: WELCOME_KIT_LEVEL, status: "DELIVERED" },
+      orderBy: { updatedAt: "desc" },
+      skip: (dpage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: { user: { select: { name: true, phone: true, referralCode: true, address: true } } },
+    }),
+    prisma.rewardClaim.count({ where: { level: WELCOME_KIT_LEVEL, status: "DELIVERED" } }),
+  ]);
 
   const counts = await prisma.rewardClaim.groupBy({
     by: ["status"],
@@ -50,7 +65,7 @@ export default async function AdminRewardsPage({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Trophy className="h-6 w-6 text-amber-500" />
         <h1 className="text-2xl font-bold">Reward Claims</h1>
         {countMap["PENDING"] > 0 && (
@@ -58,7 +73,17 @@ export default async function AdminRewardsPage({
             {countMap["PENDING"]} pending
           </span>
         )}
+        <a
+          href="/api/admin/rewards/welcome-kit-export"
+          className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700"
+        >
+          <Download className="h-3.5 w-3.5" /> Welcome Kit dispatch list ({wkApprovedCount})
+        </a>
       </div>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Welcome Kit is the only physical reward — the dispatch list (Excel, with member address) covers
+        approved Welcome Kits. The L1-15 rewards are credited to the member&apos;s Pin Wallet on approval.
+      </p>
 
       {/* One-time cleanup: clear pending claims so members re-request under the new rule */}
       <ResetPendingRewardsCard />
@@ -130,6 +155,56 @@ export default async function AdminRewardsPage({
           basePath="/admin/rewards"
           params={{ status: filterStatus }}
         />
+      </div>
+
+      {/* Delivered Welcome Kits — physical dispatch tracking */}
+      <div className="card overflow-hidden">
+        <div className="p-5 border-b flex items-center gap-2">
+          <PackageCheck className="h-4 w-4 text-emerald-600" />
+          <h2 className="font-semibold">Delivered Welcome Kits</h2>
+          <span className="ml-auto text-xs text-muted-foreground">{deliveredWkTotal} delivered</span>
+        </div>
+        {deliveredWelcomeKits.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">No delivered Welcome Kits yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Member</th>
+                  <th className="px-4 py-2 font-medium">Mobile</th>
+                  <th className="px-4 py-2 font-medium">Address</th>
+                  <th className="px-4 py-2 font-medium">Delivered</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {deliveredWelcomeKits.map((c) => (
+                  <tr key={c.id}>
+                    <td className="px-4 py-2">
+                      <div className="font-medium">{c.user.name}</div>
+                      <div className="text-xs font-mono text-muted-foreground">{c.user.referralCode}</div>
+                    </td>
+                    <td className="px-4 py-2 text-xs font-mono">{c.user.phone ?? "—"}</td>
+                    <td className="px-4 py-2 text-xs max-w-xs">{c.user.address ?? "—"}</td>
+                    <td className="px-4 py-2 text-xs text-muted-foreground">
+                      {c.updatedAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {deliveredWkTotal > 0 && (
+          <Pagination
+            page={dpage}
+            pageParam="dpage"
+            pageSize={PAGE_SIZE}
+            total={deliveredWkTotal}
+            basePath="/admin/rewards"
+            params={{ status: filterStatus, page: page > 1 ? String(page) : undefined }}
+          />
+        )}
       </div>
     </div>
   );
