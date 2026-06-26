@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { generateUniquePinCode } from "@/lib/referral";
-import { awardProMaxOnUpgrade } from "@/lib/points-promax";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -39,10 +38,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   // A Pro Max request means one of two things, decided by whether the requester
   // is already Pro Max:
-  //   - NOT Pro Max yet → "request to become Pro Max": flip them to Pro Max in
-  //     place (cascade fires up the main tree). No pins minted.
+  //   - NOT Pro Max yet → "request to become Pro Max": flip them to Pro Max so
+  //     they can start building their Pro Max tree. No pins minted.
   //   - Already Pro Max → "request Pro Max pins": mint `quantity` Pro Max pins
-  //     they can apply to downlines.
+  //     they use to register new Pro Max members.
   if (request.proMax) {
     const member = await prisma.user.findUnique({
       where: { id: request.userId },
@@ -71,7 +70,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: true, pinsIssued: codes.length });
     }
 
-    // Become-Pro-Max request — flip the flag + cascade, no pins.
+    // Become-Pro-Max request — just flip the flag (no pins, no cascade). Pro Max
+    // earnings come from building the Pro Max tree (registering Pro Max members).
     await prisma.$transaction(async (tx) => {
       await tx.pinRequest.update({
         where: { id: request.id },
@@ -83,7 +83,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         update: {},
       });
       await tx.user.update({ where: { id: request.userId }, data: { isProMax: true } });
-      await awardProMaxOnUpgrade(tx, request.userId);
     });
     return NextResponse.json({ ok: true, proMaxApproved: true });
   }

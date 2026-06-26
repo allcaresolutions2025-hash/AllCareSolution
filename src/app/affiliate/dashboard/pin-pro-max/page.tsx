@@ -3,10 +3,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { toPaise, formatPoints } from "@/lib/money";
+import Link from "next/link";
 import { RequestProMaxPinForm } from "./request-pro-max-pin-form";
 import { RequestProMaxPinsForm } from "./request-pro-max-pins-form";
-import { UpgradeDownlineForm } from "./upgrade-downline-form";
-import { Crown, KeyRound, Clock, Wallet, CheckCircle2, XCircle, BadgeCheck } from "lucide-react";
+import { Crown, KeyRound, Clock, Wallet, CheckCircle2, XCircle, BadgeCheck, UserPlus, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pin Pro Max" };
@@ -51,14 +51,14 @@ export default async function PinProMaxPage() {
         <p className="text-sm text-muted-foreground mt-1">
           {user.isProMax ? (
             <>
-              You&apos;re a Pro Max member. Request Pro Max pins from admin, then apply each approved
-              pin to a downline to upgrade them instantly. Your uplines earn <strong>+2,000</strong> per
-              direct Pro Max referral and <strong>+2,000</strong> per pair match as their team goes Pro Max.
+              You&apos;re a Pro Max member. Request Pro Max pins from admin, then use each approved pin to
+              register a new Pro Max member into your Pro Max tree. You earn <strong>+2,000</strong> per
+              direct Pro Max referral and <strong>+2,000</strong> per pair match as your Pro Max tree grows.
             </>
           ) : (
             <>
               A premium upgrade ({formatPoints(pricePerPinPaise)}). Request to become Pro Max — once admin
-              approves, you can issue Pro Max pins yourself and upgrade your downline instantly.
+              approves, you can request Pro Max pins and build your own Pro Max tree.
             </>
           )}
         </p>
@@ -100,11 +100,25 @@ export default async function PinProMaxPage() {
         <>
           <RequestProMaxPinsForm defaultMobile={user.phone ?? ""} />
           {pinCodes.length > 0 ? (
-            <UpgradeDownlineForm pins={pinCodes} />
+            <Link
+              href="/affiliate/dashboard/add-member/pro-max"
+              className="card p-5 flex items-center gap-3 border-2 border-amber-200 hover:border-amber-300 transition-colors"
+            >
+              <div className="h-10 w-10 rounded-lg grid place-items-center bg-amber-100 text-amber-700">
+                <UserPlus className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold">Create a Pro Max member</div>
+                <div className="text-xs text-muted-foreground">
+                  Use one of your {pinCodes.length} Pro Max pin{pinCodes.length === 1 ? "" : "s"} to register a new Pro Max member into your Pro Max tree.
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-amber-700" />
+            </Link>
           ) : (
             <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 text-sm text-amber-800 flex items-start gap-2">
               <Crown className="h-4 w-4 mt-0.5 shrink-0" />
-              <div>Request Pro Max pins above. Once admin approves them, apply each pin to a downline member to upgrade them.</div>
+              <div>Request Pro Max pins above. Once admin approves them, use each pin to register a new Pro Max member.</div>
             </div>
           )}
         </>
@@ -114,8 +128,8 @@ export default async function PinProMaxPage() {
           <div>
             <div className="font-semibold">Your Pro Max request is pending</div>
             <div className="text-sm text-muted-foreground mt-0.5">
-              Admin is reviewing your request to become Pro Max. Once approved, you can issue Pro Max
-              pins and upgrade your downline from here. You can&apos;t submit another request until then.
+              Admin is reviewing your request to become Pro Max. Once approved, you can request Pro Max
+              pins and build your Pro Max tree from here. You can&apos;t submit another request until then.
             </div>
           </div>
         </div>

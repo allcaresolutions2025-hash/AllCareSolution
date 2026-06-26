@@ -1,101 +1,66 @@
 import { prisma } from "./db";
-import { type DownlineNode } from "./network";
+import { MAX_DOWNLINE_DEPTH, type DownlineNode } from "./network";
 
-// Pro Max genealogy. Pro Max OVERLAYS the main binary tree (members upgrade in
-// place), so there is no separate placement. The Pro Max TREE VIEW is the main
-// tree COMPRESSED to only Pro Max members: each Pro Max member links to its
-// nearest Pro Max ancestor (non-Pro-Max members in between are skipped), with
-// the side it sits on relative to that ancestor.
+// Pro Max genealogy helpers — a parallel copy of the 1000-pt helpers in
+// network.ts that traverse the SEPARATE Pro Max tree (proMaxReferrerId /
+// proMaxSlot) instead of the 1000-pt placement. Sales/commission enrichment is
+// intentionally omitted: the Pro Max tree is a points-only program.
 
 type RawRow = {
   id: string;
   name: string;
   email: string;
   referralCode: string;
-  referrerId: string | null;
-  slot: "LEFT" | "RIGHT" | null;
-  isProMax: boolean;
+  proMaxReferrerId: string | null;
+  proMaxSlot: "LEFT" | "RIGHT" | null;
+  createdAt: Date;
   isActive: boolean;
   gender: "MALE" | "FEMALE" | null;
-  createdAt: Date;
+  depth: number;
 };
 
-// Returns the Pro Max-only tree under `rootUserId`, as DownlineNode rows whose
-// referrerId/slot/depth are RELATIVE to the compressed Pro Max tree (root = the
-// given user). Only Pro Max members are included.
-export async function getProMaxCompressedDownline(rootUserId: string): Promise<DownlineNode[]> {
+/**
+ * Fetch the full Pro Max downline under `rootUserId`, capped at
+ * MAX_DOWNLINE_DEPTH. One recursive CTE round-trip regardless of tree size.
+ */
+export async function getProMaxDownline(
+  rootUserId: string,
+  maxDepth = MAX_DOWNLINE_DEPTH,
+): Promise<DownlineNode[]> {
   const rows = await prisma.$queryRaw<RawRow[]>`
-    WITH RECURSIVE dl AS (
-      SELECT id, name, email, "referralCode", "referrerId", slot, "isProMax", "isActive", gender, "createdAt"
-      FROM "User" WHERE "referrerId" = ${rootUserId}
+    WITH RECURSIVE downline AS (
+      SELECT id, name, email, "referralCode", "proMaxReferrerId", "proMaxSlot", "createdAt", "isActive", gender, 1 AS depth
+      FROM "User"
+      WHERE "proMaxReferrerId" = ${rootUserId}
       UNION ALL
-      SELECT u.id, u.name, u.email, u."referralCode", u."referrerId", u.slot, u."isProMax", u."isActive", u.gender, u."createdAt"
-      FROM "User" u JOIN dl d ON u."referrerId" = d.id
+      SELECT u.id, u.name, u.email, u."referralCode", u."proMaxReferrerId", u."proMaxSlot", u."createdAt", u."isActive", u.gender, d.depth + 1
+      FROM "User" u
+      JOIN downline d ON u."proMaxReferrerId" = d.id
+      WHERE d.depth < ${maxDepth}
     )
-    SELECT * FROM dl
+    SELECT * FROM downline ORDER BY depth ASC, "createdAt" ASC
   `;
-  const byId = new Map(rows.map((r) => [r.id, r]));
-
-  // For each Pro Max member, find its compressed parent (nearest Pro Max
-  // ancestor, else the root) and the side it sits on under that parent.
-  const compressed = new Map<string, { parentId: string; slot: "LEFT" | "RIGHT" | null }>();
-  for (const n of rows) {
-    if (!n.isProMax) continue;
-    let childOnPath = n;
-    let ancestorId = n.referrerId;
-    while (ancestorId && ancestorId !== rootUserId) {
-      const anc = byId.get(ancestorId);
-      if (!anc) break;
-      if (anc.isProMax) break;
-      childOnPath = anc;
-      ancestorId = anc.referrerId;
-    }
-    const parentIsProMax = !!(ancestorId && ancestorId !== rootUserId && byId.get(ancestorId)?.isProMax);
-    compressed.set(n.id, { parentId: parentIsProMax ? ancestorId! : rootUserId, slot: childOnPath.slot });
-  }
-
-  // Compressed depths via BFS from the root.
-  const childrenByParent = new Map<string, string[]>();
-  for (const [id, c] of compressed) {
-    const arr = childrenByParent.get(c.parentId) ?? [];
-    arr.push(id);
-    childrenByParent.set(c.parentId, arr);
-  }
-  const depthById = new Map<string, number>([[rootUserId, 0]]);
-  const queue = [rootUserId];
-  while (queue.length) {
-    const pid = queue.shift()!;
-    for (const cid of childrenByParent.get(pid) ?? []) {
-      depthById.set(cid, (depthById.get(pid) ?? 0) + 1);
-      queue.push(cid);
-    }
-  }
-
-  const out: DownlineNode[] = [];
-  for (const n of rows) {
-    if (!n.isProMax) continue;
-    const c = compressed.get(n.id)!;
-    out.push({
-      id: n.id,
-      name: n.name,
-      email: n.email,
-      referralCode: n.referralCode,
-      referrerId: c.parentId,
-      slot: c.slot,
-      createdAt: n.createdAt,
-      isActive: n.isActive,
-      depth: depthById.get(n.id) ?? 1,
-      gender: n.gender,
-      salesPaise: 0,
-      orderCount: 0,
-      commissionToRootPaise: 0,
-    });
-  }
-  out.sort((a, b) => a.depth - b.depth);
-  return out;
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    referralCode: r.referralCode,
+    // Map the Pro Max placement onto the shared DownlineNode shape so the
+    // existing BinaryTreeGraph + page code can consume it unchanged.
+    referrerId: r.proMaxReferrerId,
+    slot: (r.proMaxSlot as "LEFT" | "RIGHT" | null) ?? null,
+    createdAt: r.createdAt,
+    isActive: r.isActive,
+    depth: r.depth,
+    gender: r.gender,
+    salesPaise: 0,
+    orderCount: 0,
+    commissionToRootPaise: 0,
+  }));
 }
 
-export async function getProMaxNetworkSnapshot(rootUserId: string) {
-  const nodes = await getProMaxCompressedDownline(rootUserId);
+/** Pro Max tree snapshot — nodes + total count, no sales/commission enrichment. */
+export async function getProMaxNetworkSnapshot(rootUserId: string, maxDepth = MAX_DOWNLINE_DEPTH) {
+  const nodes = await getProMaxDownline(rootUserId, maxDepth);
   return { nodes, totalMembers: nodes.length };
 }

@@ -83,14 +83,35 @@ export default async function AffiliateDashboardPage() {
 
   const personalPts = me.wallet?.balanceAvailable ?? 0;
 
-  // Pin Pro Max — count of Pro Max members in my LEFT / RIGHT main-tree legs.
-  // The Pro Max engine maintains these on every upline (not just Pro Max
-  // members), so a member like Priya sees the count grow as her team goes Pro
-  // Max. Shown for all users.
-  const proMaxLeft = me.proMaxLeftLegCount;
-  const proMaxRight = me.proMaxRightLegCount;
+  // Pin Pro Max counts (shown for EVERY user):
+  //  - A Pro Max member sees their own Pro Max-tree leg counts.
+  //  - A non-member sees how many of their main-tree LEFT/RIGHT team are Pro Max
+  //    (awareness — e.g. Priya can tell teammates subscribed).
   const proMaxBalance = me.wallet?.proMaxBalanceAvailable ?? 0;
-  const showProMaxWallet = me.isProMax || proMaxBalance > 0 || proMaxLeft > 0 || proMaxRight > 0;
+  const isProMaxMember =
+    me.isProMax || me.proMaxLeftLegCount > 0 || me.proMaxRightLegCount > 0 || proMaxBalance > 0;
+  let proMaxLeft: number;
+  let proMaxRight: number;
+  if (isProMaxMember) {
+    proMaxLeft = me.proMaxLeftLegCount;
+    proMaxRight = me.proMaxRightLegCount;
+  } else {
+    const proMaxMembers = downlineIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: downlineIds }, isProMax: true },
+          select: { id: true },
+        })
+      : [];
+    let tl = 0;
+    let tr = 0;
+    for (const m of proMaxMembers) {
+      if (leftIds.has(m.id)) tl += 1;
+      else if (rightIds.has(m.id)) tr += 1;
+    }
+    proMaxLeft = tl;
+    proMaxRight = tr;
+  }
+  const showProMaxWallet = isProMaxMember;
 
   // Note: public self-signup is disabled. New members are placed by their
   // upline via /affiliate/dashboard/add-member using this Refer ID and a pin.
@@ -304,19 +325,6 @@ export default async function AffiliateDashboardPage() {
           />
         )}
       </div>
-
-      {/* Non-Pro-Max members accrue Pro Max points but they're held until they
-          go Pro Max themselves. */}
-      {!me.isProMax && proMaxBalance > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-sm text-amber-800 flex items-start gap-2">
-          <Crown className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
-          <div>
-            You&apos;ve earned <strong>{formatPoints(proMaxBalance)}</strong> in Pro Max from your team.
-            These are <strong>held</strong> and won&apos;t enter your daily payout until you become a Pro Max
-            member yourself. <Link href="/affiliate/dashboard/pin-pro-max" className="underline font-medium">Go Pro Max</Link> to unlock them.
-          </div>
-        </div>
-      )}
 
       {/* Team counters */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
