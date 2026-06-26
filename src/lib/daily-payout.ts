@@ -113,9 +113,15 @@ export async function runDailyPayout(
     // ---- PIN PRO MAX wallet (proMaxBalanceAvailable) — same 90/10 cycle.
     // Pro Max rows carry proMax=true and share the runDate; the
     // @@unique([userId, runDate, proMax]) lets them coexist with standard rows.
+    // GATE: only members who are themselves Pro Max (isProMax) are paid. A
+    // non-Pro-Max upline accrues Pro Max points but they're held until that
+    // member goes Pro Max — then their accrued balance pays out on the next run.
     if (doProMax) {
       const proMaxWallets = await tx.wallet.findMany({
-        where: { proMaxBalanceAvailable: { gte: MIN_PAYOUT_PAISE } },
+        where: {
+          proMaxBalanceAvailable: { gte: MIN_PAYOUT_PAISE },
+          user: { isProMax: true },
+        },
         select: { userId: true, proMaxBalanceAvailable: true },
       });
       const proMaxPayouts = proMaxWallets.map((w) => {

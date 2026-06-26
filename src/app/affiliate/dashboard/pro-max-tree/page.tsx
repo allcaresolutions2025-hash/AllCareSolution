@@ -31,17 +31,24 @@ export default async function ProMaxTreePage() {
   });
   if (!me) return null;
 
-  // Pro Max Tree is a Pro-Max-only section.
-  if (!me.isProMax) {
+  const hasProMax =
+    me.isProMax ||
+    me.proMaxLeftLegCount > 0 ||
+    me.proMaxRightLegCount > 0 ||
+    (me.wallet?.proMaxBalanceAvailable ?? 0) > 0;
+
+  if (!hasProMax) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Crown className="h-6 w-6 text-amber-500" /> Pro Max Tree
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Crown className="h-6 w-6 text-amber-500" /> Pro Max Tree
+          </h1>
+        </div>
         <div className="card p-8 text-center space-y-3">
           <Crown className="h-10 w-10 text-amber-400 mx-auto" />
           <p className="text-sm text-muted-foreground">
-            This section is for Pro Max members only. Upgrade to Pro Max to unlock your Pro Max tree.
+            You&apos;re not in the Pro Max program yet. Request a Pro Max pin to get started.
           </p>
           <Link href="/affiliate/dashboard/pin-pro-max" className="btn-primary inline-flex">
             Go to Pin Pro Max
@@ -54,6 +61,7 @@ export default async function ProMaxTreePage() {
   const snapshot = await getProMaxNetworkSnapshot(me.id);
   const maxDepth = snapshot.nodes.length ? Math.max(...snapshot.nodes.map((n) => n.depth)) : 0;
 
+  // Per-node Pro Max points for the tree cards.
   const downlineIds = snapshot.nodes.map((n) => n.id);
   const wallets = downlineIds.length
     ? await prisma.wallet.findMany({
@@ -98,7 +106,7 @@ export default async function ProMaxTreePage() {
           <Crown className="h-6 w-6 text-amber-500" /> Pro Max Tree
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Your separate Pin Pro Max tree — the Pro Max users created below you.
+          Your separate Pro Max binary tree — independent from your 1000-pt Genealogy.
         </p>
       </div>
 
@@ -141,11 +149,7 @@ export default async function ProMaxTreePage() {
         </div>
       </div>
 
-      <BinaryTreeGraph
-        people={treePeople}
-        allowNodeClick={false}
-        addMemberPath="/affiliate/dashboard/add-member/pro-max"
-      />
+      <BinaryTreeGraph people={treePeople} allowNodeClick={false} />
     </div>
   );
 }

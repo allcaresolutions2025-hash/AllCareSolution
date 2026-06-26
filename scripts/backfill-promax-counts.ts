@@ -1,13 +1,15 @@
 /**
  * One-time backfill: recompute every user's Pro Max leg counts
- * (proMaxLeftLegCount / proMaxRightLegCount) for the SEPARATE Pro Max tree
- * (proMaxReferrerId / proMaxSlot) — each Pro Max member's own Pro Max downline.
+ * (proMaxLeftLegCount / proMaxRightLegCount) for the OVERLAY model, where Pro
+ * Max rides the main binary tree (referrerId / slot).
  *
- * For every user placed in the Pro Max tree (proMaxReferrerId set) we walk UP
- * the Pro Max tree and increment each ancestor's left/right count on the side
- * the member sits. Matches src/lib/points-promax.ts (awardProMaxUplinePoints).
+ * For each Pro Max member (User.isProMax = true), we walk UP the main tree and
+ * increment each ancestor's left/right Pro Max count on the side the member
+ * sits. This matches src/lib/points-promax.ts (awardProMaxOnUpgrade), which
+ * maintains the same counts going forward.
  *
- * It does NOT touch wallet balances — only the cached counts.
+ * It does NOT touch wallet balances (already-earned Pro Max points are left
+ * as-is) — it only fixes the cached counts.
  *
  * Run:  npx tsx scripts/backfill-promax-counts.ts
  */
@@ -17,7 +19,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const users = await prisma.user.findMany({
-    select: { id: true, proMaxReferrerId: true, proMaxSlot: true },
+    select: { id: true, referrerId: true, slot: true, isProMax: true },
   });
 
   const byId = new Map(users.map((u) => [u.id, u]));
@@ -29,16 +31,15 @@ async function main() {
     counts.set(id, c);
   };
 
-  // Every Pro Max-tree member contributes to all its Pro Max ancestors.
-  const proMaxMembers = users.filter((u) => u.proMaxReferrerId);
+  const proMaxMembers = users.filter((u) => u.isProMax);
   for (const m of proMaxMembers) {
-    let cur = m.proMaxReferrerId ? byId.get(m.proMaxReferrerId) : undefined;
-    let slotFromBelow = m.proMaxSlot;
+    let cur = m.referrerId ? byId.get(m.referrerId) : undefined;
+    let slotFromBelow = m.slot;
     let safety = 0;
     while (cur && slotFromBelow && safety++ < 1000) {
       bump(cur.id, slotFromBelow);
-      slotFromBelow = cur.proMaxSlot;
-      cur = cur.proMaxReferrerId ? byId.get(cur.proMaxReferrerId) : undefined;
+      slotFromBelow = cur.slot;
+      cur = cur.referrerId ? byId.get(cur.referrerId) : undefined;
     }
   }
 
