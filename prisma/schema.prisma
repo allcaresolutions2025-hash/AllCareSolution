@@ -665,28 +665,23 @@ model RewardClaim {
   @@index([status, requestedAt])
 }
 
-// Pro Max programme rewards — kept separate from the 1,000-pt RewardClaim ladder.
-//   COMBO  — the "ACHT MART Pro Max Combo Box". Member requests it (PENDING),
-//            the Pro Max admin approves/dispatches/delivers. One per member.
-//   LEVEL  — any other reward the Pro Max admin grants a member directly
-//            (created already APPROVED); shows on the member's rewards page.
-enum ProMaxRewardKind {
-  COMBO
-  LEVEL
-}
-
+// Pro Max programme reward ladder — separate from the 1,000-pt RewardClaim.
+// level 0 = Welcome Kit; levels 1-15 = the PLAN 2 prize ladder (see
+// lib/rewards-promax.ts). A level unlocks when both Pro Max legs are filled to
+// that depth; the member claims, the admin approves/dispatches/delivers, and
+// levels 1-6 credit Pin Wallet points on approval. One claim per member+level.
 model ProMaxReward {
   id          String            @id @default(cuid())
   userId      String
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kind        ProMaxRewardKind  @default(LEVEL)
+  level       Int               // 0 = Welcome Kit, 1-15 = ladder
   rewardName  String
   status      RewardClaimStatus @default(PENDING)
   adminNote   String?           @db.Text
   requestedAt DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  @@index([userId])
+  @@unique([userId, level])
   @@index([status, requestedAt])
 }
 
