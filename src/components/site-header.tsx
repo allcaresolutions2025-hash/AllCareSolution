@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useCart } from "./cart-provider";
 import { ShoppingCart, User, LogOut, LayoutDashboard, Users, ShieldCheck, Menu, X } from "lucide-react";
@@ -15,6 +16,9 @@ export function SiteHeader({ brand }: { brand: SiteBrand }) {
   const [navOpen, setNavOpen] = useState(false);
 
   const isAdmin = session?.user?.role === "ADMIN";
+  const pathname = usePathname();
+  // Violet accent on the Pro Max portals to match the rest of the theme.
+  const pm = pathname?.startsWith("/promax");
 
   const closeNav = () => setNavOpen(false);
 
@@ -89,7 +93,14 @@ export function SiteHeader({ brand }: { brand: SiteBrand }) {
               )}
             </div>
           ) : (
-            <Link href="/login" className="btn-primary text-xs sm:text-sm px-3 sm:px-4">
+            <Link
+              href={pm ? "/promax/login" : "/login"}
+              className={
+                pm
+                  ? "inline-flex items-center justify-center rounded-full bg-promax-gradient text-white font-semibold text-xs sm:text-sm px-3 sm:px-4 py-2 shadow-promax-sm hover:opacity-95 transition"
+                  : "btn-primary text-xs sm:text-sm px-3 sm:px-4"
+              }
+            >
               <span className="hidden xs:inline sm:inline">Member </span>Login
             </Link>
           )}

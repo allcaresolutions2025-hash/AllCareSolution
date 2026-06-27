@@ -1,18 +1,28 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Mail, MapPin } from "lucide-react";
 import { AchtMartLogo } from "./acht-mart-logo";
 import type { SiteBrand } from "@/lib/brand";
 
 export function SiteFooter({ brand }: { brand: SiteBrand }) {
   const year = new Date().getFullYear();
+  const pathname = usePathname();
+  // Pro Max portals get the violet theme; the rest of the site stays green.
+  const pm = pathname?.startsWith("/promax");
+  const t = pm
+    ? { bg: "bg-promax-950", body: "text-promax-100", muted: "text-promax-200", border: "border-promax-800" }
+    : { bg: "bg-brand-950", body: "text-brand-100", muted: "text-brand-300", border: "border-brand-800" };
+
   return (
-    <footer className="bg-brand-950 text-brand-100 mt-16">
+    <footer className={`${t.bg} ${t.body} mt-16`}>
       <div className="container py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
         <div>
           <div className="mb-3">
             <AchtMartLogo size="md" imageUrl={brand.logoUrl} alt={`${brand.siteName} logo`} />
           </div>
-          <p className="text-sm text-brand-300">
+          <p className={`text-sm ${t.muted}`}>
             Premium Ayurvedic &amp; herbal wellness products, manufactured in India,
             sold direct-to-consumer with an ethical points &amp; rewards program.
           </p>
@@ -52,8 +62,8 @@ export function SiteFooter({ brand }: { brand: SiteBrand }) {
         </div>
       </div>
 
-      <div className="border-t border-brand-800">
-        <div className="container py-4 text-xs flex flex-col md:flex-row items-center justify-between gap-2 text-brand-300">
+      <div className={`border-t ${t.border}`}>
+        <div className={`container py-4 text-xs flex flex-col md:flex-row items-center justify-between gap-2 ${t.muted}`}>
           <p>© {year} All Care Herbal Traders. All rights reserved.</p>
           <p>
             Points are an internal loyalty unit only — no cash value, not redeemable for money, never transferred to a bank account.
