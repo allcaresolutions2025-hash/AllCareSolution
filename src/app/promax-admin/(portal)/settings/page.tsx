@@ -25,7 +25,7 @@ export default async function ProMaxAdminSettingsPage() {
 
   const rules: { label: string; value: string }[] = [
     { label: "Direct referral (each side)", value: `+${PROMAX_POINTS_PER_DIRECT_REFERRAL.toLocaleString("en-IN")}` },
-    { label: "First-pair bonus (both legs fill)", value: `+${PROMAX_FIRST_PAIR_BONUS.toLocaleString("en-IN")}` },
+    { label: "Both-legs-filled bonus (one-time)", value: `+${PROMAX_FIRST_PAIR_BONUS.toLocaleString("en-IN")}` },
     { label: `Pair match (within ${PROMAX_PAIR_MATCH_DEPTH_THRESHOLD} levels)`, value: `+${PROMAX_PAIR_MATCH_POINTS_NEAR.toLocaleString("en-IN")}` },
     { label: `Pair match (beyond ${PROMAX_PAIR_MATCH_DEPTH_THRESHOLD} levels)`, value: `+${PROMAX_PAIR_MATCH_POINTS_FAR.toLocaleString("en-IN")}` },
   ];
@@ -55,7 +55,7 @@ export default async function ProMaxAdminSettingsPage() {
           ))}
         </div>
         <div className="px-5 py-3 text-xs text-muted-foreground bg-muted/30">
-          A leader with both directs + first pair earns 6,000. These values live in
+          A leader with both directs + the both-legs bonus earns 9,000. These values live in
           <code className="mx-1">src/lib/points-promax.ts</code>.
         </div>
       </div>

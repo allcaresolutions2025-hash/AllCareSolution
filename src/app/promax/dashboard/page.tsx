@@ -62,8 +62,8 @@ export default async function ProMaxDashboardPage() {
       </div>
 
       <div className="rounded-lg border border-promax-200 bg-promax-50 px-4 py-3 text-xs text-promax-900">
-        Earn <strong>+2,000</strong> per direct referral (each side) and <strong>+2,000</strong> when your
-        left &amp; right first pair — that&apos;s <strong>6,000</strong> for a filled leader. Every paired
+        Earn <strong>+2,000</strong> per direct referral (each side) and a one-time <strong>+5,000</strong> when your
+        left &amp; right are both filled — that&apos;s <strong>9,000</strong> for a filled leader. Every paired
         grandchild then cascades points up to you (+2,000 within 15 levels, +1,000 beyond).
       </div>
 

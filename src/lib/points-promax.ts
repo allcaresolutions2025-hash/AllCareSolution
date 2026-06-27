@@ -13,12 +13,12 @@
 //     starting point — may differ from the placement parent when spillover
 //     happens). Paid immediately, once per join.
 //
-//   RULE 2 — First-pair bonus (+2,000)
-//     The DIRECT parent (depth 1) gets a one-time +2,000 the moment their LEFT
+//   RULE 2 — Both-legs-filled bonus (+5,000)
+//     The DIRECT parent (depth 1) gets a one-time +5,000 the moment their LEFT
 //     and RIGHT direct slots are first both filled. Tracked via
 //     User.proMaxPairBonusAwarded so it pays once per user. Combined with the
 //     two direct-referral bonuses, a parent who fills both legs earns
-//     2,000 + 2,000 + 2,000 = 6,000.
+//     2,000 + 2,000 + 5,000 = 9,000.
 //
 //   RULE 3 — Pair-match cascade (+2,000 / +1,000)
 //     For every ancestor ABOVE the direct parent (depth ≥ 2), N adds 1 to that
@@ -34,7 +34,7 @@ import { PAISE_PER_POINT } from "./money";
 
 // Pro Max award scale.
 export const PROMAX_POINTS_PER_DIRECT_REFERRAL = 2000;
-export const PROMAX_FIRST_PAIR_BONUS = 2000;       // one-time, when the direct parent's L & R first both fill
+export const PROMAX_FIRST_PAIR_BONUS = 5000;       // one-time, when the direct parent's L & R first both fill
 export const PROMAX_PAIR_MATCH_POINTS_NEAR = 2000; // ancestors ≤15 levels above
 export const PROMAX_PAIR_MATCH_POINTS_FAR = 1000;  // ancestors 16+ levels above
 export const PROMAX_PAIR_MATCH_DEPTH_THRESHOLD = 15;

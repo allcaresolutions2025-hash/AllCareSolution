@@ -100,7 +100,7 @@ export default async function ProMaxMemberTreePage() {
             {formatPoints(me.wallet?.proMaxBalanceAvailable ?? 0)}
           </div>
           <div className="text-[11px] text-muted-foreground mt-1">
-            +2,000 per direct · +2,000 first pair · +2,000 per pair match (1,000 past depth 15)
+            +2,000 per direct · +5,000 both legs filled · +2,000 per pair match (1,000 past depth 15)
           </div>
         </div>
 
