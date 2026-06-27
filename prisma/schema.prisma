@@ -21,6 +21,7 @@ datasource db {
 enum Role {
   CUSTOMER
   ADMIN
+  PROMAX_ADMIN
 }
 
 enum Slot {

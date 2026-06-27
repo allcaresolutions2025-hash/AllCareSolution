@@ -13,15 +13,19 @@
 //     starting point — may differ from the placement parent when spillover
 //     happens). Paid immediately, once per join.
 //
-//   RULE 2 — Pair-match cascade (+2,000 / +1,000)
+//   RULE 2 — First-pair bonus (+2,000)
+//     The DIRECT parent (depth 1) gets a one-time +2,000 the moment their LEFT
+//     and RIGHT direct slots are first both filled. Tracked via
+//     User.proMaxPairBonusAwarded so it pays once per user. Combined with the
+//     two direct-referral bonuses, a parent who fills both legs earns
+//     2,000 + 2,000 + 2,000 = 6,000.
+//
+//   RULE 3 — Pair-match cascade (+2,000 / +1,000)
 //     For every ancestor ABOVE the direct parent (depth ≥ 2), N adds 1 to that
 //     ancestor's proMaxLeftLegCount or proMaxRightLegCount. If this grows the
 //     ancestor's min(L, R), the ancestor earns one pair match:
 //        - +2,000 when the ancestor sits within 15 levels of N (depth ≤ 15)
 //        - +1,000 when the ancestor is 16+ levels above N
-//     The DIRECT parent is NOT paid a pair match — they already got the direct
-//     referral. So a parent who adds a Left and a Right Pro Max member earns
-//     2,000 + 2,000 = 4,000 (directs); pairing pays the uplines above.
 //
 // All points are stored as paise in Wallet.proMaxBalanceAvailable.
 
@@ -30,6 +34,7 @@ import { PAISE_PER_POINT } from "./money";
 
 // Pro Max award scale.
 export const PROMAX_POINTS_PER_DIRECT_REFERRAL = 2000;
+export const PROMAX_FIRST_PAIR_BONUS = 2000;       // one-time, when the direct parent's L & R first both fill
 export const PROMAX_PAIR_MATCH_POINTS_NEAR = 2000; // ancestors ≤15 levels above
 export const PROMAX_PAIR_MATCH_POINTS_FAR = 1000;  // ancestors 16+ levels above
 export const PROMAX_PAIR_MATCH_DEPTH_THRESHOLD = 15;
@@ -56,6 +61,7 @@ export async function awardProMaxUplinePoints(
   if (!newUser?.proMaxReferrerId || !newUser.proMaxSlot) return;
 
   const directPaise = PROMAX_POINTS_PER_DIRECT_REFERRAL * PAISE_PER_POINT;
+  const firstPairPaise = PROMAX_FIRST_PAIR_BONUS * PAISE_PER_POINT;
   const nearPaise = PROMAX_PAIR_MATCH_POINTS_NEAR * PAISE_PER_POINT;
   const farPaise = PROMAX_PAIR_MATCH_POINTS_FAR * PAISE_PER_POINT;
 
@@ -81,6 +87,7 @@ export async function awardProMaxUplinePoints(
       proMaxSlot: Slot | null;
       proMaxLeftLegCount: number;
       proMaxRightLegCount: number;
+      proMaxPairBonusAwarded: boolean;
     } | null = await tx.user.findUnique({
       where: { id: ancestorId },
       select: {
@@ -89,6 +96,7 @@ export async function awardProMaxUplinePoints(
         proMaxSlot: true,
         proMaxLeftLegCount: true,
         proMaxRightLegCount: true,
+        proMaxPairBonusAwarded: true,
       },
     });
     if (!ancestor) break;
@@ -109,17 +117,31 @@ export async function awardProMaxUplinePoints(
         : { proMaxRightLegCount: { increment: 1 } },
     });
 
-    // RULE 2 — pair match for ancestors ABOVE the direct parent (depth ≥ 2)
-    // only, when the SHORTER leg grew. The direct parent (depth 1) is paid via
-    // the direct-referral bonus instead.
-    const delta = newMin - oldMin;
-    if (depth >= 2 && delta > 0) {
-      const matchPaise = depth <= PROMAX_PAIR_MATCH_DEPTH_THRESHOLD ? nearPaise : farPaise;
-      await tx.wallet.upsert({
-        where: { userId: ancestor.id },
-        create: { userId: ancestor.id, proMaxBalanceAvailable: delta * matchPaise },
-        update: { proMaxBalanceAvailable: { increment: delta * matchPaise } },
-      });
+    if (depth === 1) {
+      // RULE 2 — first-pair bonus. Newer leg counts already reflect the addition.
+      if (!ancestor.proMaxPairBonusAwarded && newL > 0 && newR > 0) {
+        await tx.wallet.upsert({
+          where: { userId: ancestor.id },
+          create: { userId: ancestor.id, proMaxBalanceAvailable: firstPairPaise },
+          update: { proMaxBalanceAvailable: { increment: firstPairPaise } },
+        });
+        await tx.user.update({
+          where: { id: ancestor.id },
+          data: { proMaxPairBonusAwarded: true },
+        });
+      }
+    } else {
+      // RULE 3 — pair match for ancestors ABOVE the direct parent (depth ≥ 2)
+      // only, when the SHORTER leg grew.
+      const delta = newMin - oldMin;
+      if (delta > 0) {
+        const matchPaise = depth <= PROMAX_PAIR_MATCH_DEPTH_THRESHOLD ? nearPaise : farPaise;
+        await tx.wallet.upsert({
+          where: { userId: ancestor.id },
+          create: { userId: ancestor.id, proMaxBalanceAvailable: delta * matchPaise },
+          update: { proMaxBalanceAvailable: { increment: delta * matchPaise } },
+        });
+      }
     }
 
     // Move up one level.

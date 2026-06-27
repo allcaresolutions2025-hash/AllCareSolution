@@ -28,6 +28,21 @@ const config: Config = {
           900: "#194329",
           950: "#0d2716",
         },
+        // Pro Max (10,000-pt programme) palette — royal violet, used to make the
+        // Pro Max member + admin portals visually distinct from the green base app.
+        promax: {
+          50: "#f5f3ff",
+          100: "#ede9fe",
+          200: "#ddd6fe",
+          300: "#c4b5fd",
+          400: "#a78bfa",
+          500: "#8b5cf6",
+          600: "#7c3aed",
+          700: "#6d28d9",
+          800: "#5b21b6",
+          900: "#4c1d95",
+          950: "#2e1065",
+        },
         accent: {
           50: "#fff8ed",
           100: "#ffefd4",
@@ -77,9 +92,13 @@ const config: Config = {
         "card-hover": "0 16px 48px -16px rgba(15,23,42,0.18)",
         brand: "0 16px 40px -12px rgba(41,129,67,0.40)",
         "brand-sm": "0 8px 20px -8px rgba(41,129,67,0.35)",
+        promax: "0 16px 40px -12px rgba(124,58,237,0.40)",
+        "promax-sm": "0 8px 20px -8px rgba(124,58,237,0.35)",
       },
       backgroundImage: {
         "brand-gradient": "linear-gradient(135deg, #298143 0%, #0d9488 100%)",
+        "promax-gradient": "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)",
+        "promax-soft": "linear-gradient(135deg, #f5f3ff 0%, #faf5ff 100%)",
         "brand-gradient-dark": "linear-gradient(135deg, #1d5230 0%, #115e59 100%)",
         "brand-soft": "linear-gradient(135deg, #f0faf2 0%, #ecfeff 100%)",
         // Long, soft section washes used as full-bleed backgrounds.

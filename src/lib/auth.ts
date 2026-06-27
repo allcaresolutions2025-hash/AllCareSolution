@@ -37,6 +37,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           referralCode: user.referralCode,
           mustOnboard: user.mustOnboard,
+          isProMax: user.isProMax,
         } as never;
       },
     }),
@@ -73,6 +74,7 @@ export const authOptions: NextAuthOptions = {
           role: target.role,
           referralCode: target.referralCode,
           mustOnboard: false,
+          isProMax: target.isProMax,
           impersonatedBy: impersonating ? admin.id : null,
           impersonatedByName: impersonating ? admin.name : null,
         } as never;
@@ -87,6 +89,7 @@ export const authOptions: NextAuthOptions = {
           role: string;
           referralCode: string;
           mustOnboard: boolean;
+          isProMax?: boolean;
           impersonatedBy?: string | null;
           impersonatedByName?: string | null;
         };
@@ -94,6 +97,7 @@ export const authOptions: NextAuthOptions = {
         token.role = u.role;
         token.referralCode = u.referralCode;
         token.mustOnboard = u.mustOnboard;
+        token.isProMax = u.isProMax ?? false;
         token.impersonatedBy = u.impersonatedBy ?? null;
         token.impersonatedByName = u.impersonatedByName ?? null;
       }
@@ -115,6 +119,7 @@ export const authOptions: NextAuthOptions = {
           role?: string;
           referralCode?: string;
           mustOnboard?: boolean;
+          isProMax?: boolean;
           impersonatedBy?: string | null;
           impersonatedByName?: string | null;
         };
@@ -122,6 +127,7 @@ export const authOptions: NextAuthOptions = {
         u.role = token.role as string;
         u.referralCode = token.referralCode as string;
         u.mustOnboard = (token.mustOnboard as boolean) ?? false;
+        u.isProMax = (token.isProMax as boolean) ?? false;
         u.impersonatedBy = (token.impersonatedBy as string | null) ?? null;
         u.impersonatedByName = (token.impersonatedByName as string | null) ?? null;
       }
@@ -137,9 +143,10 @@ declare module "next-auth" {
       id: string;
       email: string;
       name: string;
-      role: "CUSTOMER" | "ADMIN";
+      role: "CUSTOMER" | "ADMIN" | "PROMAX_ADMIN";
       referralCode: string;
       mustOnboard: boolean;
+      isProMax: boolean;
       impersonatedBy: string | null;
       impersonatedByName: string | null;
     };
@@ -152,6 +159,7 @@ declare module "next-auth/jwt" {
     role?: string;
     referralCode?: string;
     mustOnboard?: boolean;
+    isProMax?: boolean;
     impersonatedBy?: string | null;
     impersonatedByName?: string | null;
   }
