@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Sparkles,
   Award,
+  Crown,
   FlaskConical,
   Heart,
   Star,
@@ -124,6 +125,12 @@ export default async function HomePage() {
                 className="btn-outline px-7 py-3.5 text-base"
               >
                 <Users className="h-4 w-4" /> Join Rewards Program
+              </Link>
+              <Link
+                href="/promax/login"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-promax-gradient px-7 py-3.5 text-base font-semibold text-white shadow-promax-sm hover:opacity-95 transition"
+              >
+                <Crown className="h-5 w-5" /> Pro Max Login
               </Link>
             </div>
 
