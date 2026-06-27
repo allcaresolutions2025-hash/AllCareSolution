@@ -18,13 +18,27 @@ export function DashboardShell({
   description,
   nav,
   children,
+  variant = "brand",
 }: {
   title: string;
   description?: string;
   nav: DashboardNavItem[];
   children: React.ReactNode;
+  variant?: "brand" | "promax";
 }) {
   const pathname = usePathname();
+  // Theme tokens swap between the green base app and the violet Pro Max portals.
+  const theme = variant === "promax"
+    ? {
+        activeLink: "bg-promax-gradient text-white font-semibold shadow-promax-sm",
+        activeIcon: "text-promax-700",
+        menuBtn: "border-promax-200 bg-promax-50 text-promax-700 hover:bg-promax-100",
+      }
+    : {
+        activeLink: "bg-brand-gradient text-white font-semibold shadow-brand-sm",
+        activeIcon: "text-brand-700",
+        menuBtn: "border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100",
+      };
   const [open, setOpen] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -66,7 +80,7 @@ export function DashboardShell({
               "flex items-center gap-3 rounded-xl transition-all duration-150",
               mobile ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm rounded-lg",
               active
-                ? "bg-brand-gradient text-white font-semibold shadow-brand-sm"
+                ? theme.activeLink
                 : "hover:bg-muted text-foreground"
             )}
           >
@@ -98,7 +112,7 @@ export function DashboardShell({
         <div className="sticky top-16 z-30 -mx-4 px-4 py-3 bg-white/95 backdrop-blur border-b border-slate-100 flex items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-2.5 min-w-0">
             {activeItem && (
-              <span className="text-brand-700 shrink-0 scale-125">{activeItem.icon}</span>
+              <span className={cn("shrink-0 scale-125", theme.activeIcon)}>{activeItem.icon}</span>
             )}
             <span className="font-bold text-base truncate">
               {activeItem?.label ?? title}
@@ -106,7 +120,10 @@ export function DashboardShell({
           </div>
           <button
             onClick={() => setOpen((v) => !v)}
-            className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border-2 border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors shrink-0"
+            className={cn(
+              "flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border-2 transition-colors shrink-0",
+              theme.menuBtn,
+            )}
             aria-label="Toggle navigation"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

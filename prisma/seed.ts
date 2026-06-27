@@ -30,6 +30,28 @@ async function main() {
   }
   console.log(`✅ Admin: ${admin.email}  (password: ${adminPassword})`);
 
+  // Pro Max admin — separate login for the standalone 10,000-pt programme.
+  const pmAdminEmail = process.env.SEED_PROMAX_ADMIN_EMAIL || "promax-admin@achtmart.com";
+  const pmAdminPassword = process.env.SEED_PROMAX_ADMIN_PASSWORD || "ChangeMe@2026";
+  const pmAdminName = process.env.SEED_PROMAX_ADMIN_NAME || "Pro Max Admin";
+  const pmPasswordHash = await bcrypt.hash(pmAdminPassword, 12);
+
+  let promaxAdmin = await prisma.user.findFirst({ where: { email: pmAdminEmail, role: "PROMAX_ADMIN" } });
+  if (!promaxAdmin) {
+    promaxAdmin = await prisma.user.create({
+      data: {
+        email: pmAdminEmail,
+        name: pmAdminName,
+        passwordHash: pmPasswordHash,
+        role: "PROMAX_ADMIN",
+        referralCode: generate(),
+        agreedToTermsAt: new Date(),
+        wallet: { create: {} },
+      },
+    });
+  }
+  console.log(`✅ Pro Max Admin: ${promaxAdmin.email}  (password: ${pmAdminPassword})`);
+
   // Default business settings
   const settings: [string, string][] = [
     ["COMMISSION_L1_PERCENT", "20"],

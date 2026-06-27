@@ -19,7 +19,13 @@ const PROTECTED_PREFIXES = [
   "/affiliate/payouts",
   "/admin",
   "/checkout",
+  "/promax/dashboard",
+  "/promax-admin",
 ];
+
+// Login pages that live UNDER a protected prefix but must stay public so people
+// can actually sign in (otherwise the auth gate redirect-loops).
+const PUBLIC_AUTH_PATHS = ["/promax/login", "/promax-admin/login"];
 
 const MAINTENANCE_HTML = `<!doctype html>
 <html lang="en">
@@ -79,10 +85,34 @@ function maintenanceResponse(): NextResponse {
 const authMiddleware = withAuth(
   function middleware(req) {
     const role = req.nextauth.token?.role;
+    const isProMax = req.nextauth.token?.isProMax as boolean | undefined;
     const mustOnboard = req.nextauth.token?.mustOnboard as boolean | undefined;
     const path = req.nextUrl.pathname;
+
+    // ── Pro Max admin portal — PROMAX_ADMIN only.
+    if (path.startsWith("/promax-admin")) {
+      if (role !== "PROMAX_ADMIN") {
+        return NextResponse.redirect(new URL("/promax-admin/login", req.url));
+      }
+      return NextResponse.next();
+    }
+    // ── Pro Max member portal — Pro Max members only.
+    if (path.startsWith("/promax/")) {
+      if (role === "PROMAX_ADMIN") {
+        return NextResponse.redirect(new URL("/promax-admin", req.url));
+      }
+      if (!isProMax) {
+        return NextResponse.redirect(new URL("/", req.url));
+      }
+      return NextResponse.next();
+    }
+    // ── Base admin portal — ADMIN only.
     if (path.startsWith("/admin") && role !== "ADMIN") {
       return NextResponse.redirect(new URL("/", req.url));
+    }
+    // ── Base affiliate area — Pro Max accounts belong in their own portal.
+    if (path.startsWith("/affiliate") && isProMax) {
+      return NextResponse.redirect(new URL("/promax/dashboard", req.url));
     }
     // Fresher accounts must complete the Add Member form before using the app.
     if (mustOnboard && role !== "ADMIN" && !path.startsWith("/affiliate/dashboard/add-member")) {
@@ -104,9 +134,12 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
   }
 
   const path = req.nextUrl.pathname;
-  const isProtected = PROTECTED_PREFIXES.some(
+  const isPublicAuth = PUBLIC_AUTH_PATHS.some(
     (p) => path === p || path.startsWith(p + "/"),
   );
+  const isProtected =
+    !isPublicAuth &&
+    PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(p + "/"));
   if (isProtected) {
     // Delegate to next-auth's withAuth wrapper for the protected routes only.
     return (authMiddleware as unknown as (
