@@ -16,6 +16,7 @@ export function SiteHeader({ brand }: { brand: SiteBrand }) {
   const [navOpen, setNavOpen] = useState(false);
 
   const isAdmin = session?.user?.role === "ADMIN";
+  const isProMaxAdmin = session?.user?.role === "PROMAX_ADMIN";
   const pathname = usePathname();
   // Violet accent on the Pro Max portals to match the rest of the theme.
   const pm = pathname?.startsWith("/promax");
@@ -79,6 +80,11 @@ export function SiteHeader({ brand }: { brand: SiteBrand }) {
                     {isAdmin && (
                       <MenuItem href="/admin" icon={<ShieldCheck className="h-4 w-4" />} onClick={() => setOpen(false)}>
                         Admin Panel
+                      </MenuItem>
+                    )}
+                    {isProMaxAdmin && (
+                      <MenuItem href="/promax-admin" icon={<ShieldCheck className="h-4 w-4" />} onClick={() => setOpen(false)}>
+                        Pro Max Admin Panel
                       </MenuItem>
                     )}
                     <div className="my-1 border-t" />
