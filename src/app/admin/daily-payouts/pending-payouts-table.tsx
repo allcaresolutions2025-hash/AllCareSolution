@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Check, RotateCcw, CheckSquare } from "lucide-react";
+import { Check, RotateCcw, CheckSquare, BadgeIndianRupee } from "lucide-react";
 import { formatPoints } from "@/lib/money";
 
 export type PendingPayout = {
@@ -18,6 +18,7 @@ export type PendingPayout = {
   paidAmount: number;
   forfeitAmount: number;
   proMax: boolean;
+  hasLoan: boolean;
 };
 
 export function PendingPayoutsTable({ payouts }: { payouts: PendingPayout[] }) {
@@ -211,6 +212,14 @@ export function PendingPayoutsTable({ payouts }: { payouts: PendingPayout[] }) {
                       {p.proMax && (
                         <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
                           PRO MAX
+                        </span>
+                      )}
+                      {p.hasLoan && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-300"
+                          title="This member has an active loan"
+                        >
+                          <BadgeIndianRupee className="h-3 w-3" /> LOAN
                         </span>
                       )}
                     </div>

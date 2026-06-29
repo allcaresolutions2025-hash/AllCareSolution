@@ -34,6 +34,9 @@ export default async function AdminDailyPayoutsPage({
         rightLegCount: true,
         proMaxLeftLegCount: true,
         proMaxRightLegCount: true,
+        // Flag payout rows whose member currently has an active (disbursed,
+        // not-yet-cleared) loan, so admin knows they're a loan customer.
+        loans: { where: { status: "APPROVED" as const }, select: { id: true }, take: 1 },
       },
     },
   };
@@ -92,6 +95,7 @@ export default async function AdminDailyPayoutsPage({
       paidAmount: p.paidAmount,
       forfeitAmount: p.forfeitAmount,
       proMax: p.proMax,
+      hasLoan: p.user.loans.length > 0,
     }));
 
   return (

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
-import { tierByKey, tierIsEligible, nextClaimableTier, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE } from "@/lib/loan";
+import { tierByKey, tierIsEligible, nextClaimableTier, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 
 const bodySchema = z.object({
@@ -58,6 +58,13 @@ export async function POST(req: Request) {
   const panConflict = await countActivePanLoanConflicts(prisma, session.user.id);
   if (panConflict.conflictCount > 0) {
     return NextResponse.json({ error: PAN_CONFLICT_MESSAGE }, { status: 400 });
+  }
+
+  // Identity reuse guard: mobile / bank account / email already used by another
+  // account that has taken a loan — permanent block.
+  const identityConflict = await countIdentityLoanConflicts(prisma, session.user.id);
+  if (identityConflict.conflictCount > 0) {
+    return NextResponse.json({ error: IDENTITY_CONFLICT_MESSAGE, code: "IDENTITY_CONFLICT" }, { status: 400 });
   }
 
   const completedTierKeys = closedLoans.map((l) => l.tierKey);

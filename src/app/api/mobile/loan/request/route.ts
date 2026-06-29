@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
-import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE } from "@/lib/loan";
+import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +58,13 @@ export async function POST(req: Request) {
     const panConflict = await countActivePanLoanConflicts(prisma, auth.user.id);
     if (panConflict.conflictCount > 0) {
       return NextResponse.json({ error: PAN_CONFLICT_MESSAGE }, { status: 400 });
+    }
+
+    // Identity reuse guard: mobile / bank account / email already used by
+    // another account that has taken a loan — permanent block.
+    const identityConflict = await countIdentityLoanConflicts(prisma, auth.user.id);
+    if (identityConflict.conflictCount > 0) {
+      return NextResponse.json({ error: IDENTITY_CONFLICT_MESSAGE, code: "IDENTITY_CONFLICT" }, { status: 400 });
     }
 
     const completedTierKeys = closedLoans.map((l) => l.tierKey);

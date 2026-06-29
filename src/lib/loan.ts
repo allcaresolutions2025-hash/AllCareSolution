@@ -197,6 +197,39 @@ export async function countActivePanLoanConflicts(
 export const PAN_CONFLICT_MESSAGE =
   "A loan is already active under this PAN on another account. Please close the existing loan before applying again.";
 
+// Identity-reuse guard: a PERMANENT block if the applicant's mobile, bank
+// account number, or email is already tied to ANY other account that has taken
+// a loan (requested / active / closed — anything except a rejected request).
+// One person, identified by any of these details, can only ever take loans
+// through a single account.
+export async function countIdentityLoanConflicts(
+  prisma: import("@prisma/client").PrismaClient | import("@prisma/client").Prisma.TransactionClient,
+  userId: string,
+): Promise<{ conflictCount: number }> {
+  const me = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { phone: true, bankAccountNumber: true, email: true },
+  });
+  if (!me) return { conflictCount: 0 };
+
+  const orConds: import("@prisma/client").Prisma.UserWhereInput[] = [];
+  if (me.phone) orConds.push({ phone: me.phone });
+  if (me.bankAccountNumber) orConds.push({ bankAccountNumber: me.bankAccountNumber });
+  if (me.email) orConds.push({ email: me.email });
+  if (orConds.length === 0) return { conflictCount: 0 };
+
+  const conflictCount = await prisma.loan.count({
+    where: {
+      status: { not: "REJECTED" }, // requested / approved / closed all count as "got a loan"
+      user: { id: { not: userId }, OR: orConds },
+    },
+  });
+  return { conflictCount };
+}
+
+export const IDENTITY_CONFLICT_MESSAGE =
+  "Your email, mobile number, or bank account is already used on another account that has taken a loan. You are not eligible to apply for a loan.";
+
 // Days overdue, counted by IST calendar day. An installment due today (IST)
 // returns 0; due yesterday returns 1; etc. Comparing IST midnight to IST
 // midnight avoids the wrong-by-one bug where a dueDate whose UTC instant is

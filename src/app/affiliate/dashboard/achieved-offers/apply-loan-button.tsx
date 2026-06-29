@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { BadgeIndianRupee, MessageCircle, X } from "lucide-react";
+import { BadgeIndianRupee, MessageCircle, X, AlertTriangle } from "lucide-react";
 
 export function ApplyLoanButton({
   tierKey,
@@ -19,6 +19,8 @@ export function ApplyLoanButton({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Blocking error shown in its own popup dialog (e.g. the duplicate-identity loan block).
+  const [errorDialog, setErrorDialog] = useState<string | null>(null);
   // Prefer saved whatsapp > registered phone > empty
   const initial = (savedWhatsappNumber || registeredPhone || "").replace(/\D/g, "").slice(-10);
   const [waNumber, setWaNumber] = useState(initial);
@@ -43,7 +45,9 @@ export function ApplyLoanButton({
     const data = await res.json();
     setBusy(false);
     if (!res.ok) {
-      toast.error(data.error || "Could not submit loan request");
+      // Show the block (and any server-side rejection) in a prominent popup dialog.
+      setOpen(false);
+      setErrorDialog(data.error || "Could not submit loan request");
       return;
     }
     setOpen(false);
@@ -132,6 +136,33 @@ export function ApplyLoanButton({
               >
                 <BadgeIndianRupee className="h-4 w-4" />
                 {busy ? "Submitting…" : `Apply for ${amountLabel}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {errorDialog && (
+        <div className="fixed inset-0 z-[60] bg-black/60 grid place-items-center p-4" onClick={() => setErrorDialog(null)}>
+          <div
+            className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-card"
+            onClick={(e) => e.stopPropagation()}
+            role="alertdialog"
+            aria-modal="true"
+          >
+            <div className="p-6 text-center">
+              <div className="h-14 w-14 rounded-full bg-red-100 grid place-items-center mx-auto">
+                <AlertTriangle className="h-7 w-7 text-red-600" />
+              </div>
+              <h2 className="mt-4 text-lg font-bold text-red-700">Loan not allowed</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{errorDialog}</p>
+            </div>
+            <div className="p-4 border-t bg-muted/30 flex justify-center">
+              <button
+                onClick={() => setErrorDialog(null)}
+                className="px-5 py-2 rounded-md bg-slate-800 text-white text-sm font-semibold hover:bg-slate-900"
+              >
+                OK
               </button>
             </div>
           </div>
