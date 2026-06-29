@@ -61,7 +61,7 @@ export default async function AdminDailyPayoutsPage({
       _sum: { paidAmount: true },
     }),
     prisma.dailyPayout.findMany({
-      where: { status: "PAID" },
+      where: { status: "PAID", proMax: false },
       orderBy: [{ paidAt: "desc" }, { runDate: "desc" }],
       skip: (paidPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -71,6 +71,7 @@ export default async function AdminDailyPayoutsPage({
     prisma.dailyPayout.findMany({
       where: {
         status: "CANCELLED",
+        proMax: false,
         runDate: { startsWith: todayIst },
       },
       orderBy: { updatedAt: "desc" },

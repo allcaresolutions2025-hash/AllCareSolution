@@ -21,7 +21,13 @@ export type PendingPayout = {
   hasLoan: boolean;
 };
 
-export function PendingPayoutsTable({ payouts }: { payouts: PendingPayout[] }) {
+export function PendingPayoutsTable({
+  payouts,
+  apiBase = "/api/admin/daily-payouts",
+}: {
+  payouts: PendingPayout[];
+  apiBase?: string;
+}) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -58,7 +64,7 @@ export function PendingPayoutsTable({ payouts }: { payouts: PendingPayout[] }) {
       )
     ) return;
     setBusy(true);
-    const res = await fetch("/api/admin/daily-payouts/bulk-pay", {
+    const res = await fetch(`${apiBase}/bulk-pay`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: Array.from(selected) }),
@@ -83,7 +89,7 @@ export function PendingPayoutsTable({ payouts }: { payouts: PendingPayout[] }) {
       )
     ) return;
     setBusy(true);
-    const res = await fetch("/api/admin/daily-payouts/bulk-unpaid", {
+    const res = await fetch(`${apiBase}/bulk-unpaid`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: Array.from(selected) }),
@@ -114,7 +120,7 @@ export function PendingPayoutsTable({ payouts }: { payouts: PendingPayout[] }) {
       )
     ) return;
     setBusy(true);
-    const res = await fetch(`/api/admin/daily-payouts/${id}`, {
+    const res = await fetch(`${apiBase}/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),
