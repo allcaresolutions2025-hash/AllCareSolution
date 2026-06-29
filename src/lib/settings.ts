@@ -17,7 +17,8 @@ type SettingKey =
   | "SHIPPING_COST_INR"
   | "PIN_PRICE_INR"
   | "PIN_WALLET_PRICE_INR"
-  | "PIN_PRO_MAX_PRICE_INR";
+  | "PIN_PRO_MAX_PRICE_INR"
+  | "PIN_PRO_MAX_WALLET_PRICE_INR";
 
 const ENV_DEFAULTS: Record<SettingKey, string> = {
   COMMISSION_L1_PERCENT: process.env.COMMISSION_L1_PERCENT ?? "20",
@@ -30,6 +31,8 @@ const ENV_DEFAULTS: Record<SettingKey, string> = {
   PIN_PRICE_INR: process.env.PIN_PRICE_INR ?? "1000",
   PIN_WALLET_PRICE_INR: process.env.PIN_WALLET_PRICE_INR ?? "1070",
   PIN_PRO_MAX_PRICE_INR: process.env.PIN_PRO_MAX_PRICE_INR ?? "10000",
+  // Pro Max pin bought with Pin Wallet points (offline/base price is 10,000).
+  PIN_PRO_MAX_WALLET_PRICE_INR: process.env.PIN_PRO_MAX_WALLET_PRICE_INR ?? "10800",
 };
 
 async function readAllSettings(): Promise<Record<SettingKey, number>> {
@@ -44,6 +47,7 @@ async function readAllSettings(): Promise<Record<SettingKey, number>> {
     "PIN_PRICE_INR",
     "PIN_WALLET_PRICE_INR",
     "PIN_PRO_MAX_PRICE_INR",
+    "PIN_PRO_MAX_WALLET_PRICE_INR",
   ];
   const rows = await prisma.setting.findMany({ where: { key: { in: keys } } });
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));

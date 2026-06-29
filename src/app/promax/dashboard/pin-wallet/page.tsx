@@ -1,7 +1,9 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { formatPoints } from "@/lib/money";
+import { formatPoints, paiseToPoints } from "@/lib/money";
+import { getSetting } from "@/lib/settings";
+import { BuyPinsForm } from "./buy-pins-form";
 import { WalletCards, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import type { PinWalletTxnType } from "@prisma/client";
 
@@ -19,7 +21,7 @@ export default async function ProMaxPinWalletPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [wallet, txns] = await Promise.all([
+  const [wallet, txns, walletPriceInr, offlinePriceInr] = await Promise.all([
     prisma.wallet.findUnique({
       where: { userId: session.user.id },
       select: { pinWalletBalance: true },
@@ -29,9 +31,15 @@ export default async function ProMaxPinWalletPage() {
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
+    getSetting("PIN_PRO_MAX_WALLET_PRICE_INR"),
+    getSetting("PIN_PRO_MAX_PRICE_INR"),
   ]);
 
   const balance = wallet?.pinWalletBalance ?? 0;
+  // Pin prices are configured in rupees but the wallet runs in points (1:1).
+  const pricePerPinPts = Math.round(walletPriceInr);
+  const offlinePricePts = Math.round(offlinePriceInr);
+  const balancePts = paiseToPoints(balance);
 
   return (
     <div className="space-y-6">
@@ -48,6 +56,8 @@ export default async function ProMaxPinWalletPage() {
         <div className="text-xs uppercase tracking-wider text-promax-100">Pin Wallet balance</div>
         <div className="mt-1 text-4xl font-bold tabular-nums">{formatPoints(balance)}</div>
       </div>
+
+      <BuyPinsForm pricePerPin={pricePerPinPts} offlinePrice={offlinePricePts} balance={balancePts} />
 
       <div className="card overflow-hidden">
         <div className="p-5 border-b">
