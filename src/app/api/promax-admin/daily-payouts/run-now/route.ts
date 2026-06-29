@@ -4,10 +4,9 @@ import { runDailyPayout } from "@/lib/daily-payout";
 
 export const dynamic = "force-dynamic";
 
-// Pro Max admin "Run payout now" — forces the Pro Max payout cycle (pays 90% of
-// each Pro Max member's wallet, resets to 0) using a synthetic runDate so it
-// stacks on top of any earlier run. For verification; the nightly cron runs it
-// automatically at 00:00 IST.
+// Pro Max admin "Run payout now" — runs the Pro Max payout cycle (pays 90% of
+// each eligible member's wallet, resets to 0) on demand. This is the ONLY way
+// the Pro Max payout runs; there is no automatic nightly cron for it.
 export async function POST() {
   const auth = await requireProMaxAdmin();
   if (!auth.ok) return auth.response;

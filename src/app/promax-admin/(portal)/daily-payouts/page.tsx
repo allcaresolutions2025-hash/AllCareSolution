@@ -59,8 +59,9 @@ export default async function ProMaxDailyPayoutsPage({ searchParams }: { searchP
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Coins className="h-6 w-6 text-promax-600" /> Daily Payouts</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Every night at 00:00 IST, 90% of each Pro Max member&apos;s wallet (≥ {MIN_PAYOUT_POINTS} pts) is paid and the
-            balance resets to 0. Disburse offline, then mark each row paid.
+            Run the payout when you&apos;re ready — there is no automatic nightly run. Each run pays 90% of every
+            eligible Pro Max member&apos;s wallet (≥ {MIN_PAYOUT_POINTS} pts) and resets the balance to 0. Disburse
+            offline, then mark each row paid.
           </p>
         </div>
         <RunPayoutButton />

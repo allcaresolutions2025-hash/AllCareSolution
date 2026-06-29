@@ -38,8 +38,9 @@ export type DailyPayoutResult = {
 };
 
 // Which wallet program(s) a run processes. "standard" = the 1000-pt
-// balanceAvailable, "proMax" = proMaxBalanceAvailable, "all" = both (nightly
-// cron). Admin can simulate each program separately.
+// balanceAvailable, "proMax" = proMaxBalanceAvailable. "all" (the nightly cron)
+// runs the 1000-pt payout only — the Pro Max payout is manual (admin-triggered
+// scope "proMax") and never runs automatically.
 export type PayoutScope = "standard" | "proMax" | "all";
 
 export async function runDailyPayout(
@@ -48,9 +49,11 @@ export async function runDailyPayout(
   const force = opts.force ?? false;
   const scope = opts.scope ?? "all";
   const doStandard = scope !== "proMax";
-  // The standalone Pro Max (10,000-pt) programme runs its own daily payout,
-  // independent of the legacy PRO_MAX_ENABLED inline flag.
-  const doProMax = scope !== "standard";
+  // The Pro Max (10,000-pt) payout is MANUAL ONLY — it runs solely when the
+  // Pro Max admin explicitly triggers scope "proMax". The nightly cron uses
+  // scope "all", which intentionally does NOT include Pro Max here, so there is
+  // no automatic 00:00 IST Pro Max payout.
+  const doProMax = scope === "proMax";
   const today = istDateString();
 
   // The IST-date checkpoint only governs the nightly all-scope run.
