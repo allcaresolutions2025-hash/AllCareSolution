@@ -62,7 +62,11 @@ export const authOptions: NextAuthOptions = {
         // implicit return-to-admin call uses a token where targetUserId is
         // the admin themselves, which is also fine.
         if (!admin || !target) return null;
-        if (admin.role !== "ADMIN") return null;
+        // Both the main admin and the Pro Max admin may impersonate. The token
+        // is only ever issued by a guarded admin route (which also restricts the
+        // Pro Max admin to Pro Max members), so reaching here means the pairing
+        // was already authorised.
+        if (admin.role !== "ADMIN" && admin.role !== "PROMAX_ADMIN") return null;
         if (!target.isActive && target.id !== admin.id) return null;
         // impersonatedBy is set only when admin is logging in AS someone else.
         // When the admin returns to themselves (target === admin), clear it.

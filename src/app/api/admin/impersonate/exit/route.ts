@@ -18,11 +18,12 @@ export async function POST() {
     where: { id: adminId },
     select: { id: true, role: true },
   });
-  if (!admin || admin.role !== "ADMIN") {
+  if (!admin || (admin.role !== "ADMIN" && admin.role !== "PROMAX_ADMIN")) {
     return NextResponse.json({ error: "Original admin no longer valid" }, { status: 403 });
   }
   // The impersonate provider treats targetUserId === adminId as "switch back"
   // and clears impersonatedBy on the resulting session.
   const token = signImpersonationToken(adminId, adminId);
-  return NextResponse.json({ ok: true, token });
+  const redirectTo = admin.role === "PROMAX_ADMIN" ? "/promax-admin" : "/admin";
+  return NextResponse.json({ ok: true, token, redirectTo });
 }

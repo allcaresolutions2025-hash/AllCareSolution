@@ -28,7 +28,7 @@ export function ImpersonationBanner() {
         toast.error("Could not switch back");
         return;
       }
-      window.location.href = "/admin";
+      window.location.href = data.redirectTo || "/admin";
     } catch {
       toast.error("Something went wrong");
     } finally {
