@@ -36,7 +36,7 @@ export default async function AdminLoansPage() {
     paidTodayInstallments,
   ] = await Promise.all([
     prisma.loan.findMany({
-      where: { status: "REQUESTED" },
+      where: { status: "REQUESTED", proMax: false },
       orderBy: { requestedAt: "asc" },
       include: {
         user: {
@@ -50,7 +50,7 @@ export default async function AdminLoansPage() {
     prisma.loanInstallment.findMany({
       where: {
         status: "RECEIPT_UPLOADED",
-        loan: { status: "APPROVED" },
+        loan: { status: "APPROVED", proMax: false },
       },
       orderBy: { uploadedAt: "asc" },
       include: {
@@ -64,7 +64,7 @@ export default async function AdminLoansPage() {
       },
     }),
     prisma.loan.findMany({
-      where: { status: { in: ["APPROVED", "CLOSED", "REJECTED"] } },
+      where: { status: { in: ["APPROVED", "CLOSED", "REJECTED"] }, proMax: false },
       orderBy: { updatedAt: "desc" },
       // Loaded in full for client-side search + pagination in RecentLoansSection.
       take: 500,
@@ -74,12 +74,12 @@ export default async function AdminLoansPage() {
       },
     }),
     prisma.loan.aggregate({
-      where: { status: { in: ["APPROVED", "CLOSED"] } },
+      where: { status: { in: ["APPROVED", "CLOSED"] }, proMax: false },
       _sum: { amount: true },
     }),
     // Repayments received = verified installments across disbursed loans.
     prisma.loanInstallment.aggregate({
-      where: { status: "VERIFIED", loan: { status: { in: ["APPROVED", "CLOSED"] } } },
+      where: { status: "VERIFIED", loan: { status: { in: ["APPROVED", "CLOSED"] }, proMax: false } },
       _sum: { amount: true },
       _count: true,
     }),
@@ -92,7 +92,7 @@ export default async function AdminLoansPage() {
     // Installments due TODAY (IST) — either PENDING or RECEIPT_UPLOADED.
     prisma.loanInstallment.findMany({
       where: {
-        loan: { status: "APPROVED" },
+        loan: { status: "APPROVED", proMax: false },
         status: { in: ["PENDING", "RECEIPT_UPLOADED"] },
         dueDate: { gte: startUtc, lt: endUtc },
       },
@@ -113,7 +113,7 @@ export default async function AdminLoansPage() {
     // "Receipts awaiting verification" section instead).
     prisma.loanInstallment.findMany({
       where: {
-        loan: { status: "APPROVED" },
+        loan: { status: "APPROVED", proMax: false },
         status: "PENDING",
         dueDate: { lt: startUtc },
       },
@@ -135,6 +135,7 @@ export default async function AdminLoansPage() {
       where: {
         status: "VERIFIED",
         verifiedAt: { gte: startUtc, lt: endUtc },
+        loan: { proMax: false },
       },
       orderBy: { verifiedAt: "desc" },
       select: {

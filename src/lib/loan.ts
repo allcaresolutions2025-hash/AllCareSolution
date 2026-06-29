@@ -179,6 +179,7 @@ export function calcTotalPenalty(loanAmountPaise: number, daysOverdue: number): 
 export async function countActivePanLoanConflicts(
   prisma: import("@prisma/client").PrismaClient | import("@prisma/client").Prisma.TransactionClient,
   userId: string,
+  proMax = false,
 ): Promise<{ pan: string | null; conflictCount: number }> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
@@ -187,6 +188,7 @@ export async function countActivePanLoanConflicts(
   if (!me?.panNumber) return { pan: null, conflictCount: 0 };
   const conflictCount = await prisma.loan.count({
     where: {
+      proMax,
       status: { in: ["REQUESTED", "APPROVED"] },
       user: { panNumber: me.panNumber, id: { not: userId } },
     },
@@ -205,6 +207,7 @@ export const PAN_CONFLICT_MESSAGE =
 export async function countIdentityLoanConflicts(
   prisma: import("@prisma/client").PrismaClient | import("@prisma/client").Prisma.TransactionClient,
   userId: string,
+  proMax = false,
 ): Promise<{ conflictCount: number }> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
@@ -220,6 +223,7 @@ export async function countIdentityLoanConflicts(
 
   const conflictCount = await prisma.loan.count({
     where: {
+      proMax, // scope to the same programme (1,000-pt vs Pro Max)
       status: { not: "REJECTED" }, // requested / approved / closed all count as "got a loan"
       user: { id: { not: userId }, OR: orConds },
     },

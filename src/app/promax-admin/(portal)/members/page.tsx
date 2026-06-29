@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
 import { CreditWallet } from "./credit-wallet";
-import { Wallet } from "lucide-react";
+import { Wallet, BadgeIndianRupee } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pro Max Members & Wallets" };
@@ -19,6 +19,8 @@ export default async function ProMaxAdminMembersPage() {
       proMaxLeftLegCount: true,
       proMaxRightLegCount: true,
       wallet: { select: { proMaxBalanceAvailable: true, pinWalletBalance: true } },
+      // Flag members with an active (disbursed, not-yet-cleared) Pro Max loan.
+      loans: { where: { proMax: true, status: "APPROVED" }, select: { id: true }, take: 1 },
     },
   });
 
@@ -62,7 +64,14 @@ export default async function ProMaxAdminMembersPage() {
                 {members.map((m) => (
                   <tr key={m.id} className="border-t align-top">
                     <td className="px-4 py-2">
-                      <div className="font-medium">{m.name}</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {m.name}
+                        {m.loans.length > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-300" title="This member has an active loan">
+                            <BadgeIndianRupee className="h-3 w-3" /> LOAN
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs font-mono text-muted-foreground">{m.referralCode}</div>
                     </td>
                     <td className="px-4 py-2 text-xs font-mono">{m.phone ?? "—"}</td>
