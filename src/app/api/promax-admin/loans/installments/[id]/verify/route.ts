@@ -21,16 +21,28 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const inst = await prisma.loanInstallment.findUnique({
     where: { id: params.id },
-    include: { loan: { select: { id: true, status: true, proMax: true } } },
+    include: { loan: { select: { id: true, status: true, proMax: true, userId: true } } },
   });
   if (!inst || !inst.loan.proMax) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (inst.loan.status !== "APPROVED") return NextResponse.json({ error: "Loan is not active" }, { status: 400 });
   if (inst.status !== "RECEIPT_UPLOADED") return NextResponse.json({ error: "No receipt to review" }, { status: 400 });
 
   if (parsed.data.action === "reject") {
-    await prisma.loanInstallment.update({
-      where: { id: inst.id },
-      data: { status: "PENDING", reviewerNotes: parsed.data.notes ?? null },
+    // Clear the receipt + send back to PENDING so it leaves the queue and the
+    // member must upload a fresh receipt. Notify them with the reason.
+    const reason = parsed.data.notes?.trim() || "Receipt not valid — please upload a proper receipt.";
+    await prisma.$transaction(async (tx) => {
+      await tx.loanInstallment.update({
+        where: { id: inst.id },
+        data: { status: "PENDING", reviewerNotes: reason, receiptBase64: null, receiptMime: null, uploadedAt: null },
+      });
+      await tx.notification.create({
+        data: {
+          userId: inst.loan.userId,
+          title: "Receipt rejected",
+          body: `Your Week ${inst.weekNumber} payment receipt was rejected. ${reason} Please upload a proper receipt from My Loan.`,
+        },
+      });
     });
     return NextResponse.json({ ok: true });
   }

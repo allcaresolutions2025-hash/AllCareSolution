@@ -181,6 +181,7 @@ export default async function ProMaxLoanPage() {
                         hasReceipt={!!inst.receiptBase64}
                         uploadedAt={inst.uploadedAt?.toISOString() ?? null}
                         loanClosed={loan.status === "CLOSED"}
+                        rejectedNote={inst.reviewerNotes}
                       />
                     ))}
                   </tbody>

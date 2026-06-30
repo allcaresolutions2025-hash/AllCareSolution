@@ -49,13 +49,13 @@ export function ReceiptReviewRow({
 
   async function act(action: "verify" | "reject") {
     if (busy) return;
-    const notes =
-      action === "reject"
-        ? prompt("Reason for rejecting this receipt?") ?? ""
-        : "";
-    if (action === "reject" && !notes.trim()) {
-      toast.error("Rejection reason required");
-      return;
+    // Reason is optional. Proceed even if the prompt is cancelled or blocked by
+    // the browser (returns null) — a default reason is used so Reject always
+    // works and the member always gets told to re-upload.
+    let notes = "";
+    if (action === "reject") {
+      const r = prompt("Reason for rejecting (shown to the member):", "Receipt not valid — please upload a proper receipt.");
+      notes = (r ?? "").trim() || "Receipt not valid — please upload a proper receipt.";
     }
     setBusy(true);
     const res = await fetch(`/api/admin/loans/installments/${id}/verify`, {

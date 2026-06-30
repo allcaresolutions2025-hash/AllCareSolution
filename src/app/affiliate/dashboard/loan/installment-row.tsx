@@ -21,6 +21,7 @@ export function InstallmentRow({
   hasReceipt,
   uploadedAt,
   loanClosed,
+  rejectedNote,
 }: {
   id: string;
   weekNumber: number;
@@ -31,6 +32,9 @@ export function InstallmentRow({
   hasReceipt: boolean;
   uploadedAt: string | null;
   loanClosed: boolean;
+  // Set when a previously-uploaded receipt was rejected by admin (status is back
+  // to PENDING with no receipt on file). Prompts the member to re-upload.
+  rejectedNote?: string | null;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +103,10 @@ export function InstallmentRow({
           <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border bg-sky-100 text-sky-800 border-sky-200">
             <Clock className="h-3 w-3" /> Pending verify
           </span>
+        ) : rejectedNote ? (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border bg-red-100 text-red-700 border-red-200" title={rejectedNote}>
+            <AlertTriangle className="h-3 w-3" /> Receipt rejected
+          </span>
         ) : (
           <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border bg-slate-100 text-slate-700 border-slate-200">
             <FileUp className="h-3 w-3" /> Awaiting payment
@@ -124,8 +132,13 @@ export function InstallmentRow({
               className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60"
             >
               <Upload className="h-3.5 w-3.5" />
-              {busy ? "Uploading…" : hasReceipt ? "Re-upload" : "Upload receipt"}
+              {busy ? "Uploading…" : hasReceipt ? "Re-upload" : rejectedNote ? "Re-upload receipt" : "Upload receipt"}
             </button>
+            {rejectedNote && (
+              <div className="text-[10px] text-red-600 mt-1 max-w-[200px]">
+                Rejected: {rejectedNote}
+              </div>
+            )}
             {uploadedAt && (
               <div className="text-[10px] text-muted-foreground mt-1">
                 Last sent: {new Date(uploadedAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Kolkata" })}
