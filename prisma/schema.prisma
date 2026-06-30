@@ -619,6 +619,11 @@ model LoanInstallment {
 
   penaltyPaise  Int                   @default(0) // accumulated overdue penalty in paise
 
+  // true when the member submitted payment from their Pin Wallet points (held on
+  // submission, awaiting admin approval). No receipt file; admin approves/rejects
+  // in the same queue. Reject refunds the points.
+  paidViaWallet Boolean               @default(false)
+
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 

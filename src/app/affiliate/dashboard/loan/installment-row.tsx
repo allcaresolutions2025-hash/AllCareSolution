@@ -23,6 +23,7 @@ export function InstallmentRow({
   loanClosed,
   rejectedNote,
   pinWalletBalance,
+  paidViaWallet,
 }: {
   id: string;
   weekNumber: number;
@@ -38,6 +39,8 @@ export function InstallmentRow({
   rejectedNote?: string | null;
   // When provided (paise), enables "Pay with Pin Wallet" for this installment.
   pinWalletBalance?: number;
+  // True when a Pin Wallet payment is awaiting admin approval (status uploaded).
+  paidViaWallet?: boolean;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,8 +53,10 @@ export function InstallmentRow({
 
   // Pin Wallet repayment: installment + 9% only (no overdue penalty).
   const walletCost = loanWalletChargePaise(amount);
-  const walletEnabled = pinWalletBalance !== undefined && !loanClosed && status !== "VERIFIED";
+  // Only offer Pin Wallet pay before anything is submitted for this week.
+  const walletEnabled = pinWalletBalance !== undefined && !loanClosed && status === "PENDING";
   const canAffordWallet = (pinWalletBalance ?? 0) >= walletCost;
+  const walletPending = status === "RECEIPT_UPLOADED" && paidViaWallet;
 
   async function payWallet() {
     if (busy) return;
@@ -125,7 +130,7 @@ export function InstallmentRow({
           </span>
         ) : status === "RECEIPT_UPLOADED" ? (
           <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border bg-sky-100 text-sky-800 border-sky-200">
-            <Clock className="h-3 w-3" /> Pending verify
+            <Clock className="h-3 w-3" /> {walletPending ? "Pin Wallet · pending approval" : "Pending verify"}
           </span>
         ) : rejectedNote ? (
           <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border bg-red-100 text-red-700 border-red-200" title={rejectedNote}>
@@ -140,6 +145,11 @@ export function InstallmentRow({
       <td className="px-4 py-3">
         {status === "VERIFIED" || loanClosed ? (
           <span className="text-xs text-muted-foreground">—</span>
+        ) : walletPending ? (
+          <div className="text-xs text-sky-700">
+            Paid from Pin Wallet — <strong>awaiting admin approval</strong>.
+            <div className="text-[10px] text-muted-foreground mt-0.5">If rejected, your points are refunded.</div>
+          </div>
         ) : (
           <>
             <input

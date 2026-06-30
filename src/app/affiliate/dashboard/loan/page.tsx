@@ -127,6 +127,7 @@ export default async function MyLoanPage() {
                         loanClosed={loan.status === "CLOSED"}
                         rejectedNote={inst.reviewerNotes}
                         pinWalletBalance={pinWalletBalance}
+                        paidViaWallet={inst.paidViaWallet}
                       />
                     ))}
                   </tbody>

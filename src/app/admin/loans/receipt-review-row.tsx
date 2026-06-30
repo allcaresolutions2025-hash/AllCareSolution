@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Check, X, Eye } from "lucide-react";
-import { formatRupees } from "@/lib/loan";
+import { Check, X, Eye, WalletCards } from "lucide-react";
+import { formatRupees, loanWalletChargePaise } from "@/lib/loan";
 
 export function ReceiptReviewRow({
   id,
@@ -15,6 +15,7 @@ export function ReceiptReviewRow({
   userName,
   userCode,
   tierLabel,
+  viaPinWallet,
 }: {
   id: string;
   weekNumber: number;
@@ -24,6 +25,8 @@ export function ReceiptReviewRow({
   userName: string;
   userCode: string;
   tierLabel: string;
+  // True when the member paid from Pin Wallet points (no receipt; reject refunds).
+  viaPinWallet?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -54,8 +57,11 @@ export function ReceiptReviewRow({
     // works and the member always gets told to re-upload.
     let notes = "";
     if (action === "reject") {
-      const r = prompt("Reason for rejecting (shown to the member):", "Receipt not valid — please upload a proper receipt.");
-      notes = (r ?? "").trim() || "Receipt not valid — please upload a proper receipt.";
+      const def = viaPinWallet
+        ? "Payment could not be confirmed — points refunded."
+        : "Receipt not valid — please upload a proper receipt.";
+      const r = prompt("Reason for rejecting (shown to the member):", def);
+      notes = (r ?? "").trim() || def;
     }
     setBusy(true);
     const res = await fetch(`/api/admin/loans/installments/${id}/verify`, {
@@ -86,17 +92,24 @@ export function ReceiptReviewRow({
           <div className="text-xs text-muted-foreground mt-0.5">
             {tierLabel} ·{" "}
             {uploadedAt && (
-              <>Uploaded {new Date(uploadedAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Kolkata" })}</>
+              <>{viaPinWallet ? "Paid" : "Uploaded"} {new Date(uploadedAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Kolkata" })}</>
             )}
           </div>
+          {viaPinWallet && (
+            <div className="mt-1 inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+              <WalletCards className="h-3.5 w-3.5" /> Pin Wallet · {formatRupees(loanWalletChargePaise(amount))} held
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={openReceipt}
-            className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md bg-white border hover:bg-slate-50"
-          >
-            <Eye className="h-3.5 w-3.5" /> View receipt
-          </button>
+          {!viaPinWallet && (
+            <button
+              onClick={openReceipt}
+              className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md bg-white border hover:bg-slate-50"
+            >
+              <Eye className="h-3.5 w-3.5" /> View receipt
+            </button>
+          )}
           <button
             onClick={() => act("verify")}
             disabled={busy}

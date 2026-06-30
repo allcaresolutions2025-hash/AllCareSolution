@@ -145,6 +145,7 @@ export default async function AdminLoansPage() {
         verifiedAt: true,
         receiptMime: true,
         reviewerNotes: true,
+        paidViaWallet: true,
         loan: {
           select: {
             tierKey: true,
@@ -369,7 +370,7 @@ export default async function AdminLoansPage() {
                     userPhone={i.loan.user.phone}
                     tierLabel={tierByKey(i.loan.tierKey)?.label ?? i.loan.tierKey}
                     hasReceipt={!!i.receiptMime}
-                    viaPinWallet={(i.reviewerNotes ?? "").startsWith("Paid via Pin Wallet")}
+                    viaPinWallet={i.paidViaWallet || (i.reviewerNotes ?? "").startsWith("Paid via Pin Wallet")}
                   />
                 ))}
               </tbody>
@@ -381,9 +382,9 @@ export default async function AdminLoansPage() {
       {/* Pending receipt verifications */}
       <div className="card overflow-hidden">
         <div className="p-5 border-b">
-          <h2 className="font-semibold">Receipts awaiting verification ({pendingReceipts.length})</h2>
+          <h2 className="font-semibold">Payments awaiting verification ({pendingReceipts.length})</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Confirm you received the weekly payment offline, then accept the receipt.
+            Confirm the weekly payment (offline receipt or Pin Wallet), then accept. Rejecting a Pin Wallet payment refunds the member&apos;s points.
           </p>
         </div>
         {pendingReceipts.length === 0 ? (
@@ -401,6 +402,7 @@ export default async function AdminLoansPage() {
                 userName={inst.loan.user.name}
                 userCode={inst.loan.user.referralCode}
                 tierLabel={tierByKey(inst.loan.tierKey)?.label ?? inst.loan.tierKey}
+                viaPinWallet={inst.paidViaWallet}
               />
             ))}
           </div>
