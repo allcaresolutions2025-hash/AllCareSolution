@@ -48,8 +48,8 @@ export function InstallmentRow({
   const isOverdue = daysOverdue > 0;
   const penalty = calcTotalPenalty(loanAmount, daysOverdue);
 
-  // Pin Wallet repayment: installment + 9% + any overdue penalty (all paise).
-  const walletCost = loanWalletChargePaise(amount, penalty);
+  // Pin Wallet repayment: installment + 9% only (no overdue penalty).
+  const walletCost = loanWalletChargePaise(amount);
   const walletEnabled = pinWalletBalance !== undefined && !loanClosed && status !== "VERIFIED";
   const canAffordWallet = (pinWalletBalance ?? 0) >= walletCost;
 
@@ -58,7 +58,7 @@ export function InstallmentRow({
     if (!confirm(
       `Pay Week ${weekNumber} from your Pin Wallet?\n\n` +
         `Installment ${formatRupees(amount)} + 9% (${formatRupees(loanWalletSurcharge(amount))})` +
-        `${penalty > 0 ? ` + penalty ${formatRupees(penalty)}` : ""}\n= ${formatRupees(walletCost)} (points)`,
+        `\n= ${formatRupees(walletCost)} (points)`,
     )) return;
     setBusy(true);
     const res = await fetch(`/api/affiliate/loan/installments/${id}/pay-wallet`, { method: "POST" });
@@ -181,7 +181,7 @@ export function InstallmentRow({
                   Pay {formatRupees(walletCost)} from Pin Wallet
                 </button>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {formatRupees(amount)} + 9%{penalty > 0 ? " + penalty" : ""} · paid instantly from points
+                  {formatRupees(amount)} + 9% · paid instantly from points
                 </div>
               </div>
             )}
