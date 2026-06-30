@@ -12,11 +12,18 @@ export default async function MyLoanPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const loans = await prisma.loan.findMany({
-    where: { userId: session.user.id },
-    orderBy: { requestedAt: "desc" },
-    include: { installments: { orderBy: { weekNumber: "asc" } } },
-  });
+  const [loans, wallet] = await Promise.all([
+    prisma.loan.findMany({
+      where: { userId: session.user.id },
+      orderBy: { requestedAt: "desc" },
+      include: { installments: { orderBy: { weekNumber: "asc" } } },
+    }),
+    prisma.wallet.findUnique({
+      where: { userId: session.user.id },
+      select: { pinWalletBalance: true },
+    }),
+  ]);
+  const pinWalletBalance = wallet?.pinWalletBalance ?? 0;
 
   if (loans.length === 0) {
     return (
@@ -38,11 +45,17 @@ export default async function MyLoanPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">My Loans</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Track loan status, due dates, and upload your weekly payment receipts.
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold">My Loans</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Upload your weekly payment receipt, or pay instantly from your Pin Wallet (installment + 9%).
+          </p>
+        </div>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm">
+          <span className="text-xs text-muted-foreground">Pin Wallet</span>
+          <div className="font-bold tabular-nums text-emerald-700">{formatRupees(pinWalletBalance)} pts</div>
+        </div>
       </div>
 
       {loans.map((loan) => {
@@ -113,6 +126,7 @@ export default async function MyLoanPage() {
                         uploadedAt={inst.uploadedAt?.toISOString() ?? null}
                         loanClosed={loan.status === "CLOSED"}
                         rejectedNote={inst.reviewerNotes}
+                        pinWalletBalance={pinWalletBalance}
                       />
                     ))}
                   </tbody>

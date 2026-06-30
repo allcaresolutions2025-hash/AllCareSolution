@@ -20,6 +20,8 @@ function txnLabel(type: string, amount: number): string {
       return "Pin purchase";
     case "ADMIN_CREDIT":
       return "Admin credit";
+    case "LOAN_REPAYMENT":
+      return "Loan repayment";
     default:
       return type;
   }

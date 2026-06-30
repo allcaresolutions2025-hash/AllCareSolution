@@ -198,6 +198,7 @@ enum PinWalletTxnType {
   PAYOUT_TRANSFER   // member moved points in from their payout (e-wallet) balance
   PIN_PURCHASE      // points spent buying pins (debit)
   ADMIN_CREDIT      // admin manually added points to the member's pin wallet
+  LOAN_REPAYMENT    // points spent repaying a loan installment (debit; +9% + any penalty)
 }
 
 model PinWalletTxn {

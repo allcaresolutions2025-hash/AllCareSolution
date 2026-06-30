@@ -171,6 +171,19 @@ export function calcTotalPenalty(loanAmountPaise: number, daysOverdue: number): 
   return calcDailyPenalty(loanAmountPaise) * daysOverdue;
 }
 
+// Paying a loan installment with Pin Wallet points carries a 9% convenience
+// surcharge on the installment amount, plus any accrued overdue penalty. All
+// values are paise. e.g. a ₹1,000 installment costs 1,090; ₹2,500 costs 2,725.
+export const LOAN_WALLET_SURCHARGE_PCT = 9;
+
+export function loanWalletSurcharge(installmentPaise: number): number {
+  return Math.round((installmentPaise * LOAN_WALLET_SURCHARGE_PCT) / 100);
+}
+
+export function loanWalletChargePaise(installmentPaise: number, penaltyPaise = 0): number {
+  return installmentPaise + loanWalletSurcharge(installmentPaise) + penaltyPaise;
+}
+
 // PAN reuse guard. A single PAN may be held by up to 15 accounts (a family
 // hierarchy), but only ONE of those accounts may have an active loan at a
 // time. This function returns the count of OTHER users sharing this user's

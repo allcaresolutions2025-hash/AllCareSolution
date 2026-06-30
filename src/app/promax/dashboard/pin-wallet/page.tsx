@@ -15,6 +15,7 @@ const TXN_LABEL: Record<PinWalletTxnType, string> = {
   PAYOUT_TRANSFER: "Payout transfer",
   PIN_PURCHASE: "Pin purchase",
   ADMIN_CREDIT: "Admin credit",
+  LOAN_REPAYMENT: "Loan repayment",
 };
 
 export default async function ProMaxPinWalletPage() {

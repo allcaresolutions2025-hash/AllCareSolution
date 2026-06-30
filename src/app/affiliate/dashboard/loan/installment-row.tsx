@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Upload, CheckCircle2, Clock, FileUp, AlertTriangle } from "lucide-react";
-import { formatRupees, calcTotalPenalty, daysOverdueIst } from "@/lib/loan";
+import { Upload, CheckCircle2, Clock, FileUp, AlertTriangle, WalletCards } from "lucide-react";
+import { formatRupees, calcTotalPenalty, daysOverdueIst, loanWalletChargePaise, loanWalletSurcharge } from "@/lib/loan";
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB cap for base64 receipts
 const ACCEPTED_MIMES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
@@ -22,6 +22,7 @@ export function InstallmentRow({
   uploadedAt,
   loanClosed,
   rejectedNote,
+  pinWalletBalance,
 }: {
   id: string;
   weekNumber: number;
@@ -35,6 +36,8 @@ export function InstallmentRow({
   // Set when a previously-uploaded receipt was rejected by admin (status is back
   // to PENDING with no receipt on file). Prompts the member to re-upload.
   rejectedNote?: string | null;
+  // When provided (paise), enables "Pay with Pin Wallet" for this installment.
+  pinWalletBalance?: number;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -44,6 +47,27 @@ export function InstallmentRow({
   const daysOverdue = status === "PENDING" ? daysOverdueIst(due) : 0;
   const isOverdue = daysOverdue > 0;
   const penalty = calcTotalPenalty(loanAmount, daysOverdue);
+
+  // Pin Wallet repayment: installment + 9% + any overdue penalty (all paise).
+  const walletCost = loanWalletChargePaise(amount, penalty);
+  const walletEnabled = pinWalletBalance !== undefined && !loanClosed && status !== "VERIFIED";
+  const canAffordWallet = (pinWalletBalance ?? 0) >= walletCost;
+
+  async function payWallet() {
+    if (busy) return;
+    if (!confirm(
+      `Pay Week ${weekNumber} from your Pin Wallet?\n\n` +
+        `Installment ${formatRupees(amount)} + 9% (${formatRupees(loanWalletSurcharge(amount))})` +
+        `${penalty > 0 ? ` + penalty ${formatRupees(penalty)}` : ""}\n= ${formatRupees(walletCost)} (points)`,
+    )) return;
+    setBusy(true);
+    const res = await fetch(`/api/affiliate/loan/installments/${id}/pay-wallet`, { method: "POST" });
+    const json = await res.json();
+    setBusy(false);
+    if (!res.ok) { toast.error(json.error || "Payment failed"); return; }
+    toast.success("Installment paid from Pin Wallet");
+    router.refresh();
+  }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -142,6 +166,23 @@ export function InstallmentRow({
             {uploadedAt && (
               <div className="text-[10px] text-muted-foreground mt-1">
                 Last sent: {new Date(uploadedAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Kolkata" })}
+              </div>
+            )}
+            {walletEnabled && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={payWallet}
+                  disabled={busy || !canAffordWallet}
+                  title={canAffordWallet ? "" : "Not enough Pin Wallet points"}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-50"
+                >
+                  <WalletCards className="h-3.5 w-3.5" />
+                  Pay {formatRupees(walletCost)} from Pin Wallet
+                </button>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  {formatRupees(amount)} + 9%{penalty > 0 ? " + penalty" : ""} · paid instantly from points
+                </div>
               </div>
             )}
           </>
