@@ -12,6 +12,7 @@ const bodySchema = z.object({
   logoUrl: z.string().max(MAX_LOGO_BYTES).nullable().optional(),
   siteName: z.string().trim().min(1).max(80).optional(),
   tagline: z.string().trim().max(120).optional(),
+  amazonAffiliateUrl: z.string().trim().max(500).nullable().optional(),
 });
 
 export async function GET() {
@@ -36,6 +37,10 @@ export async function POST(req: Request) {
     if (!isDataUrl && !isHttp) {
       return NextResponse.json({ error: "Logo must be a data: URL or an https URL" }, { status: 400 });
     }
+  }
+
+  if (parsed.data.amazonAffiliateUrl && !/^https?:\/\//i.test(parsed.data.amazonAffiliateUrl)) {
+    return NextResponse.json({ error: "Amazon link must start with http:// or https://" }, { status: 400 });
   }
 
   await setSiteBrand(parsed.data);

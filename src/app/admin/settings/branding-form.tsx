@@ -11,13 +11,14 @@ const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 export function BrandingForm({
   initial,
 }: {
-  initial: { logoUrl: string | null; siteName: string; tagline: string };
+  initial: { logoUrl: string | null; siteName: string; tagline: string; amazonAffiliateUrl: string };
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [logoUrl, setLogoUrl] = useState(initial.logoUrl);
   const [siteName, setSiteName] = useState(initial.siteName);
   const [tagline, setTagline] = useState(initial.tagline);
+  const [amazonAffiliateUrl, setAmazonAffiliateUrl] = useState(initial.amazonAffiliateUrl);
   const [saving, setSaving] = useState(false);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -44,7 +45,7 @@ export function BrandingForm({
     const res = await fetch("/api/admin/branding", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ logoUrl, siteName, tagline }),
+      body: JSON.stringify({ logoUrl, siteName, tagline, amazonAffiliateUrl: amazonAffiliateUrl.trim() }),
     });
     const json = await res.json();
     setSaving(false);
@@ -112,6 +113,20 @@ export function BrandingForm({
           <label className="label">Tagline</label>
           <input className="input" value={tagline} onChange={(e) => setTagline(e.target.value)} maxLength={120} />
         </div>
+      </div>
+
+      <div>
+        <label className="label">Amazon affiliate link (blog)</label>
+        <input
+          className="input font-mono text-xs"
+          value={amazonAffiliateUrl}
+          onChange={(e) => setAmazonAffiliateUrl(e.target.value)}
+          placeholder="https://amzn.to/…"
+          maxLength={500}
+        />
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Your Amazon Associates / SiteStripe link. Shown as a &ldquo;Shop on Amazon&rdquo; button on every blog post.
+        </p>
       </div>
 
       <div className="flex justify-end">

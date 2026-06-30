@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { formatDate } from "@/lib/date";
 import { ArticleContent } from "@/components/article-content";
-import { ArrowLeft, Info } from "lucide-react";
+import { getSiteBrand } from "@/lib/brand";
+import { ArrowLeft, Info, ShoppingBag } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,12 @@ export default async function ArticlePage({ params }: { params: { slug: string }
   const article = await getArticle(params.slug);
   if (!article) notFound();
 
-  const hasAffiliate = /amazon\.|amzn\./i.test(article.content);
+  const brand = await getSiteBrand();
+  const amazonUrl = brand.amazonAffiliateUrl?.trim() || "";
+  const showAmazon = /^https?:\/\//i.test(amazonUrl);
+  // Show the disclosure whenever there's any affiliate link on the page — either
+  // the "Shop on Amazon" button or an Amazon link inside the article content.
+  const hasAffiliate = showAmazon || /amazon\.|amzn\./i.test(article.content);
 
   // Article structured data for richer Google results.
   const jsonLd = {
@@ -82,6 +88,23 @@ export default async function ArticlePage({ params }: { params: { slug: string }
       <div className="mt-6">
         <ArticleContent content={article.content} />
       </div>
+
+      {showAmazon && (
+        <div className="mt-8 rounded-xl border border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 p-5 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div className="font-bold text-slate-900">Shop our picks on Amazon</div>
+            <div className="text-sm text-slate-600 mt-0.5">Browse recommended wellness products on Amazon.</div>
+          </div>
+          <a
+            href={amazonUrl}
+            target="_blank"
+            rel="sponsored nofollow noopener noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#FF9900] hover:bg-[#e88a00] text-slate-900 font-bold text-sm transition-colors shrink-0"
+          >
+            <ShoppingBag className="h-4 w-4" /> Shop on Amazon
+          </a>
+        </div>
+      )}
 
       {hasAffiliate && (
         <div className="mt-8 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
