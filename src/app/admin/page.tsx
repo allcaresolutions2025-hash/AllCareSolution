@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { formatINR } from "@/lib/money";
-import { Package, ShoppingBag, Users, Wallet, FileCheck2, AlertCircle } from "lucide-react";
+import { formatINR, formatPoints } from "@/lib/money";
+import { Package, ShoppingBag, Users, Wallet, FileCheck2, AlertCircle, Coins } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,7 @@ export default async function AdminOverviewPage() {
     pendingPayouts,
     revenue30,
     commissionsAccrued,
+    totalPayoutPaid,
   ] = await Promise.all([
     prisma.product.count({ where: { isActive: true } }),
     prisma.order.count(),
@@ -32,6 +33,11 @@ export default async function AdminOverviewPage() {
     prisma.commission.aggregate({
       where: { status: { in: ["PENDING", "AVAILABLE", "REQUESTED", "PAID"] } },
       _sum: { commissionAmount: true },
+    }),
+    // Lifetime daily-payout points actually disbursed (1,000-pt program).
+    prisma.dailyPayout.aggregate({
+      where: { status: "PAID", proMax: false },
+      _sum: { paidAmount: true },
     }),
   ]);
 
@@ -70,8 +76,9 @@ export default async function AdminOverviewPage() {
         <Kpi icon={<Package className="h-5 w-5" />} label="Active products" value={String(productCount)} />
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-3 gap-4">
         <Kpi icon={<Wallet className="h-5 w-5" />} label="Total commissions accrued" value={formatINR(commissionsAccrued._sum.commissionAmount ?? 0)} />
+        <Kpi icon={<Coins className="h-5 w-5" />} label="Total payout paid (all-time)" value={formatPoints(totalPayoutPaid._sum.paidAmount ?? 0)} href="/admin/daily-payouts" />
         <Kpi icon={<FileCheck2 className="h-5 w-5" />} label="Pending KYCs" value={String(pendingKyc)} href="/admin/kyc" />
       </div>
 
