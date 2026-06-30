@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { Eye, CheckCircle2 } from "lucide-react";
+import { Eye, CheckCircle2, WalletCards } from "lucide-react";
 import { formatRupees } from "@/lib/loan";
 
 export function PaidTodayRow({
@@ -15,6 +15,7 @@ export function PaidTodayRow({
   userPhone,
   tierLabel,
   hasReceipt,
+  viaPinWallet,
 }: {
   id: string;
   weekNumber: number;
@@ -25,6 +26,8 @@ export function PaidTodayRow({
   userPhone: string | null;
   tierLabel: string;
   hasReceipt: boolean;
+  // True when this installment was paid with Pin Wallet points (no receipt).
+  viaPinWallet?: boolean;
 }) {
   const [show, setShow] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
@@ -60,7 +63,11 @@ export function PaidTodayRow({
       <td className="px-4 py-3 text-xs tabular-nums">Week {weekNumber}</td>
       <td className="px-4 py-3 text-right tabular-nums font-medium">{formatRupees(amount)}</td>
       <td className="px-4 py-3">
-        {hasReceipt ? (
+        {viaPinWallet ? (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <WalletCards className="h-3.5 w-3.5" /> Paid via Pin Wallet
+          </span>
+        ) : hasReceipt ? (
           <button
             onClick={openReceipt}
             className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md bg-white border hover:bg-slate-50"

@@ -144,6 +144,7 @@ export default async function AdminLoansPage() {
         amount: true,
         verifiedAt: true,
         receiptMime: true,
+        reviewerNotes: true,
         loan: {
           select: {
             tierKey: true,
@@ -368,6 +369,7 @@ export default async function AdminLoansPage() {
                     userPhone={i.loan.user.phone}
                     tierLabel={tierByKey(i.loan.tierKey)?.label ?? i.loan.tierKey}
                     hasReceipt={!!i.receiptMime}
+                    viaPinWallet={(i.reviewerNotes ?? "").startsWith("Paid via Pin Wallet")}
                   />
                 ))}
               </tbody>
