@@ -3,7 +3,7 @@ import { formatPoints } from "@/lib/money";
 import { MIN_PAYOUT_POINTS } from "@/lib/daily-payout";
 import { PendingPayoutsTable } from "@/app/admin/daily-payouts/pending-payouts-table";
 import { RunPayoutButton } from "./run-payout-button";
-import { Coins, Clock } from "lucide-react";
+import { Coins, Clock, BadgeCheck } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ const PAGE_SIZE = 20;
 export default async function ProMaxDailyPayoutsPage({ searchParams }: { searchParams: { paidPage?: string } }) {
   const paidPage = Math.max(1, parseInt(searchParams.paidPage ?? "1", 10) || 1);
 
-  const [pending, owed, paid, paidTotal] = await Promise.all([
+  const [pending, owed, paid, paidTotal, totalPaid] = await Promise.all([
     prisma.dailyPayout.findMany({
       where: { status: "PENDING", proMax: true },
       orderBy: { createdAt: "asc" },
@@ -36,6 +36,8 @@ export default async function ProMaxDailyPayoutsPage({ searchParams }: { searchP
       include: { user: { select: { name: true, referralCode: true } } },
     }),
     prisma.dailyPayout.count({ where: { status: "PAID", proMax: true } }),
+    // Lifetime total actually paid out across all Pro Max payouts.
+    prisma.dailyPayout.aggregate({ where: { status: "PAID", proMax: true }, _sum: { paidAmount: true } }),
   ]);
 
   const rows = pending.map((p) => ({
@@ -67,9 +69,10 @@ export default async function ProMaxDailyPayoutsPage({ searchParams }: { searchP
         <RunPayoutButton />
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-3 gap-4">
         <Kpi icon={<Clock className="h-5 w-5" />} label="Pending payouts" value={String(pending.length)} />
         <Kpi icon={<Coins className="h-5 w-5" />} label="Owed (pending)" value={formatPoints(owed._sum.paidAmount ?? 0)} />
+        <Kpi icon={<BadgeCheck className="h-5 w-5" />} label="Total paid out (all-time)" value={formatPoints(totalPaid._sum.paidAmount ?? 0)} />
       </div>
 
       <div className="card overflow-hidden">

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
 import { istDateString } from "@/lib/daily-payout";
 import { PRO_MAX_ENABLED } from "@/lib/pro-max";
-import { Clock, Coins, Download, RotateCcw, Crown } from "lucide-react";
+import { Clock, Coins, Download, RotateCcw, Crown, BadgeCheck } from "lucide-react";
 import { PendingPayoutsTable } from "./pending-payouts-table";
 import { SimulateMidnightButton } from "./simulate-midnight-button";
 import { Pagination } from "@/components/pagination";
@@ -41,7 +41,7 @@ export default async function AdminDailyPayoutsPage({
     },
   };
 
-  const [pendingStd, pendingPro, owedStd, owedPro, paid, paidTotal, unpaid] = await Promise.all([
+  const [pendingStd, pendingPro, owedStd, owedPro, paid, paidTotal, totalPaidStd, unpaid] = await Promise.all([
     prisma.dailyPayout.findMany({
       where: { status: "PENDING", proMax: false },
       orderBy: { createdAt: "asc" },
@@ -68,6 +68,11 @@ export default async function AdminDailyPayoutsPage({
       include: { user: { select: { name: true, email: true, referralCode: true } } },
     }),
     prisma.dailyPayout.count({ where: { status: "PAID" } }),
+    // Lifetime total actually paid out (all PAID payouts, 1000-pt program).
+    prisma.dailyPayout.aggregate({
+      where: { status: "PAID", proMax: false },
+      _sum: { paidAmount: true },
+    }),
     prisma.dailyPayout.findMany({
       where: {
         status: "CANCELLED",
@@ -128,9 +133,12 @@ export default async function AdminDailyPayoutsPage({
         )}
       </div>
 
-      <div className={`grid gap-4 ${PRO_MAX_ENABLED ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-2"}`}>
+      <div className={`grid gap-4 ${PRO_MAX_ENABLED ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
         <Kpi icon={<Clock className="h-5 w-5" />} label={PRO_MAX_ENABLED ? "Pending (1000-pt)" : "Pending payouts"} value={pendingStd.length} tone="amber" />
         <Kpi icon={<Coins className="h-5 w-5" />} label={PRO_MAX_ENABLED ? "Owed (1000-pt)" : "Owed (pending)"} value={formatPoints(owedStd._sum.paidAmount ?? 0)} tone="sky" />
+        {!PRO_MAX_ENABLED && (
+          <Kpi icon={<BadgeCheck className="h-5 w-5" />} label="Total paid out (all-time)" value={formatPoints(totalPaidStd._sum.paidAmount ?? 0)} tone="emerald" />
+        )}
         {PRO_MAX_ENABLED && (
           <>
             <Kpi icon={<Clock className="h-5 w-5" />} label="Pending (Pro Max)" value={pendingPro.length} tone="amber" />
