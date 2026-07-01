@@ -78,7 +78,13 @@ export async function runDailyPayout(
     // ---- 1000-pt wallet (balanceAvailable)
     if (doStandard) {
       const wallets = await tx.wallet.findMany({
-        where: { balanceAvailable: { gte: MIN_PAYOUT_PAISE } },
+        // Eligibility also requires a real binary team: strictly MORE than one
+        // member on BOTH legs. Members with just one (or none) on either leg do
+        // not enter the daily payout — they only qualify once both legs exceed 1.
+        where: {
+          balanceAvailable: { gte: MIN_PAYOUT_PAISE },
+          user: { leftLegCount: { gt: 1 }, rightLegCount: { gt: 1 } },
+        },
         select: { userId: true, balanceAvailable: true },
       });
       const payouts = wallets.map((w) => {
@@ -125,7 +131,13 @@ export async function runDailyPayout(
       const proMaxWallets = await tx.wallet.findMany({
         where: {
           proMaxBalanceAvailable: { gte: MIN_PAYOUT_PAISE },
-          user: { isProMax: true },
+          // Same binary-team gate as the 1000-pt program, on the Pro Max legs:
+          // strictly more than one member on BOTH Pro Max legs.
+          user: {
+            isProMax: true,
+            proMaxLeftLegCount: { gt: 1 },
+            proMaxRightLegCount: { gt: 1 },
+          },
         },
         select: { userId: true, proMaxBalanceAvailable: true },
       });
