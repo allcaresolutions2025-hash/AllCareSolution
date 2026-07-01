@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { hasBothLegsFilled, PIN_WALLET_LOCKED_MESSAGE } from "@/lib/pin-wallet-access";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,11 @@ const bodySchema = z.object({
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+
+  // Pin Wallet is locked until both binary legs are filled.
+  if (!(await hasBothLegsFilled(session.user.id))) {
+    return NextResponse.json({ error: PIN_WALLET_LOCKED_MESSAGE }, { status: 403 });
+  }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

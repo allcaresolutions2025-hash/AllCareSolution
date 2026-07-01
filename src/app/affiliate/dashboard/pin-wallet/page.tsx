@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { toPaise, formatPoints } from "@/lib/money";
-import { Wallet, KeyRound, ArrowDownLeft, ArrowUpRight, Coins } from "lucide-react";
+import { Wallet, KeyRound, ArrowDownLeft, ArrowUpRight, Coins, Lock } from "lucide-react";
 import { PinWalletActions } from "./pin-wallet-actions";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,11 @@ export default async function PinWalletPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [wallet, txns, activePins, pinWalletPriceInr] = await Promise.all([
+  const [user, wallet, txns, activePins, pinWalletPriceInr] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { leftLegCount: true, rightLegCount: true },
+    }),
     prisma.wallet.findUnique({
       where: { userId: session.user.id },
       select: { pinWalletBalance: true, balanceAvailable: true },
@@ -49,6 +53,45 @@ export default async function PinWalletPage() {
   const payoutBalance = wallet?.balanceAvailable ?? 0;
   const pricePerPin = toPaise(pinWalletPriceInr);
   const maxBuyable = pricePerPin > 0 ? Math.floor(pinWalletBalance / pricePerPin) : 0;
+
+  // Pin Wallet access is unlocked only once BOTH binary legs are filled (at
+  // least one member on the left AND one on the right). Until then the member
+  // can't buy pins or transfer to/from the payout wallet.
+  const leftFilled = (user?.leftLegCount ?? 0) > 0;
+  const rightFilled = (user?.rightLegCount ?? 0) > 0;
+  const canAccess = leftFilled && rightFilled;
+
+  if (!canAccess) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Wallet className="h-6 w-6 text-brand-600" /> Pin Wallet
+          </h1>
+        </div>
+        <div className="card p-8 text-center">
+          <div className="mx-auto h-12 w-12 rounded-full bg-amber-100 text-amber-700 grid place-items-center">
+            <Lock className="h-6 w-6" />
+          </div>
+          <h2 className="mt-4 text-lg font-semibold">Pin Wallet is locked</h2>
+          <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+            You can access the Pin Wallet — buy pins and transfer points to and from your
+            payout wallet — once you have at least one member on <strong>both</strong> your
+            left and right legs.
+          </p>
+          <div className="mt-4 inline-flex items-center gap-3 text-sm">
+            <span className={`inline-flex items-center gap-1.5 font-medium ${leftFilled ? "text-emerald-700" : "text-red-600"}`}>
+              Left leg: {leftFilled ? "filled" : "empty"}
+            </span>
+            <span className="text-muted-foreground">•</span>
+            <span className={`inline-flex items-center gap-1.5 font-medium ${rightFilled ? "text-emerald-700" : "text-red-600"}`}>
+              Right leg: {rightFilled ? "filled" : "empty"}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
