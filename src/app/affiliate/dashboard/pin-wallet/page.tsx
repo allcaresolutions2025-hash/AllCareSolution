@@ -54,11 +54,12 @@ export default async function PinWalletPage() {
   const pricePerPin = toPaise(pinWalletPriceInr);
   const maxBuyable = pricePerPin > 0 ? Math.floor(pinWalletBalance / pricePerPin) : 0;
 
-  // Pin Wallet access is unlocked only once BOTH binary legs are filled (at
-  // least one member on the left AND one on the right). Until then the member
-  // can't buy pins or transfer to/from the payout wallet.
-  const leftFilled = (user?.leftLegCount ?? 0) > 0;
-  const rightFilled = (user?.rightLegCount ?? 0) > 0;
+  // Pin Wallet access is unlocked only once BOTH binary legs have more than one
+  // member (left and right filled PLUS another member below) — the same rule as
+  // daily-payout eligibility. Until then the member can't buy pins or transfer
+  // to/from the payout wallet.
+  const leftFilled = (user?.leftLegCount ?? 0) > 1;
+  const rightFilled = (user?.rightLegCount ?? 0) > 1;
   const canAccess = leftFilled && rightFilled;
 
   if (!canAccess) {
@@ -76,8 +77,8 @@ export default async function PinWalletPage() {
           <h2 className="mt-4 text-lg font-semibold">Pin Wallet is locked</h2>
           <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
             You can access the Pin Wallet — buy pins and transfer points to and from your
-            payout wallet — once you have at least one member on <strong>both</strong> your
-            left and right legs.
+            payout wallet — once you have <strong>more than one</strong> member on both your
+            left and right legs (left and right filled, plus another member below).
           </p>
           <div className="mt-4 inline-flex items-center gap-3 text-sm">
             <span className={`inline-flex items-center gap-1.5 font-medium ${leftFilled ? "text-emerald-700" : "text-red-600"}`}>
