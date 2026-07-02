@@ -78,12 +78,12 @@ export async function runDailyPayout(
     // ---- 1000-pt wallet (balanceAvailable)
     if (doStandard) {
       const wallets = await tx.wallet.findMany({
-        // Eligibility also requires a real binary team: strictly MORE than one
-        // member on BOTH legs. Members with just one (or none) on either leg do
-        // not enter the daily payout — they only qualify once both legs exceed 1.
+        // Eligibility also requires both legs filled: at least one member on
+        // the LEFT leg AND at least one on the RIGHT leg. Members with an empty
+        // leg do not enter the daily payout until they fill both sides.
         where: {
           balanceAvailable: { gte: MIN_PAYOUT_PAISE },
-          user: { leftLegCount: { gt: 1 }, rightLegCount: { gt: 1 } },
+          user: { leftLegCount: { gt: 0 }, rightLegCount: { gt: 0 } },
         },
         select: { userId: true, balanceAvailable: true },
       });
@@ -131,12 +131,12 @@ export async function runDailyPayout(
       const proMaxWallets = await tx.wallet.findMany({
         where: {
           proMaxBalanceAvailable: { gte: MIN_PAYOUT_PAISE },
-          // Same binary-team gate as the 1000-pt program, on the Pro Max legs:
-          // strictly more than one member on BOTH Pro Max legs.
+          // Same both-legs-filled gate as the 1000-pt program, on the Pro Max
+          // legs: at least one member on each Pro Max leg.
           user: {
             isProMax: true,
-            proMaxLeftLegCount: { gt: 1 },
-            proMaxRightLegCount: { gt: 1 },
+            proMaxLeftLegCount: { gt: 0 },
+            proMaxRightLegCount: { gt: 0 },
           },
         },
         select: { userId: true, proMaxBalanceAvailable: true },
