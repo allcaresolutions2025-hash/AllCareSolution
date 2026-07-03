@@ -21,47 +21,44 @@ export function PinWalletAccessForm({
   const router = useRouter();
   const [unlocked, setUnlocked] = useState(initialUnlocked);
   const [locked, setLocked] = useState(initialLocked);
-  const [loading, setLoading] = useState<null | "unlocked" | "locked">(null);
+  const [loading, setLoading] = useState(false);
 
   // Whether the member already qualifies by the normal rule (both legs > 1).
   const qualifiesByLegs = leftLegCount > 1 && rightLegCount > 1;
-  // Effective access: the admin lock overrides everything.
-  const canTransact = !locked && (unlocked || qualifiesByLegs);
+  // Effective access — the admin lock overrides everything.
+  const enabled = !locked && (unlocked || qualifiesByLegs);
 
-  async function setFlag(field: "unlocked" | "locked", value: boolean) {
-    setLoading(field);
+  async function run(action: "enable" | "disable") {
+    setLoading(true);
     const res = await fetch("/api/admin/pin-wallet/access", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, field, value }),
+      body: JSON.stringify({ userId, action }),
     });
     const data = await res.json().catch(() => ({}));
-    setLoading(null);
+    setLoading(false);
     if (!res.ok) {
       toast.error(data.error || "Could not update Pin Wallet access");
       return;
     }
-    if (field === "unlocked") setUnlocked(value);
-    else setLocked(value);
-    toast.success(
-      field === "locked"
-        ? value
-          ? "Pin Wallet disabled for this member"
-          : "Pin Wallet re-enabled"
-        : value
-        ? "Pin Wallet unlocked for this member"
-        : "Access override removed",
-    );
+    // Mirror the server-side flag changes locally.
+    if (action === "enable") {
+      setUnlocked(true);
+      setLocked(false);
+    } else {
+      setLocked(true);
+    }
+    toast.success(action === "enable" ? "Pin Wallet enabled for this member" : "Pin Wallet disabled for this member");
     router.refresh();
   }
 
-  const statusText = locked
+  const reason = locked
     ? "Disabled by admin"
     : unlocked
-    ? "Enabled by admin override"
+    ? "Enabled by admin"
     : qualifiesByLegs
-    ? "Enabled by leg requirement"
-    : "Locked — leg requirement not met";
+    ? "Enabled automatically (leg requirement met)"
+    : "Leg requirement not met";
 
   return (
     <div className="card p-5 space-y-4">
@@ -71,78 +68,45 @@ export function PinWalletAccessForm({
       </div>
 
       {/* Effective status */}
-      <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
-        <div className="flex items-center gap-2">
-          {canTransact ? (
-            <Unlock className="h-4 w-4 text-emerald-600" />
-          ) : (
-            <Lock className="h-4 w-4 text-amber-600" />
-          )}
-          <div>
-            <div className="text-sm font-medium">
-              {canTransact ? "Pin Wallet is enabled" : "Pin Wallet is locked"}
-            </div>
-            <div className="text-[11px] text-muted-foreground">
-              {statusText} · Left {leftLegCount} · Right {rightLegCount}
-            </div>
+      <div className="flex items-center gap-2 rounded-lg border p-3">
+        {enabled ? <Unlock className="h-4 w-4 text-emerald-600" /> : <Lock className="h-4 w-4 text-amber-600" />}
+        <div>
+          <div className="text-sm font-medium">{enabled ? "Pin Wallet is enabled" : "Pin Wallet is locked"}</div>
+          <div className="text-[11px] text-muted-foreground">
+            {reason} · Left {leftLegCount} · Right {rightLegCount}
           </div>
         </div>
       </div>
 
-      {/* Admin kill-switch: disable / re-enable the wallet regardless of legs */}
-      <div className="rounded-lg border border-red-200 bg-red-50/40 p-3 space-y-2">
-        <div className="text-sm font-medium text-red-800 flex items-center gap-1.5">
-          <Ban className="h-4 w-4" /> Disable Pin Wallet
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          Force-locks the wallet so the member can&apos;t buy pins or transfer points, even if their
-          legs are filled. Use this to freeze a member while investigating an issue.
-        </p>
-        {locked ? (
+      {/* Single state-based action: show Disable when enabled, Enable when not */}
+      {enabled ? (
+        <div className="rounded-lg border border-red-200 bg-red-50/40 p-3 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            The member can buy pins and transfer points. Disable to force-lock the wallet — e.g. to
+            freeze a member while investigating an issue.
+          </p>
           <button
-            onClick={() => setFlag("locked", false)}
-            disabled={loading !== null}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-          >
-            <Unlock className="h-3.5 w-3.5" /> {loading === "locked" ? "Saving…" : "Re-enable Pin Wallet"}
-          </button>
-        ) : (
-          <button
-            onClick={() => setFlag("locked", true)}
-            disabled={loading !== null}
+            onClick={() => run("disable")}
+            disabled={loading}
             className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
           >
-            <Ban className="h-3.5 w-3.5" /> {loading === "locked" ? "Saving…" : "Disable Pin Wallet"}
+            <Ban className="h-3.5 w-3.5" /> {loading ? "Saving…" : "Disable Pin Wallet"}
           </button>
-        )}
-      </div>
-
-      {/* Manual unlock override — only relevant when not force-locked */}
-      {!locked && (
+        </div>
+      ) : (
         <div className="rounded-lg border p-3 space-y-2">
-          <div className="text-sm font-medium">Manual unlock (override leg requirement)</div>
-          <p className="text-[11px] text-muted-foreground">
-            {qualifiesByLegs
-              ? "This member already qualifies by their legs — an override isn't needed."
-              : "Grant access even though this member doesn't have more than one on both legs."}
+          <p className="text-xs text-muted-foreground">
+            {locked
+              ? "This member's Pin Wallet is disabled. Enable it to let them buy pins and transfer points again."
+              : "This member doesn't meet the leg requirement yet. Enable to grant access to the Pin Wallet."}
           </p>
-          {unlocked ? (
-            <button
-              onClick={() => setFlag("unlocked", false)}
-              disabled={loading !== null}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50"
-            >
-              <Lock className="h-3.5 w-3.5" /> {loading === "unlocked" ? "Saving…" : "Remove override"}
-            </button>
-          ) : (
-            <button
-              onClick={() => setFlag("unlocked", true)}
-              disabled={loading !== null}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              <Unlock className="h-3.5 w-3.5" /> {loading === "unlocked" ? "Saving…" : "Enable Pin Wallet"}
-            </button>
-          )}
+          <button
+            onClick={() => run("enable")}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            <Unlock className="h-3.5 w-3.5" /> {loading ? "Saving…" : "Enable Pin Wallet"}
+          </button>
         </div>
       )}
     </div>
