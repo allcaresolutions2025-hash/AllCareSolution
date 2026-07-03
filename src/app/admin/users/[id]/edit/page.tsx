@@ -29,6 +29,7 @@ export default async function AdminEditUserPage({ params }: { params: { id: stri
       role: true,
       createdAt: true,
       pinWalletUnlocked: true,
+      pinWalletLocked: true,
       leftLegCount: true,
       rightLegCount: true,
       wallet: { select: { pinWalletBalance: true } },
@@ -77,6 +78,7 @@ export default async function AdminEditUserPage({ params }: { params: { id: stri
       <PinWalletAccessForm
         userId={user.id}
         initialUnlocked={user.pinWalletUnlocked}
+        initialLocked={user.pinWalletLocked}
         leftLegCount={user.leftLegCount}
         rightLegCount={user.rightLegCount}
       />

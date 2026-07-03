@@ -34,7 +34,7 @@ export default async function PinWalletPage() {
   const [user, wallet, txns, activePins, pinWalletPriceInr] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { leftLegCount: true, rightLegCount: true, pinWalletUnlocked: true },
+      select: { leftLegCount: true, rightLegCount: true, pinWalletUnlocked: true, pinWalletLocked: true },
     }),
     prisma.wallet.findUnique({
       where: { userId: session.user.id },
@@ -56,12 +56,14 @@ export default async function PinWalletPage() {
 
   // Pin Wallet access is unlocked once BOTH binary legs have more than one
   // member (left and right filled PLUS another member below) — the same rule as
-  // daily-payout eligibility — OR when an admin has manually enabled it. Until
-  // then the member can't buy pins or transfer to/from the payout wallet.
+  // daily-payout eligibility — OR when an admin has manually enabled it. An admin
+  // can also force-lock the wallet, which overrides everything. Until enabled the
+  // member can't buy pins or transfer to/from the payout wallet.
   const leftFilled = (user?.leftLegCount ?? 0) > 1;
   const rightFilled = (user?.rightLegCount ?? 0) > 1;
   const adminUnlocked = user?.pinWalletUnlocked ?? false;
-  const canAccess = adminUnlocked || (leftFilled && rightFilled);
+  const adminLocked = user?.pinWalletLocked ?? false;
+  const canAccess = !adminLocked && (adminUnlocked || (leftFilled && rightFilled));
 
   if (!canAccess) {
     return (
@@ -75,21 +77,32 @@ export default async function PinWalletPage() {
           <div className="mx-auto h-12 w-12 rounded-full bg-amber-100 text-amber-700 grid place-items-center">
             <Lock className="h-6 w-6" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold">Pin Wallet is locked</h2>
-          <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-            You can access the Pin Wallet — buy pins and transfer points to and from your
-            payout wallet — once you have <strong>more than one</strong> member on both your
-            left and right legs (left and right filled, plus another member below).
-          </p>
-          <div className="mt-4 inline-flex items-center gap-3 text-sm">
-            <span className={`inline-flex items-center gap-1.5 font-medium ${leftFilled ? "text-emerald-700" : "text-red-600"}`}>
-              Left leg: {leftFilled ? "filled" : "empty"}
-            </span>
-            <span className="text-muted-foreground">•</span>
-            <span className={`inline-flex items-center gap-1.5 font-medium ${rightFilled ? "text-emerald-700" : "text-red-600"}`}>
-              Right leg: {rightFilled ? "filled" : "empty"}
-            </span>
-          </div>
+          <h2 className="mt-4 text-lg font-semibold">
+            {adminLocked ? "Pin Wallet is disabled" : "Pin Wallet is locked"}
+          </h2>
+          {adminLocked ? (
+            <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+              Your Pin Wallet has been temporarily disabled by the admin. Please contact support
+              for details.
+            </p>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+                You can access the Pin Wallet — buy pins and transfer points to and from your
+                payout wallet — once you have <strong>more than one</strong> member on both your
+                left and right legs (left and right filled, plus another member below).
+              </p>
+              <div className="mt-4 inline-flex items-center gap-3 text-sm">
+                <span className={`inline-flex items-center gap-1.5 font-medium ${leftFilled ? "text-emerald-700" : "text-red-600"}`}>
+                  Left leg: {leftFilled ? "filled" : "empty"}
+                </span>
+                <span className="text-muted-foreground">•</span>
+                <span className={`inline-flex items-center gap-1.5 font-medium ${rightFilled ? "text-emerald-700" : "text-red-600"}`}>
+                  Right leg: {rightFilled ? "filled" : "empty"}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
