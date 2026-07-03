@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, Truck, Package } from "lucide-react";
+import { CheckCircle2, XCircle, Truck, Package, FileText } from "lucide-react";
 import type { RewardClaimStatus } from "@prisma/client";
 
 const STATUS_BADGE: Record<RewardClaimStatus, { label: string; cls: string }> = {
@@ -137,8 +137,20 @@ export function RewardRow({ id, user, level, rewardName, status, adminNote, requ
               <Package className="h-3 w-3" /> Mark Delivered
             </button>
           )}
-          {(status === "DELIVERED" || status === "REJECTED") && (
+          {(status === "DELIVERED" || status === "REJECTED") && level !== 0 && (
             <span className="text-xs text-muted-foreground">—</span>
+          )}
+
+          {/* Welcome Kit is the only physical reward — offer the courier slip PDF. */}
+          {level === 0 && (
+            <a
+              href={`/api/admin/rewards/${id}/courier-slip`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-lg"
+            >
+              <FileText className="h-3 w-3" /> Courier slip
+            </a>
           )}
         </div>
       </td>

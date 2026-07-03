@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/db";
 import { RewardRow } from "./reward-row";
-import { Trophy, Download, PackageCheck } from "lucide-react";
+import { Trophy, Download, PackageCheck, FileText } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 import { ResetPendingRewardsCard } from "./reset-pending-card";
+import { CourierSettingsCard } from "./courier-settings-card";
 import { WELCOME_KIT_LEVEL } from "@/lib/rewards";
+import { getCourierSender } from "@/lib/courier";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Reward Claims" };
@@ -45,6 +47,8 @@ export default async function AdminRewardsPage({
     prisma.rewardClaim.count({ where: { level: WELCOME_KIT_LEVEL, status: "DELIVERED" } }),
   ]);
 
+  const courierSender = await getCourierSender();
+
   const counts = await prisma.rewardClaim.groupBy({
     by: ["status"],
     _count: { id: true },
@@ -84,6 +88,9 @@ export default async function AdminRewardsPage({
         Welcome Kit is the only physical reward — the dispatch list (Excel, with member address) covers
         approved Welcome Kits. The L1-15 rewards are credited to the member&apos;s Pin Wallet on approval.
       </p>
+
+      {/* Company FROM address for courier slips */}
+      <CourierSettingsCard initial={courierSender} />
 
       {/* One-time cleanup: clear pending claims so members re-request under the new rule */}
       <ResetPendingRewardsCard />
@@ -175,6 +182,7 @@ export default async function AdminRewardsPage({
                   <th className="px-4 py-2 font-medium">Mobile</th>
                   <th className="px-4 py-2 font-medium">Address</th>
                   <th className="px-4 py-2 font-medium">Delivered</th>
+                  <th className="px-4 py-2 font-medium text-right">Slip</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -188,6 +196,16 @@ export default async function AdminRewardsPage({
                     <td className="px-4 py-2 text-xs max-w-xs">{c.user.address ?? "—"}</td>
                     <td className="px-4 py-2 text-xs text-muted-foreground">
                       {c.updatedAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <a
+                        href={`/api/admin/rewards/${c.id}/courier-slip`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
+                      >
+                        <FileText className="h-3.5 w-3.5" /> PDF
+                      </a>
                     </td>
                   </tr>
                 ))}
