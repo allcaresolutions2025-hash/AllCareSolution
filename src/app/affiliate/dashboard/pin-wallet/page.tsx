@@ -34,7 +34,7 @@ export default async function PinWalletPage() {
   const [user, wallet, txns, activePins, pinWalletPriceInr] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { leftLegCount: true, rightLegCount: true },
+      select: { leftLegCount: true, rightLegCount: true, pinWalletUnlocked: true },
     }),
     prisma.wallet.findUnique({
       where: { userId: session.user.id },
@@ -54,13 +54,14 @@ export default async function PinWalletPage() {
   const pricePerPin = toPaise(pinWalletPriceInr);
   const maxBuyable = pricePerPin > 0 ? Math.floor(pinWalletBalance / pricePerPin) : 0;
 
-  // Pin Wallet access is unlocked only once BOTH binary legs have more than one
+  // Pin Wallet access is unlocked once BOTH binary legs have more than one
   // member (left and right filled PLUS another member below) — the same rule as
-  // daily-payout eligibility. Until then the member can't buy pins or transfer
-  // to/from the payout wallet.
+  // daily-payout eligibility — OR when an admin has manually enabled it. Until
+  // then the member can't buy pins or transfer to/from the payout wallet.
   const leftFilled = (user?.leftLegCount ?? 0) > 1;
   const rightFilled = (user?.rightLegCount ?? 0) > 1;
-  const canAccess = leftFilled && rightFilled;
+  const adminUnlocked = user?.pinWalletUnlocked ?? false;
+  const canAccess = adminUnlocked || (leftFilled && rightFilled);
 
   if (!canAccess) {
     return (

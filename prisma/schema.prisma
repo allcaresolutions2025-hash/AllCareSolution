@@ -50,6 +50,9 @@ model User {
   mustOnboard        Boolean  @default(false) // true for fresher accounts — forced through the Add Member form on first login
   role         Role     @default(CUSTOMER)
   isActive     Boolean  @default(true)
+  // Admin override: when true, the member can use the 1000-pt Pin Wallet even
+  // if they don't meet the both-legs-filled requirement. See lib/pin-wallet-access.
+  pinWalletUnlocked Boolean @default(false)
 
   referralCode String   @unique
   referrerId   String?

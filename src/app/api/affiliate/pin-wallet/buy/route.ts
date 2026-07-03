@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { toPaise } from "@/lib/money";
 import { generateUniquePinCode } from "@/lib/referral";
-import { hasBothLegsFilled, PIN_WALLET_LOCKED_MESSAGE } from "@/lib/pin-wallet-access";
+import { canAccessPinWallet, PIN_WALLET_LOCKED_MESSAGE } from "@/lib/pin-wallet-access";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
 
   // Pin Wallet is locked until both binary legs are filled.
-  if (!(await hasBothLegsFilled(session.user.id))) {
+  if (!(await canAccessPinWallet(session.user.id))) {
     return NextResponse.json({ error: PIN_WALLET_LOCKED_MESSAGE }, { status: 403 });
   }
 
