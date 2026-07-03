@@ -96,53 +96,42 @@ export async function buildCourierSlipPdf(input: {
 
   // ---- FROM / TO boxes ----------------------------------------------------
   y -= 16;
-  const boxH = 150;
   const gap = 14;
   const boxW = (innerW - gap) / 2;
   const fromX = M;
   const toX = M + boxW + gap;
   const boxTop = y;
 
-  // FROM box
-  drawAddressBox(page, {
-    x: fromX,
-    top: boxTop,
-    w: boxW,
-    h: boxH,
-    heading: "FROM (SENDER)",
-    name: sender.company,
-    lines: compact([
-      sender.line1,
-      sender.line2,
-      joinComma([sender.city, sender.state, sender.pincode]),
-    ]),
-    phone: sender.phone,
-    extra: compact([sender.email, sender.gstin ? `GSTIN: ${sender.gstin}` : ""]),
-    font,
-    bold,
-    accent: false,
-  });
+  // Build wrapped content for each box, then size both boxes to the taller one
+  // so they stay aligned even when a full address wraps to several lines.
+  const fromLines = boxContentLines(
+    {
+      name: sender.company,
+      lines: compact([sender.line1, sender.line2, joinComma([sender.city, sender.state, sender.pincode])]),
+      phone: sender.phone,
+      extra: compact([sender.email, sender.gstin ? `GSTIN: ${sender.gstin}` : ""]),
+    },
+    font, bold, boxW,
+  );
+  const toLines = boxContentLines(
+    {
+      name: recipient.name,
+      lines: compact([
+        recipient.line1,
+        recipient.line2,
+        joinComma([recipient.city, recipient.state]),
+        recipient.pincode ? `PIN: ${recipient.pincode}` : "",
+      ]),
+      phone: recipient.phone,
+      extra: compact([recipient.code ? `Member ID: ${recipient.code}` : ""]),
+    },
+    font, bold, boxW,
+  );
+  const boxH = Math.max(130, boxHeight(fromLines), boxHeight(toLines));
 
-  // TO box (accented — the important one for the courier)
-  drawAddressBox(page, {
-    x: toX,
-    top: boxTop,
-    w: boxW,
-    h: boxH,
-    heading: "TO (DELIVER TO)",
-    name: recipient.name,
-    lines: compact([
-      recipient.line1,
-      recipient.line2,
-      joinComma([recipient.city, recipient.state]),
-      recipient.pincode ? `PIN: ${recipient.pincode}` : "",
-    ]),
-    phone: recipient.phone,
-    extra: compact([recipient.code ? `Member ID: ${recipient.code}` : ""]),
-    font,
-    bold,
-    accent: true,
-  });
+  drawBox(page, fromX, boxTop, boxW, boxH, "FROM (SENDER)", false, fromLines, bold);
+  // TO box is accented — the important one for the courier.
+  drawBox(page, toX, boxTop, boxW, boxH, "TO (DELIVER TO)", true, toLines, bold);
   y = boxTop - boxH;
 
   // ---- Shipment details table --------------------------------------------
@@ -210,39 +199,97 @@ export async function buildCourierSlipPdf(input: {
 
 // ---- helpers --------------------------------------------------------------
 
-function drawAddressBox(
+type RLine = { text: string; font: PDFFont; size: number; color: ReturnType<typeof rgb>; lh: number };
+
+const BOX_STRIP_H = 20;
+const BOX_TOP_PAD = 16;
+const BOX_BOT_PAD = 12;
+
+// Turn a box's logical content into wrapped, styled render-lines so the full
+// address is shown across multiple lines instead of being truncated.
+function boxContentLines(
+  o: { name: string; lines: string[]; phone: string; extra: string[] },
+  font: PDFFont,
+  bold: PDFFont,
+  boxW: number,
+): RLine[] {
+  const maxW = boxW - 20;
+  const out: RLine[] = [];
+  out.push({ text: clip(o.name, bold, 13, maxW), font: bold, size: 13, color: INK, lh: 17 });
+  for (const ln of o.lines)
+    for (const s of wrapText(spaceCommas(ln), font, 10, maxW))
+      out.push({ text: s, font, size: 10, color: INK, lh: 14 });
+  if (o.phone) out.push({ text: `Phone: ${o.phone}`, font: bold, size: 10, color: INK, lh: 15 });
+  for (const ex of o.extra)
+    for (const s of wrapText(spaceCommas(ex), font, 9, maxW))
+      out.push({ text: s, font, size: 9, color: MUTED, lh: 12 });
+  return out;
+}
+
+function boxHeight(lines: RLine[]): number {
+  const body = lines.reduce((a, l) => a + l.lh, 0);
+  return BOX_STRIP_H + BOX_TOP_PAD + body + BOX_BOT_PAD;
+}
+
+function drawBox(
   page: PDFPage,
-  o: {
-    x: number; top: number; w: number; h: number;
-    heading: string; name: string; lines: string[]; phone: string; extra: string[];
-    font: PDFFont; bold: PDFFont; accent: boolean;
-  },
+  x: number,
+  top: number,
+  w: number,
+  h: number,
+  heading: string,
+  accent: boolean,
+  lines: RLine[],
+  bold: PDFFont,
 ) {
-  const { x, top, w, h, heading, name, lines, phone, extra, font, bold, accent } = o;
   const bottom = top - h;
   page.drawRectangle({ x, y: bottom, width: w, height: h, borderColor: accent ? GREEN : LINE, borderWidth: accent ? 1.25 : 0.75 });
-  // heading strip
-  const stripH = 20;
-  page.drawRectangle({ x, y: top - stripH, width: w, height: stripH, color: accent ? GREEN : LABEL_BG });
+  page.drawRectangle({ x, y: top - BOX_STRIP_H, width: w, height: BOX_STRIP_H, color: accent ? GREEN : LABEL_BG });
   page.drawText(heading, { x: x + 10, y: top - 14, size: 8.5, font: bold, color: accent ? rgb(1, 1, 1) : MUTED });
-
-  let ty = top - stripH - 18;
-  page.drawText(clip(name, font, 13, w - 20), { x: x + 10, y: ty, size: 13, font: bold, color: INK });
-  ty -= 16;
+  let ty = top - BOX_STRIP_H - BOX_TOP_PAD;
   for (const ln of lines) {
-    if (!ln) continue;
-    page.drawText(clip(ln, font, 10, w - 20), { x: x + 10, y: ty, size: 10, font, color: INK });
-    ty -= 14;
+    page.drawText(ln.text, { x: x + 10, y: ty, size: ln.size, font: ln.font, color: ln.color });
+    ty -= ln.lh;
   }
-  if (phone) {
-    page.drawText(`Phone: ${phone}`, { x: x + 10, y: ty, size: 10, font: bold, color: INK });
-    ty -= 14;
+}
+
+// Word-wrap to fit maxWidth; hard-breaks a single word that is itself too long.
+function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+  const norm = text.replace(/\s+/g, " ").trim();
+  if (!norm) return [];
+  const lines: string[] = [];
+  let cur = "";
+  for (const word of norm.split(" ")) {
+    const attempt = cur ? `${cur} ${word}` : word;
+    if (font.widthOfTextAtSize(attempt, size) <= maxWidth) {
+      cur = attempt;
+      continue;
+    }
+    if (cur) lines.push(cur);
+    if (font.widthOfTextAtSize(word, size) > maxWidth) {
+      // Break an over-long token character by character.
+      let chunk = "";
+      for (const ch of word) {
+        if (font.widthOfTextAtSize(chunk + ch, size) > maxWidth) {
+          if (chunk) lines.push(chunk);
+          chunk = ch;
+        } else {
+          chunk += ch;
+        }
+      }
+      cur = chunk;
+    } else {
+      cur = word;
+    }
   }
-  for (const ex of extra) {
-    if (!ex) continue;
-    page.drawText(clip(ex, font, 9, w - 20), { x: x + 10, y: ty, size: 9, font, color: MUTED });
-    ty -= 12;
-  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// Ensure a readable space after each comma so run-together addresses like
+// "Das,tiyuliya,Bareilly" wrap at natural word boundaries.
+function spaceCommas(s: string): string {
+  return s.replace(/\s*,\s*/g, ", ");
 }
 
 function drawSignature(page: PDFPage, x: number, y: number, w: number, label: string, font: PDFFont) {

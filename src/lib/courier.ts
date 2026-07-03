@@ -32,16 +32,18 @@ const KEYS: Record<keyof CourierSender, string> = {
   gstin: "COURIER_SENDER_GSTIN",
 };
 
+// Defaults mirror the ACHT MART address shown in the website footer, so slips
+// print a complete FROM block even before an admin customises these.
 const DEFAULTS: CourierSender = {
   company: "ACHT MART",
   tagline: "Pure · Natural · Authentic",
-  line1: "",
-  line2: "",
-  city: "",
-  state: "",
-  pincode: "",
+  line1: "12/20, Soosainagar 3rd Street",
+  line2: "Vilangudi",
+  city: "Madurai",
+  state: "Tamil Nadu",
+  pincode: "625018",
   phone: "",
-  email: "",
+  email: "achtmarts2026@gmail.com",
   gstin: "",
 };
 
