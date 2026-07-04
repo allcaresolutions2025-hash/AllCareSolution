@@ -6,9 +6,12 @@ import { getSetting } from "@/lib/settings";
 import { BuyPinsForm } from "./buy-pins-form";
 import { WalletCards, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import type { PinWalletTxnType } from "@prisma/client";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pro Max Pin Wallet" };
+
+const TXN_PAGE_SIZE = 20;
 
 const TXN_LABEL: Record<PinWalletTxnType, string> = {
   LOAN_CREDIT: "Loan credit",
@@ -18,11 +21,12 @@ const TXN_LABEL: Record<PinWalletTxnType, string> = {
   LOAN_REPAYMENT: "Loan repayment",
 };
 
-export default async function ProMaxPinWalletPage() {
+export default async function ProMaxPinWalletPage({ searchParams }: { searchParams: { page?: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [wallet, txns, walletPriceInr, offlinePriceInr] = await Promise.all([
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [wallet, txns, txnTotal, walletPriceInr, offlinePriceInr] = await Promise.all([
     prisma.wallet.findUnique({
       where: { userId: session.user.id },
       select: { pinWalletBalance: true },
@@ -30,8 +34,10 @@ export default async function ProMaxPinWalletPage() {
     prisma.pinWalletTxn.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
-      take: 50,
+      skip: (page - 1) * TXN_PAGE_SIZE,
+      take: TXN_PAGE_SIZE,
     }),
+    prisma.pinWalletTxn.count({ where: { userId: session.user.id } }),
     getSetting("PIN_PRO_MAX_WALLET_PRICE_INR"),
     getSetting("PIN_PRO_MAX_PRICE_INR"),
   ]);
@@ -101,6 +107,9 @@ export default async function ProMaxPinWalletPage() {
               })}
             </tbody>
           </table>
+        )}
+        {txnTotal > 0 && (
+          <Pagination page={page} pageSize={TXN_PAGE_SIZE} total={txnTotal} basePath="/promax/dashboard/pin-wallet" />
         )}
       </div>
     </div>

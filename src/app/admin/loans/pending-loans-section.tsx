@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Search, Check, X, MessageCircle, ShieldAlert } from "lucide-react";
 import { formatRupees } from "@/lib/loan";
+import { ClientPagination } from "@/components/client-pagination";
+
+const PAGE_SIZE = 20;
 
 export type PendingLoanRow = {
   id: string;
@@ -42,11 +45,18 @@ function matches(row: PendingLoanRow, q: string): boolean {
 export function PendingLoansSection({ rows }: { rows: PendingLoanRow[] }) {
   const [q, setQ] = useState("");
   const [onlyDupes, setOnlyDupes] = useState(false);
+  const [page, setPage] = useState(1);
   const filtered = useMemo(
     () => rows.filter((r) => matches(r, q) && (!onlyDupes || r.duplicatePanCount > 0)),
     [rows, q, onlyDupes],
   );
   const duplicateCount = useMemo(() => rows.filter((r) => r.duplicatePanCount > 0).length, [rows]);
+
+  // Reset to page 1 whenever the filter changes so results aren't hidden on a later page.
+  useEffect(() => setPage(1), [q, onlyDupes]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const current = Math.min(page, totalPages);
+  const pageRows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
   return (
     <div className="card overflow-hidden">
@@ -102,12 +112,15 @@ export function PendingLoansSection({ rows }: { rows: PendingLoanRow[] }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
+              {pageRows.map((r) => (
                 <PendingLoanTr key={r.id} row={r} />
               ))}
             </tbody>
           </table>
         </div>
+      )}
+      {filtered.length > 0 && (
+        <ClientPagination page={current} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage} />
       )}
     </div>
   );

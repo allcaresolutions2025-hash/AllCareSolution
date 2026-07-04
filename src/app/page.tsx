@@ -209,7 +209,7 @@ export default async function HomePage() {
             surface="surface-butter"
             tint="amber"
             title="Rewards as you refer"
-            desc="Grow your network on Left &amp; Right. Earn points, unlock milestone gifts — up to 15 levels deep."
+            desc="Grow your team on Left &amp; Right. Earn loyalty points and unlock milestone reward gifts."
           />
           <Feature
             icon={<Leaf className="h-6 w-6" />}
@@ -327,13 +327,14 @@ export default async function HomePage() {
             </h2>
             <p className="mt-5 text-brand-100/90 text-base md:text-lg max-w-prose leading-relaxed">
               Place one direct on your <strong className="text-white">Left</strong> and one on your{" "}
-              <strong className="text-white">Right</strong>. As your team grows, you earn points across
-              up to 15 levels of depth — unlocking welcome gifts, gadgets, vehicles and beyond.
+              <strong className="text-white">Right</strong>. As your team grows, you earn loyalty points
+              that unlock milestone reward gifts. Points are an internal loyalty unit — not cash, and no
+              income is guaranteed.
             </p>
             <ul className="mt-6 space-y-2.5 text-brand-100/90 text-sm">
               <Bullet>+200 points for every direct referral you place</Bullet>
               <Bullet>+500 one-time bonus the first time both Left &amp; Right are filled</Bullet>
-              <Bullet>+200 per pair-match in your downline (up to 15 levels deep)</Bullet>
+              <Bullet>+200 per matched pair in your team</Bullet>
               <Bullet>Daily payout at 12:00 AM IST · minimum 500 pts</Bullet>
             </ul>
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
@@ -355,9 +356,9 @@ export default async function HomePage() {
 
           <div className="grid grid-cols-2 gap-4">
             <BigStat label="Direct slots" value="L + R" />
-            <BigStat label="Tree depth" value="15 levels" />
+            <BigStat label="Reward gifts" value="15 milestones" />
             <BigStat label="Min payout" value="500 pts" />
-            <BigStat label="Daily payouts" value="90%" />
+            <BigStat label="Payout run" value="12 AM IST" />
           </div>
         </div>
       </section>

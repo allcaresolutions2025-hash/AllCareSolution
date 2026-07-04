@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Bell, MessageCircle, Phone, AlertTriangle, Download } from "lucide-react";
 import { formatRupees, calcTotalPenalty } from "@/lib/loan";
 import { SearchBox } from "./pending-loans-section";
+import { ClientPagination } from "@/components/client-pagination";
+
+const PAGE_SIZE = 20;
 
 export type UnpaidInstallmentRow = {
   id: string;
@@ -126,12 +129,18 @@ export function UnpaidInstallmentsSection({
   tone: "amber" | "red";
 }) {
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
   const filtered = useMemo(() => rows.filter((r) => matches(r, q)), [rows, q]);
 
   const totals = useMemo(() => {
     const sum = filtered.reduce((acc, r) => acc + r.amount, 0);
     return { count: filtered.length, sum };
   }, [filtered]);
+
+  useEffect(() => setPage(1), [q]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const current = Math.min(page, totalPages);
+  const pageRows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
   const ring = tone === "red" ? "ring-red-200 bg-red-50/30" : "ring-amber-200 bg-amber-50/30";
 
@@ -185,12 +194,15 @@ export function UnpaidInstallmentsSection({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
+              {pageRows.map((r) => (
                 <UnpaidRow key={r.id} row={r} />
               ))}
             </tbody>
           </table>
         </div>
+      )}
+      {filtered.length > 0 && (
+        <ClientPagination page={current} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage} />
       )}
     </div>
   );

@@ -2,21 +2,29 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatINR } from "@/lib/money";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function CommissionsPage() {
+const PAGE_SIZE = 20;
+
+export default async function CommissionsPage({ searchParams }: { searchParams: { page?: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const commissions = await prisma.commission.findMany({
-    where: { beneficiaryId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    include: {
-      order: { select: { orderNumber: true, deliveredAt: true, buybackUntil: true } },
-    },
-    take: 200,
-  });
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [total, commissions] = await Promise.all([
+    prisma.commission.count({ where: { beneficiaryId: session.user.id } }),
+    prisma.commission.findMany({
+      where: { beneficiaryId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        order: { select: { orderNumber: true, deliveredAt: true, buybackUntil: true } },
+      },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
 
   return (
     <div>
@@ -72,6 +80,7 @@ export default async function CommissionsPage() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath="/affiliate/dashboard/commissions" />
         </div>
       )}
     </div>

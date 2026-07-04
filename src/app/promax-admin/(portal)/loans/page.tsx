@@ -4,12 +4,16 @@ import { LoanActions } from "./loan-actions";
 import { ReceiptActions } from "./receipt-actions";
 import { BadgeIndianRupee } from "lucide-react";
 import type { LoanStatus } from "@prisma/client";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pro Max Loans" };
 
-export default async function ProMaxAdminLoansPage() {
-  const [pending, receipts, active] = await Promise.all([
+const PAGE_SIZE = 20;
+
+export default async function ProMaxAdminLoansPage({ searchParams }: { searchParams: { page?: string } }) {
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [pending, receipts, recentTotal, active] = await Promise.all([
     prisma.loan.findMany({
       where: { proMax: true, status: "REQUESTED" },
       orderBy: { requestedAt: "asc" },
@@ -20,10 +24,12 @@ export default async function ProMaxAdminLoansPage() {
       orderBy: { uploadedAt: "asc" },
       include: { loan: { select: { tierKey: true, user: { select: { name: true, referralCode: true } } } } },
     }),
+    prisma.loan.count({ where: { proMax: true, status: { in: ["APPROVED", "CLOSED", "REJECTED"] } } }),
     prisma.loan.findMany({
       where: { proMax: true, status: { in: ["APPROVED", "CLOSED", "REJECTED"] } },
       orderBy: { updatedAt: "desc" },
-      take: 100,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: { user: { select: { name: true, referralCode: true } }, _count: { select: { installments: true } } },
     }),
   ]);
@@ -150,6 +156,9 @@ export default async function ProMaxAdminLoansPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {recentTotal > 0 && (
+          <Pagination page={page} pageSize={PAGE_SIZE} total={recentTotal} basePath="/promax-admin/loans" />
         )}
       </div>
     </div>

@@ -1,15 +1,26 @@
 import { prisma } from "@/lib/db";
 import { ProMaxRequestRow } from "./promax-request-row";
 import { KeyRound } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pro Max Pin Requests" };
 
-export default async function ProMaxAdminPinRequestsPage() {
-  const [pending, recent] = await Promise.all([
+const PAGE_SIZE = 20;
+
+export default async function ProMaxAdminPinRequestsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [pendingTotal, pending, recent] = await Promise.all([
+    prisma.pinRequest.count({ where: { proMax: true, status: "PENDING" } }),
     prisma.pinRequest.findMany({
       where: { proMax: true, status: "PENDING" },
       orderBy: { createdAt: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: { user: { select: { name: true, referralCode: true } } },
     }),
     prisma.pinRequest.findMany({
@@ -33,7 +44,7 @@ export default async function ProMaxAdminPinRequestsPage() {
 
       <div className="card overflow-hidden">
         <div className="p-5 border-b">
-          <h2 className="font-semibold">Pending ({pending.length})</h2>
+          <h2 className="font-semibold">Pending ({pendingTotal})</h2>
         </div>
         {pending.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">No pending requests.</div>
@@ -64,6 +75,9 @@ export default async function ProMaxAdminPinRequestsPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {pendingTotal > 0 && (
+          <Pagination page={page} pageSize={PAGE_SIZE} total={pendingTotal} basePath="/promax-admin/pin-requests" />
         )}
       </div>
 

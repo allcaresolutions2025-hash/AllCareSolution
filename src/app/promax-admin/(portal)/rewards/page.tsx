@@ -3,18 +3,24 @@ import { RewardStatusActions } from "./reward-status-actions";
 import { proMaxRewardPinWalletPoints } from "@/lib/rewards-promax";
 import { Trophy } from "lucide-react";
 import type { RewardClaimStatus } from "@prisma/client";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pro Max Rewards" };
 
 const OPEN_STATUSES: RewardClaimStatus[] = ["PENDING", "APPROVED", "DISPATCHED"];
+const PAGE_SIZE = 20;
 
-export default async function ProMaxAdminRewardsPage() {
-  const [open, recent] = await Promise.all([
+export default async function ProMaxAdminRewardsPage({ searchParams }: { searchParams: { page?: string } }) {
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [openTotal, pending, open, recent] = await Promise.all([
+    prisma.proMaxReward.count({ where: { status: { in: OPEN_STATUSES } } }),
+    prisma.proMaxReward.count({ where: { status: "PENDING" } }),
     prisma.proMaxReward.findMany({
       where: { status: { in: OPEN_STATUSES } },
       orderBy: [{ status: "asc" }, { requestedAt: "asc" }],
-      take: 200,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: { user: { select: { name: true, referralCode: true } } },
     }),
     prisma.proMaxReward.findMany({
@@ -24,8 +30,6 @@ export default async function ProMaxAdminRewardsPage() {
       include: { user: { select: { name: true, referralCode: true } } },
     }),
   ]);
-
-  const pending = open.filter((r) => r.status === "PENDING").length;
 
   return (
     <div className="space-y-6">
@@ -88,6 +92,9 @@ export default async function ProMaxAdminRewardsPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {openTotal > 0 && (
+          <Pagination page={page} pageSize={PAGE_SIZE} total={openTotal} basePath="/promax-admin/rewards" />
         )}
       </div>
 

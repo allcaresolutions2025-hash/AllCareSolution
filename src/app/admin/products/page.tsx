@@ -3,11 +3,22 @@ import { prisma } from "@/lib/db";
 import { formatINR } from "@/lib/money";
 import { Plus } from "lucide-react";
 import { DeleteProductButton } from "./delete-product-button";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminProductsPage() {
-  const products = await prisma.product.findMany({ orderBy: { sortOrder: "asc" } });
+const PAGE_SIZE = 20;
+
+export default async function AdminProductsPage({ searchParams }: { searchParams: { page?: string } }) {
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [total, products] = await Promise.all([
+    prisma.product.count(),
+    prisma.product.findMany({
+      orderBy: { sortOrder: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
 
   return (
     <div>
@@ -59,6 +70,7 @@ export default async function AdminProductsPage() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath="/admin/products" />
       </div>
     </div>
   );

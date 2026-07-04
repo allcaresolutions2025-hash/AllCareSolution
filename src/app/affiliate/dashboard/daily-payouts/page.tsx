@@ -3,20 +3,27 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
 import { Coins, Clock, CheckCircle2 } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function MyDailyPayoutsPage() {
+const PAGE_SIZE = 20;
+
+export default async function MyDailyPayoutsPage({ searchParams }: { searchParams: { page?: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+
   // Members only see PAID payouts in their history — pending and unpaid
   // (admin-restored) rows are an internal/admin concern.
-  const [payouts, totals] = await Promise.all([
+  const [total, payouts, totals] = await Promise.all([
+    prisma.dailyPayout.count({ where: { userId: session.user.id, status: "PAID" } }),
     prisma.dailyPayout.findMany({
       where: { userId: session.user.id, status: "PAID" },
       orderBy: { runDate: "desc" },
-      take: 60,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
     prisma.dailyPayout.groupBy({
       by: ["status"],
@@ -90,6 +97,7 @@ export default async function MyDailyPayoutsPage() {
                 ))}
               </tbody>
             </table>
+            <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath="/affiliate/dashboard/daily-payouts" />
           </div>
         )}
       </div>

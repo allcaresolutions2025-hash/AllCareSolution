@@ -3,22 +3,22 @@ import { Leaf, CheckCircle2, XCircle, Users, Gift } from "lucide-react";
 
 export const metadata = { title: "Points Program" };
 
-const REWARD_TIERS: { level: number; reward: string }[] = [
-  { level: 1, reward: "Welcome Kit" },
-  { level: 2, reward: "Product 1" },
-  { level: 3, reward: "Product 2" },
-  { level: 4, reward: "Product 2" },
-  { level: 5, reward: "Product 2" },
-  { level: 6, reward: "Product 5" },
-  { level: 7, reward: "Power Bank" },
-  { level: 8, reward: "Air Buds" },
-  { level: 9, reward: "Mobile (10K class)" },
-  { level: 10, reward: "Laptop (20K class)" },
-  { level: 11, reward: "Two-Wheeler (1 Lakh class)" },
-  { level: 12, reward: "Car (3 Lakh class)" },
-  { level: 13, reward: "Gold (5 Lakh class)" },
-  { level: 14, reward: "House (20 Lakh class)" },
-  { level: 15, reward: "Villa + Gold + Luxury Car (1 Crore class)" },
+const REWARD_TIERS: { milestone: number; reward: string }[] = [
+  { milestone: 1, reward: "Welcome Kit" },
+  { milestone: 2, reward: "Product 1" },
+  { milestone: 3, reward: "Product 2" },
+  { milestone: 4, reward: "Product 2" },
+  { milestone: 5, reward: "Product 2" },
+  { milestone: 6, reward: "Product 5" },
+  { milestone: 7, reward: "Power Bank" },
+  { milestone: 8, reward: "Air Buds" },
+  { milestone: 9, reward: "Mobile (10K class)" },
+  { milestone: 10, reward: "Laptop (20K class)" },
+  { milestone: 11, reward: "Two-Wheeler (1 Lakh class)" },
+  { milestone: 12, reward: "Car (3 Lakh class)" },
+  { milestone: 13, reward: "Gold (5 Lakh class)" },
+  { milestone: 14, reward: "House (20 Lakh class)" },
+  { milestone: 15, reward: "Villa + Gold + Luxury Car (1 Crore class)" },
 ];
 
 export default function AffiliatePublicPage() {
@@ -56,52 +56,51 @@ export default function AffiliatePublicPage() {
         <p className="text-muted-foreground text-center mt-2 max-w-2xl mx-auto">
           Each member has exactly two slots: a <strong>Left</strong> and a
           <strong> Right</strong>. You earn points for direct referrals you place,
-          and for every <em>pair match</em> in your downline — i.e. whenever your
+          and for every <em>pair match</em> in your team — i.e. whenever your
           Left and Right legs grow in step.
         </p>
         <div className="mt-10 grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-          <LevelCard
-            level="Direct referral"
+          <EarnCard
+            title="Direct referral"
             rate="+200"
             description="Every member you personally place below you (Left or Right) credits you with 200 points."
             example="You refer 2 people → +400 points"
           />
-          <LevelCard
-            level="First-pair bonus"
+          <EarnCard
+            title="First-pair bonus"
             rate="+500"
             description="The first time both your Left and Right slots are filled, you receive a one-time 500-point bonus."
             example="Left + Right both filled → +500 once"
           />
-          <LevelCard
-            level="Pair match"
+          <EarnCard
+            title="Pair match"
             rate="+200 / +100"
-            description="Every additional pair formed in your downline pays 200 points if the joiner is within 15 levels below you, or 100 points if at level 16+."
-            example="Both legs grow by 1 → +200 (or +100 deep)"
+            description="Every additional matched pair in your team pays 200 points, reduced to 100 points for pairs formed beyond your core team."
+            example="Both sides grow by 1 → +200 (or +100)"
           />
         </div>
       </section>
 
       <section className="bg-muted/40 border-y">
         <div className="container py-16">
-          <h2 className="text-3xl font-bold text-center mb-2">Reward gifts by level</h2>
+          <h2 className="text-3xl font-bold text-center mb-2">Reward gift milestones</h2>
           <p className="text-muted-foreground text-center mb-10 max-w-2xl mx-auto">
-            When your tree fills to a given depth, the corresponding gift is unlocked.
-            Gifts are dispatched after the level is verified at the daily cutoff.
+            As you reach higher point milestones, the corresponding reward gift is unlocked.
+            Gifts are dispatched after eligibility is verified at the daily cutoff. Reward
+            gifts are a token of appreciation — they are not income or a guaranteed return.
           </p>
           <div className="max-w-3xl mx-auto card overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-left">
                 <tr>
-                  <th className="px-5 py-3 font-semibold">Level</th>
-                  <th className="px-5 py-3 font-semibold">Tree members at this level</th>
+                  <th className="px-5 py-3 font-semibold">Milestone</th>
                   <th className="px-5 py-3 font-semibold">Reward gift</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {REWARD_TIERS.map((t) => (
-                  <tr key={t.level}>
-                    <td className="px-5 py-3 font-mono">{t.level}</td>
-                    <td className="px-5 py-3 font-mono">{(2 ** t.level).toLocaleString("en-IN")}</td>
+                  <tr key={t.milestone}>
+                    <td className="px-5 py-3 font-mono">{t.milestone}</td>
                     <td className="px-5 py-3 flex items-center gap-2">
                       <Gift className="h-4 w-4 text-brand-700 shrink-0" />
                       {t.reward}
@@ -126,8 +125,8 @@ export default function AffiliatePublicPage() {
               <Yes>Each member has a Left and a Right slot — binary structure.</Yes>
               <Yes>+200 points per direct referral you place.</Yes>
               <Yes>+500 one-time bonus the first time you fill both Left and Right.</Yes>
-              <Yes>+200 per pair-match in your downline (100 points at level 16 and below).</Yes>
-              <Yes>Daily cutoff: tree state and gift eligibility are evaluated once per day.</Yes>
+              <Yes>+200 per matched pair in your team (100 points for pairs beyond your core team).</Yes>
+              <Yes>Daily cutoff: team state and gift eligibility are evaluated once per day.</Yes>
               <Yes>You may leave at any time.</Yes>
             </ul>
           </div>
@@ -139,7 +138,7 @@ export default function AffiliatePublicPage() {
               <No><strong>No money is paid or received as part of points.</strong> Points have zero cash value.</No>
               <No>Points cannot be exchanged for cash, transferred, or converted to rupees.</No>
               <No>This is not a loan product, an investment scheme, or a money-circulation arrangement.</No>
-              <No>No guaranteed income or return is promised at any level.</No>
+              <No>No guaranteed income or return is promised at any stage.</No>
               <No>No points for un-matched legs — a side that has no activity on the opposite side does not produce pair-match credit.</No>
               <No>Points are forfeited on account closure. Delivered gifts are yours to keep.</No>
             </ul>
@@ -164,11 +163,11 @@ export default function AffiliatePublicPage() {
   );
 }
 
-function LevelCard({ level, rate, description, example }: { level: string; rate: string; description: string; example: string }) {
+function EarnCard({ title, rate, description, example }: { title: string; rate: string; description: string; example: string }) {
   return (
     <div className="card p-5 sm:p-6">
       <div className="flex justify-between items-start gap-3">
-        <h3 className="font-semibold">{level}</h3>
+        <h3 className="font-semibold">{title}</h3>
         <span className="text-2xl sm:text-3xl font-bold text-brand-700 whitespace-nowrap">{rate}</span>
       </div>
       <p className="text-sm text-muted-foreground mt-2">{description}</p>

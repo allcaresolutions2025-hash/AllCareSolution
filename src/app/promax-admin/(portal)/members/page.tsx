@@ -2,30 +2,43 @@ import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
 import { CreditWallet } from "./credit-wallet";
 import { Wallet, BadgeIndianRupee } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pro Max Members & Wallets" };
 
-export default async function ProMaxAdminMembersPage() {
-  const members = await prisma.user.findMany({
-    where: { isProMax: true },
-    orderBy: { createdAt: "asc" },
-    take: 500,
-    select: {
-      id: true,
-      name: true,
-      referralCode: true,
-      phone: true,
-      proMaxLeftLegCount: true,
-      proMaxRightLegCount: true,
-      wallet: { select: { proMaxBalanceAvailable: true, pinWalletBalance: true } },
-      // Flag members with an active (disbursed, not-yet-cleared) Pro Max loan.
-      loans: { where: { proMax: true, status: "APPROVED" }, select: { id: true }, take: 1 },
-    },
-  });
+const PAGE_SIZE = 20;
 
-  const totalPoints = members.reduce((s, m) => s + (m.wallet?.proMaxBalanceAvailable ?? 0), 0);
-  const totalPinWallet = members.reduce((s, m) => s + (m.wallet?.pinWalletBalance ?? 0), 0);
+export default async function ProMaxAdminMembersPage({ searchParams }: { searchParams: { page?: string } }) {
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [total, walletTotals, members] = await Promise.all([
+    prisma.user.count({ where: { isProMax: true } }),
+    // Totals are computed across ALL Pro Max members, not just the current page.
+    prisma.wallet.aggregate({
+      where: { user: { isProMax: true } },
+      _sum: { proMaxBalanceAvailable: true, pinWalletBalance: true },
+    }),
+    prisma.user.findMany({
+      where: { isProMax: true },
+      orderBy: { createdAt: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      select: {
+        id: true,
+        name: true,
+        referralCode: true,
+        phone: true,
+        proMaxLeftLegCount: true,
+        proMaxRightLegCount: true,
+        wallet: { select: { proMaxBalanceAvailable: true, pinWalletBalance: true } },
+        // Flag members with an active (disbursed, not-yet-cleared) Pro Max loan.
+        loans: { where: { proMax: true, status: "APPROVED" }, select: { id: true }, take: 1 },
+      },
+    }),
+  ]);
+
+  const totalPoints = walletTotals._sum.proMaxBalanceAvailable ?? 0;
+  const totalPinWallet = walletTotals._sum.pinWalletBalance ?? 0;
 
   return (
     <div className="space-y-6">
@@ -39,7 +52,7 @@ export default async function ProMaxAdminMembersPage() {
       </div>
 
       <div className="grid sm:grid-cols-3 gap-4">
-        <Kpi label="Pro Max members" value={String(members.length)} />
+        <Kpi label="Pro Max members" value={String(total)} />
         <Kpi label="Total Pro Max points" value={formatPoints(totalPoints)} />
         <Kpi label="Total Pin Wallet points" value={formatPoints(totalPinWallet)} />
       </div>
@@ -87,6 +100,9 @@ export default async function ProMaxAdminMembersPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {total > 0 && (
+          <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath="/promax-admin/members" />
         )}
       </div>
     </div>

@@ -2,21 +2,30 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { formatDate } from "@/lib/date";
 import { Plus, Pencil, ExternalLink, Eye, EyeOff } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminBlogPage() {
-  const articles = await prisma.article.findMany({
-    orderBy: [{ createdAt: "desc" }],
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      isPublished: true,
-      publishedAt: true,
-      createdAt: true,
-    },
-  });
+const PAGE_SIZE = 20;
+
+export default async function AdminBlogPage({ searchParams }: { searchParams: { page?: string } }) {
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [total, articles] = await Promise.all([
+    prisma.article.count(),
+    prisma.article.findMany({
+      orderBy: [{ createdAt: "desc" }],
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        isPublished: true,
+        publishedAt: true,
+        createdAt: true,
+      },
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -82,6 +91,9 @@ export default async function AdminBlogPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {total > 0 && (
+          <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath="/admin/blog" />
         )}
       </div>
     </div>

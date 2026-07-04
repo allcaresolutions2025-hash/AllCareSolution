@@ -5,9 +5,12 @@ import { getSetting } from "@/lib/settings";
 import { toPaise, formatPoints } from "@/lib/money";
 import { Wallet, KeyRound, ArrowDownLeft, ArrowUpRight, Coins, Lock } from "lucide-react";
 import { PinWalletActions } from "./pin-wallet-actions";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pin Wallet" };
+
+const TXN_PAGE_SIZE = 20;
 
 function txnLabel(type: string, amount: number): string {
   switch (type) {
@@ -27,11 +30,13 @@ function txnLabel(type: string, amount: number): string {
   }
 }
 
-export default async function PinWalletPage() {
+export default async function PinWalletPage({ searchParams }: { searchParams: { page?: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [user, wallet, txns, activePins, pinWalletPriceInr] = await Promise.all([
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+
+  const [user, wallet, txns, txnTotal, activePins, pinWalletPriceInr] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { leftLegCount: true, rightLegCount: true, pinWalletUnlocked: true, pinWalletLocked: true },
@@ -43,8 +48,10 @@ export default async function PinWalletPage() {
     prisma.pinWalletTxn.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
-      take: 25,
+      skip: (page - 1) * TXN_PAGE_SIZE,
+      take: TXN_PAGE_SIZE,
     }),
+    prisma.pinWalletTxn.count({ where: { userId: session.user.id } }),
     prisma.pin.count({ where: { ownerId: session.user.id, status: "ACTIVE", proMax: false } }),
     getSetting("PIN_WALLET_PRICE_INR"),
   ]);
@@ -198,6 +205,7 @@ export default async function PinWalletPage() {
                 })}
               </tbody>
             </table>
+            <Pagination page={page} pageSize={TXN_PAGE_SIZE} total={txnTotal} basePath="/affiliate/dashboard/pin-wallet" />
           </div>
         )}
       </div>

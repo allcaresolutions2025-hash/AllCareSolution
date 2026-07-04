@@ -4,16 +4,20 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { TransferPinForm } from "./transfer-pin-form";
 import { KeyRound, CheckCircle2, ArrowLeftRight, ShieldAlert } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 20;
 
 type Tab = "unused" | "used" | "transfer";
 const TABS: Tab[] = ["unused", "used", "transfer"];
 
-export default async function PinStatusPage({ searchParams }: { searchParams: { tab?: string } }) {
+export default async function PinStatusPage({ searchParams }: { searchParams: { tab?: string; page?: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return null;
   const tab: Tab = TABS.includes(searchParams.tab as Tab) ? (searchParams.tab as Tab) : "unused";
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
 
   const me = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -37,8 +41,8 @@ export default async function PinStatusPage({ searchParams }: { searchParams: { 
         </div>
       </div>
 
-      {tab === "unused" && <UnusedPanel userId={session.user.id} />}
-      {tab === "used" && <UsedPanel userId={session.user.id} />}
+      {tab === "unused" && <UnusedPanel userId={session.user.id} page={page} />}
+      {tab === "used" && <UsedPanel userId={session.user.id} page={page} />}
       {tab === "transfer" && (
         <TransferPanel
           userId={session.user.id}
@@ -67,18 +71,24 @@ function TabLink({ current, value, label }: { current: Tab; value: Tab; label: s
   );
 }
 
-async function UnusedPanel({ userId }: { userId: string }) {
-  const pins = await prisma.pin.findMany({
-    where: { ownerId: userId, status: "ACTIVE", proMax: false },
-    orderBy: { createdAt: "asc" },
-    include: { request: { select: { createdAt: true, reviewedAt: true } } },
-  });
+async function UnusedPanel({ userId, page }: { userId: string; page: number }) {
+  const where = { ownerId: userId, status: "ACTIVE" as const, proMax: false };
+  const [total, pins] = await Promise.all([
+    prisma.pin.count({ where }),
+    prisma.pin.findMany({
+      where,
+      orderBy: { createdAt: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: { request: { select: { createdAt: true, reviewedAt: true } } },
+    }),
+  ]);
 
   return (
     <div className="card overflow-hidden">
       <div className="px-5 py-3 border-b flex items-center justify-between">
         <h2 className="font-semibold inline-flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-emerald-700" /> Unused pins ({pins.length})
+          <KeyRound className="h-4 w-4 text-emerald-700" /> Unused pins ({total})
         </h2>
         <Link href="/affiliate/dashboard/request-pin" className="text-xs text-brand-700 hover:underline">
           Request more
@@ -114,23 +124,32 @@ async function UnusedPanel({ userId }: { userId: string }) {
           </table>
         </div>
       )}
+      {total > 0 && (
+        <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath="/affiliate/dashboard/pin-status" params={{ tab: "unused" }} />
+      )}
     </div>
   );
 }
 
-async function UsedPanel({ userId }: { userId: string }) {
-  const pins = await prisma.pin.findMany({
-    where: { ownerId: userId, status: "USED", proMax: false },
-    orderBy: { usedAt: "desc" },
-    include: {
-      usedForUser: { select: { name: true, email: true, referralCode: true, slot: true } },
-    },
-  });
+async function UsedPanel({ userId, page }: { userId: string; page: number }) {
+  const where = { ownerId: userId, status: "USED" as const, proMax: false };
+  const [total, pins] = await Promise.all([
+    prisma.pin.count({ where }),
+    prisma.pin.findMany({
+      where,
+      orderBy: { usedAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: {
+        usedForUser: { select: { name: true, email: true, referralCode: true, slot: true } },
+      },
+    }),
+  ]);
 
   return (
     <div className="card overflow-hidden">
       <div className="px-5 py-3 border-b">
-        <h2 className="font-semibold">Used pins ({pins.length})</h2>
+        <h2 className="font-semibold">Used pins ({total})</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
           Each used pin shows the member it was consumed to enroll.
         </p>
@@ -185,6 +204,9 @@ async function UsedPanel({ userId }: { userId: string }) {
             </tbody>
           </table>
         </div>
+      )}
+      {total > 0 && (
+        <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath="/affiliate/dashboard/pin-status" params={{ tab: "used" }} />
       )}
     </div>
   );

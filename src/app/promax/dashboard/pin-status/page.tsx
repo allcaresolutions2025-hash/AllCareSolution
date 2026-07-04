@@ -2,26 +2,34 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ListChecks } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pro Max Pin Status" };
 
-export default async function ProMaxPinStatusPage() {
+const PAGE_SIZE = 20;
+
+export default async function ProMaxPinStatusPage({ searchParams }: { searchParams: { page?: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const pins = await prisma.pin.findMany({
-    where: { ownerId: session.user.id, proMax: true },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-    take: 200,
-    select: {
-      code: true,
-      status: true,
-      createdAt: true,
-      usedAt: true,
-      usedForUser: { select: { name: true, referralCode: true } },
-    },
-  });
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [total, pins] = await Promise.all([
+    prisma.pin.count({ where: { ownerId: session.user.id, proMax: true } }),
+    prisma.pin.findMany({
+      where: { ownerId: session.user.id, proMax: true },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      select: {
+        code: true,
+        status: true,
+        createdAt: true,
+        usedAt: true,
+        usedForUser: { select: { name: true, referralCode: true } },
+      },
+    }),
+  ]);
 
   const active = pins.filter((p) => p.status === "ACTIVE").length;
   const used = pins.filter((p) => p.status === "USED").length;
@@ -91,6 +99,9 @@ export default async function ProMaxPinStatusPage() {
               ))}
             </tbody>
           </table>
+        )}
+        {total > 0 && (
+          <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath="/promax/dashboard/pin-status" />
         )}
       </div>
     </div>

@@ -1,23 +1,31 @@
 import { prisma } from "@/lib/db";
 import { GenerateProMaxPinsCard } from "./generate-promax-pins-card";
 import { KeyRound } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Generate Pro Max Pins" };
 
-export default async function ProMaxAdminPinsPage() {
-  const recent = await prisma.pin.findMany({
-    where: { proMax: true },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    select: {
-      code: true,
-      status: true,
-      createdAt: true,
-      owner: { select: { name: true, referralCode: true } },
-      usedForUser: { select: { name: true, referralCode: true } },
-    },
-  });
+const PAGE_SIZE = 20;
+
+export default async function ProMaxAdminPinsPage({ searchParams }: { searchParams: { page?: string } }) {
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const [total, recent] = await Promise.all([
+    prisma.pin.count({ where: { proMax: true } }),
+    prisma.pin.findMany({
+      where: { proMax: true },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      select: {
+        code: true,
+        status: true,
+        createdAt: true,
+        owner: { select: { name: true, referralCode: true } },
+        usedForUser: { select: { name: true, referralCode: true } },
+      },
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -80,6 +88,9 @@ export default async function ProMaxAdminPinsPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {total > 0 && (
+          <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath="/promax-admin/pins" />
         )}
       </div>
     </div>
