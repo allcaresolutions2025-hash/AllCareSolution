@@ -8,19 +8,23 @@ import { formatPoints } from "@/lib/money";
 
 // Per-transfer minimums (points = whole rupees).
 const MIN_TOPUP = 200;     // payout -> pin wallet
-const MIN_WITHDRAW = 3000; // pin wallet -> payout
 
 export function PinWalletActions({
   pinWalletBalance,
   payoutBalance,
   pricePerPin,
   maxBuyable,
+  minWithdraw = 3000,
 }: {
   pinWalletBalance: number;
   payoutBalance: number;
   pricePerPin: number; // paise
   maxBuyable: number;
+  // Pin Wallet -> payout floor. 3,000 for standard members; 6,000 for members
+  // who have taken a loan of Rs. 5,000 or more.
+  minWithdraw?: number;
 }) {
+  const MIN_WITHDRAW = minWithdraw;
   const router = useRouter();
   // Kept as a raw string so the field can be cleared/retyped freely; parsed to
   // a number only where we need it. Forcing a numeric min on the value made the

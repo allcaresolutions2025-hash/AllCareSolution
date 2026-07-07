@@ -3,11 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
-import { tierByKey, tierIsEligible, nextClaimableTier, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE } from "@/lib/loan";
+import { tierByKey, tierIsEligible, nextClaimableTier, specialLoanEligible, SPECIAL_LOAN_KEY, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 
+// Allowed tier keys = the leg-based ladder plus the standalone Special Loan.
+const ALLOWED_TIER_KEYS = [SPECIAL_LOAN_KEY, ...LOAN_TIERS.map((t) => t.key)] as [string, ...string[]];
 const bodySchema = z.object({
-  tierKey: z.enum(LOAN_TIERS.map((t) => t.key) as [string, ...string[]]),
+  tierKey: z.enum(ALLOWED_TIER_KEYS),
   whatsappNumber: z.string().regex(/^[6-9][0-9]{9}$/, "Enter a valid 10-digit WhatsApp number"),
 });
 
@@ -84,19 +86,31 @@ export async function POST(req: Request) {
     rightFillDepth: fillDepths.rightFillDepth,
     completedTierKeys,
   };
-  if (!tierIsEligible(tier, ctx)) {
-    return NextResponse.json({ error: "You do not qualify for this tier yet" }, { status: 400 });
-  }
-  const next = nextClaimableTier(ctx);
-  if (!next || next.key !== tier.key) {
-    return NextResponse.json(
-      {
-        error: next
-          ? `Complete the ${formatRupees(next.amount)} loan first before applying for this tier.`
-          : "You do not qualify for any tier yet.",
-      },
-      { status: 400 },
-    );
+
+  if (tier.key === SPECIAL_LOAN_KEY) {
+    // The Special Loan sits outside the sequential ladder — it only requires
+    // that the member has completed (repaid) their Level-1 Rs. 2,000 loan.
+    if (!specialLoanEligible(ctx)) {
+      return NextResponse.json(
+        { error: "The Special Loan unlocks once you have completed your Rs. 2,000 loan." },
+        { status: 400 },
+      );
+    }
+  } else {
+    if (!tierIsEligible(tier, ctx)) {
+      return NextResponse.json({ error: "You do not qualify for this tier yet" }, { status: 400 });
+    }
+    const next = nextClaimableTier(ctx);
+    if (!next || next.key !== tier.key) {
+      return NextResponse.json(
+        {
+          error: next
+            ? `Complete the ${formatRupees(next.amount)} loan first before applying for this tier.`
+            : "You do not qualify for any tier yet.",
+        },
+        { status: 400 },
+      );
+    }
   }
 
   const loan = await prisma.$transaction(async (tx) => {

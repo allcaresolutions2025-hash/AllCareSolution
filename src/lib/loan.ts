@@ -21,13 +21,14 @@
 
 export type LoanTier = {
   key: string;
-  level: number;            // binary-tree level (1, 3, 5, ...)
+  level: number;            // binary-tree level (1, 3, 5, ...); 0 for the Special Loan
   label: string;            // human description of the requirement
   amount: number;           // paise
   amountLabel: string;      // pretty rupee label
   totalWeeks: number;
-  // Either a leg-count tier (legCount), or the directs-1-1 tier (directs).
-  kind: "directs" | "legCount";
+  // Either a leg-count tier (legCount), the directs-1-1 tier (directs), or the
+  // standalone Special Loan (special) which is unlocked by completing Level 1.
+  kind: "directs" | "legCount" | "special";
   legCount?: number;
 };
 
@@ -45,7 +46,35 @@ export const LOAN_TIERS: LoanTier[] = [
   { key: "LEG_32767",   level: 15, kind: "legCount", legCount: 32767,     label: "Level 15 — 32,767 members on Left & 32,767 on Right",    amount: 10_000_000_00, amountLabel: "Rs. 1 Crore",   totalWeeks: 100 },
 ];
 
+// ---- Special Loan (post Level-1) -------------------------------------------
+// A one-time offer that sits OUTSIDE the leg-based ladder. Once a member has
+// completed (fully repaid) their Level-1 Rs. 2,000 loan, they may take a
+// Rs. 5,000 "Special Loan", credited to their Pin Wallet, repaid Rs. 2,500 per
+// week for 2 weeks. Eligibility does NOT depend on leg fill depth, and taking
+// it does not block or advance the leg-based ladder. Every Rs. 2,000-loan
+// graduate is eligible, once.
+export const LEVEL1_LOAN_KEY = "DIRECTS_1_1";
+export const SPECIAL_LOAN_KEY = "SPECIAL_5000";
+
+export const SPECIAL_LOAN_TIER: LoanTier = {
+  key: SPECIAL_LOAN_KEY,
+  level: 0,
+  kind: "special",
+  label: "Special Loan — for members who completed the Rs. 2,000 loan",
+  amount: 500_000, // Rs. 5,000
+  amountLabel: "Rs. 5,000",
+  totalWeeks: 2, // Rs. 2,500 per week x 2
+};
+
+// A member qualifies for the Special Loan once they have CLOSED (fully repaid)
+// their Level-1 Rs. 2,000 loan and have not already taken the Special Loan.
+export function specialLoanEligible(ctx: EligibilityContext): boolean {
+  const done = ctx.completedTierKeys ?? [];
+  return done.includes(LEVEL1_LOAN_KEY) && !done.includes(SPECIAL_LOAN_KEY);
+}
+
 export function tierByKey(key: string): LoanTier | undefined {
+  if (key === SPECIAL_LOAN_KEY) return SPECIAL_LOAN_TIER;
   return LOAN_TIERS.find((t) => t.key === key);
 }
 
@@ -83,6 +112,10 @@ export function tierIsCompleted(tier: LoanTier, ctx: EligibilityContext): boolea
 
 export function tierIsEligible(tier: LoanTier, ctx: EligibilityContext): boolean {
   if (tierIsCompleted(tier, ctx)) return false;
+  if (tier.kind === "special") {
+    // Special Loan: gated only by having completed the Level-1 loan.
+    return specialLoanEligible(ctx);
+  }
   if (tier.kind === "directs") {
     return ctx.directLeftSlots >= 1 && ctx.directRightSlots >= 1;
   }
@@ -174,6 +207,16 @@ export function calcTotalPenalty(loanAmountPaise: number, daysOverdue: number): 
 // Paying a loan installment with Pin Wallet points carries a 9% convenience
 // surcharge on the installment amount, plus any accrued overdue penalty. All
 // values are paise. e.g. a ₹1,000 installment costs 1,090; ₹2,500 costs 2,725.
+// ---- Pin Wallet -> payout transfer floor -----------------------------------
+// Standard members must transfer at least 3,000 points at a time from the Pin
+// Wallet to their payout wallet. Members who have taken a loan of Rs. 5,000 or
+// more (the Special Loan or any higher-ladder loan) must instead have/transfer
+// at least 6,000 points — below that they can only spend Pin Wallet points on
+// pins. The Rs. 2,000-only borrowers keep the 3,000 floor.
+export const MIN_WITHDRAW_POINTS = 3000;
+export const MIN_WITHDRAW_POINTS_BIG_LOAN = 6000;
+export const BIG_LOAN_THRESHOLD_PAISE = 500_000; // Rs. 5,000
+
 export const LOAN_WALLET_SURCHARGE_PCT = 9;
 
 export function loanWalletSurcharge(installmentPaise: number): number {

@@ -3,15 +3,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canAccessPinWallet, PIN_WALLET_LOCKED_MESSAGE } from "@/lib/pin-wallet-access";
+import { MIN_WITHDRAW_POINTS, MIN_WITHDRAW_POINTS_BIG_LOAN, BIG_LOAN_THRESHOLD_PAISE } from "@/lib/loan";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 // Points are whole rupees (1 point = ₹1 = 100 paise). Moving points the other
-// way — Pin Wallet back into the payout (e-wallet) balance — has a higher floor.
-const MIN_WITHDRAW_POINTS = 3000;
+// way — Pin Wallet back into the payout (e-wallet) balance — has a floor that
+// depends on the member's loan history; it is enforced once we know it below.
 const bodySchema = z.object({
-  points: z.number().int().min(MIN_WITHDRAW_POINTS, `Minimum transfer is ${MIN_WITHDRAW_POINTS} points`),
+  points: z.number().int().positive(),
 });
 
 export async function POST(req: Request) {
@@ -27,6 +28,28 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? "Invalid request" }, { status: 400 });
   }
+
+  // Members who have taken a loan of Rs. 5,000 or more (the Special Loan or any
+  // higher-ladder loan) must transfer at least 6,000 points at a time; everyone
+  // else keeps the standard 3,000-point floor. Below the floor they can still
+  // spend Pin Wallet points on pins — they just can't move them to payout.
+  const bigLoan = await prisma.loan.findFirst({
+    where: {
+      userId: session.user.id,
+      proMax: false,
+      status: { in: ["APPROVED", "CLOSED"] },
+      amount: { gte: BIG_LOAN_THRESHOLD_PAISE },
+    },
+    select: { id: true },
+  });
+  const minPoints = bigLoan ? MIN_WITHDRAW_POINTS_BIG_LOAN : MIN_WITHDRAW_POINTS;
+  if (parsed.data.points < minPoints) {
+    return NextResponse.json(
+      { error: `Minimum transfer to your payout wallet is ${minPoints.toLocaleString("en-IN")} points.` },
+      { status: 400 },
+    );
+  }
+
   const amountPaise = parsed.data.points * 100;
 
   try {

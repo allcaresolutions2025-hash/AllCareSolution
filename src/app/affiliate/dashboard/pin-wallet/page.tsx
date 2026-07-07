@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
+import { MIN_WITHDRAW_POINTS, MIN_WITHDRAW_POINTS_BIG_LOAN, BIG_LOAN_THRESHOLD_PAISE } from "@/lib/loan";
 import { toPaise, formatPoints } from "@/lib/money";
 import { Wallet, KeyRound, ArrowDownLeft, ArrowUpRight, Coins, Lock } from "lucide-react";
 import { PinWalletActions } from "./pin-wallet-actions";
@@ -36,7 +37,7 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
 
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
 
-  const [user, wallet, txns, txnTotal, activePins, pinWalletPriceInr] = await Promise.all([
+  const [user, wallet, txns, txnTotal, activePins, pinWalletPriceInr, bigLoan] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { leftLegCount: true, rightLegCount: true, pinWalletUnlocked: true, pinWalletLocked: true },
@@ -54,10 +55,21 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
     prisma.pinWalletTxn.count({ where: { userId: session.user.id } }),
     prisma.pin.count({ where: { ownerId: session.user.id, status: "ACTIVE", proMax: false } }),
     getSetting("PIN_WALLET_PRICE_INR"),
+    // Members who took a loan of Rs. 5,000+ must transfer at least 6,000 pts.
+    prisma.loan.findFirst({
+      where: {
+        userId: session.user.id,
+        proMax: false,
+        status: { in: ["APPROVED", "CLOSED"] },
+        amount: { gte: BIG_LOAN_THRESHOLD_PAISE },
+      },
+      select: { id: true },
+    }),
   ]);
 
   const pinWalletBalance = wallet?.pinWalletBalance ?? 0;
   const payoutBalance = wallet?.balanceAvailable ?? 0;
+  const minWithdraw = bigLoan ? MIN_WITHDRAW_POINTS_BIG_LOAN : MIN_WITHDRAW_POINTS;
   const pricePerPin = toPaise(pinWalletPriceInr);
   const maxBuyable = pricePerPin > 0 ? Math.floor(pinWalletBalance / pricePerPin) : 0;
 
@@ -158,6 +170,7 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
         payoutBalance={payoutBalance}
         pricePerPin={pricePerPin}
         maxBuyable={maxBuyable}
+        minWithdraw={minWithdraw}
       />
 
       {/* Ledger */}

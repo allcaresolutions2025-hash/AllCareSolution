@@ -2,8 +2,8 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock, Wrench, ShieldAlert } from "lucide-react";
-import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, type EligibilityContext } from "@/lib/loan";
+import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock, Wrench, ShieldAlert, Sparkles } from "lucide-react";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, specialLoanEligible, SPECIAL_LOAN_TIER, SPECIAL_LOAN_KEY, LEVEL1_LOAN_KEY, type EligibilityContext } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 import { ApplyLoanButton } from "./apply-loan-button";
 
@@ -49,6 +49,13 @@ export default async function AchievedOffersPage() {
 
   const claimable = nextClaimableTier(ctx);
   const paused = loansPaused();
+
+  // Special Loan (standalone, post Level-1) state.
+  const completedTierKeys = ctx.completedTierKeys ?? [];
+  const completedLevel1 = completedTierKeys.includes(LEVEL1_LOAN_KEY);
+  const completedSpecial = completedTierKeys.includes(SPECIAL_LOAN_KEY);
+  const specialActive = activeLoan?.tierKey === SPECIAL_LOAN_KEY;
+  const specialCanApply = specialLoanEligible(ctx) && !activeLoan && !paused && !panBlocked;
 
   return (
     <div className="space-y-6">
@@ -150,6 +157,64 @@ export default async function AchievedOffersPage() {
               Apply for loan
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Special Loan — standalone offer unlocked after the Level-1 Rs. 2,000 loan */}
+      <div className="card overflow-hidden ring-1 ring-amber-200">
+        <div className="p-5 bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-amber-200 flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-lg bg-amber-100 text-amber-700 grid place-items-center shrink-0">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-semibold">Special Loan</h2>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                  Special
+                </span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-1 max-w-xl">
+                A one-time <strong className="text-amber-800">{SPECIAL_LOAN_TIER.amountLabel}</strong> loan credited
+                straight to your Pin Wallet. Repay <strong>Rs. 2,500 per week for 2 weeks</strong>. Every member who
+                has completed their Rs. 2,000 loan is eligible — no leg requirement.
+              </div>
+            </div>
+          </div>
+
+          <div className="shrink-0">
+            {completedSpecial ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300">
+                <Lock className="h-3.5 w-3.5" /> Completed
+              </span>
+            ) : specialActive ? (
+              <Link
+                href="/affiliate/dashboard/loan"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-amber-600 text-white text-sm font-medium hover:bg-amber-700"
+              >
+                View my Special Loan
+              </Link>
+            ) : !completedLevel1 ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200">
+                <Lock className="h-3.5 w-3.5" /> Complete your Rs. 2,000 loan first
+              </span>
+            ) : activeLoan ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                Clear your active loan first
+              </span>
+            ) : specialCanApply ? (
+              <ApplyLoanButton
+                tierKey={SPECIAL_LOAN_KEY}
+                amountLabel={SPECIAL_LOAN_TIER.amountLabel}
+                registeredPhone={me?.phone ?? null}
+                savedWhatsappNumber={me?.whatsappNumber ?? null}
+              />
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200">
+                Not available
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
