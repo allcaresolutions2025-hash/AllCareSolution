@@ -7,6 +7,7 @@ import { UnpaidInstallmentsSection, type UnpaidInstallmentRow } from "./unpaid-i
 import { RecentLoansSection } from "./recent-loans-section";
 import { PaidTodayRow } from "./paid-today-row";
 import { EligibilityAuditCard } from "./eligibility-audit-card";
+import { LoanUnlockRequestsSection } from "./loan-unlock-requests-section";
 import { istDateString } from "@/lib/daily-payout";
 
 export const dynamic = "force-dynamic";
@@ -269,6 +270,9 @@ export default async function AdminLoansPage() {
           Review loan requests, disburse funds offline, and verify weekly receipts.
         </p>
       </div>
+
+      {/* Members blocked by the identity/PAN guard asking to be unlocked */}
+      <LoanUnlockRequestsSection />
 
       {/* Requests that no longer qualify under the completely-filled-tree rule */}
       <EligibilityAuditCard />

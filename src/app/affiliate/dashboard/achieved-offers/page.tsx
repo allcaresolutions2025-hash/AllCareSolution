@@ -2,10 +2,11 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock, Wrench, ShieldAlert, Sparkles } from "lucide-react";
-import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, specialLoanEligible, SPECIAL_LOAN_TIER, SPECIAL_LOAN_KEY, LEVEL1_LOAN_KEY, type EligibilityContext } from "@/lib/loan";
+import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock, Wrench, ShieldAlert, Sparkles, Hourglass } from "lucide-react";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE, specialLoanEligible, SPECIAL_LOAN_TIER, SPECIAL_LOAN_KEY, LEVEL1_LOAN_KEY, type EligibilityContext } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 import { ApplyLoanButton } from "./apply-loan-button";
+import { RequestUnlockButton } from "./request-unlock-button";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function AchievedOffersPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [me, directLeftSlots, directRightSlots, fillDepths, activeLoan, closedLoans, panConflict] = await Promise.all([
+  const [me, directLeftSlots, directRightSlots, fillDepths, activeLoan, closedLoans, panConflict, identityConflict, latestUnlockReq] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { leftLegCount: true, rightLegCount: true, phone: true, whatsappNumber: true },
@@ -33,9 +34,21 @@ export default async function AchievedOffersPage() {
       where: { userId: session.user.id, status: "CLOSED" },
       select: { tierKey: true },
     }),
+    // These guards already return 0 conflicts once the member is loanUnlocked.
     countActivePanLoanConflicts(prisma, session.user.id),
+    countIdentityLoanConflicts(prisma, session.user.id),
+    prisma.loanUnlockRequest.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      select: { status: true, adminNote: true },
+    }),
   ]);
+  // "Blocked" = tripped an identity/PAN-reuse guard and not yet admin-unlocked.
+  const identityBlocked = identityConflict.conflictCount > 0;
   const panBlocked = panConflict.conflictCount > 0;
+  const loanBlocked = identityBlocked || panBlocked;
+  const unlockPending = latestUnlockReq?.status === "PENDING";
+  const unlockRejected = latestUnlockReq?.status === "REJECTED";
 
   const ctx: EligibilityContext = {
     leftLegCount: me?.leftLegCount ?? 0,
@@ -55,7 +68,7 @@ export default async function AchievedOffersPage() {
   const completedLevel1 = completedTierKeys.includes(LEVEL1_LOAN_KEY);
   const completedSpecial = completedTierKeys.includes(SPECIAL_LOAN_KEY);
   const specialActive = activeLoan?.tierKey === SPECIAL_LOAN_KEY;
-  const specialCanApply = specialLoanEligible(ctx) && !activeLoan && !paused && !panBlocked;
+  const specialCanApply = specialLoanEligible(ctx) && !activeLoan && !paused && !loanBlocked;
 
   return (
     <div className="space-y-6">
@@ -80,12 +93,26 @@ export default async function AchievedOffersPage() {
         </div>
       )}
 
-      {panBlocked && (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-4 flex items-start gap-3">
-          <ShieldAlert className="h-5 w-5 text-red-700 shrink-0 mt-0.5" />
-          <div className="text-sm text-red-900">
-            <div className="font-semibold">Loan already active on this PAN</div>
-            <div className="mt-0.5">{PAN_CONFLICT_MESSAGE}</div>
+      {loanBlocked && (
+        <div className="rounded-xl border border-red-300 bg-red-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-start gap-3 flex-1">
+            <ShieldAlert className="h-5 w-5 text-red-700 shrink-0 mt-0.5" />
+            <div className="text-sm text-red-900">
+              <div className="font-semibold">Loans are blocked for your account</div>
+              <div className="mt-0.5">{identityBlocked ? IDENTITY_CONFLICT_MESSAGE : PAN_CONFLICT_MESSAGE}</div>
+              {unlockRejected && latestUnlockReq?.adminNote && (
+                <div className="mt-1 text-xs text-red-700">Admin note: {latestUnlockReq.adminNote}</div>
+              )}
+            </div>
+          </div>
+          <div className="shrink-0">
+            {unlockPending ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                <Hourglass className="h-3.5 w-3.5" /> Unlock request under review
+              </span>
+            ) : (
+              <RequestUnlockButton />
+            )}
           </div>
         </div>
       )}
@@ -132,14 +159,14 @@ export default async function AchievedOffersPage() {
               <Wrench className="h-4 w-4" />
               Paused for maintenance
             </button>
-          ) : panBlocked ? (
+          ) : loanBlocked ? (
             <button
               disabled
               className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-red-100 text-red-700 text-sm font-medium cursor-not-allowed"
-              title={PAN_CONFLICT_MESSAGE}
+              title={identityBlocked ? IDENTITY_CONFLICT_MESSAGE : PAN_CONFLICT_MESSAGE}
             >
               <ShieldAlert className="h-4 w-4" />
-              PAN already in use
+              Loans blocked
             </button>
           ) : claimable ? (
             <ApplyLoanButton

@@ -113,6 +113,10 @@ model User {
 
   // Loans
   loans         Loan[]
+  // Admin override: when true, the loan identity/PAN-reuse guards are bypassed
+  // for this member (granted after an admin approves their unlock request).
+  loanUnlocked  Boolean @default(false)
+  loanUnlockRequests LoanUnlockRequest[]
 
   // Nightly 10% payouts (90% paid, 10% forfeit, balance resets to 0)
   dailyPayouts  DailyPayout[]
@@ -570,6 +574,29 @@ enum LoanStatus {
   APPROVED    // admin verified & disbursed offline
   REJECTED
   CLOSED      // all installments verified
+}
+
+enum LoanUnlockStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A member blocked by the loan identity/PAN-reuse guard can ask an admin to
+// unlock loans for their account. Admin reviews these in one place; approving
+// sets User.loanUnlocked = true so the guards are bypassed for that member.
+model LoanUnlockRequest {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason     String?          @db.Text
+  status     LoanUnlockStatus @default(PENDING)
+  adminNote  String?          @db.Text
+  createdAt  DateTime         @default(now())
+  reviewedAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([userId])
 }
 
 enum LoanInstallmentStatus {

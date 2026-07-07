@@ -239,8 +239,10 @@ export async function countActivePanLoanConflicts(
 ): Promise<{ pan: string | null; conflictCount: number }> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
-    select: { panNumber: true },
+    select: { panNumber: true, loanUnlocked: true },
   });
+  // An admin-unlocked member bypasses the PAN active-loan guard entirely.
+  if (me?.loanUnlocked) return { pan: me.panNumber, conflictCount: 0 };
   if (!me?.panNumber) return { pan: null, conflictCount: 0 };
   const conflictCount = await prisma.loan.count({
     where: {
@@ -267,9 +269,11 @@ export async function countIdentityLoanConflicts(
 ): Promise<{ conflictCount: number }> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
-    select: { phone: true, bankAccountNumber: true, email: true },
+    select: { phone: true, bankAccountNumber: true, email: true, loanUnlocked: true },
   });
   if (!me) return { conflictCount: 0 };
+  // An admin-unlocked member bypasses the identity-reuse guard entirely.
+  if (me.loanUnlocked) return { conflictCount: 0 };
 
   const orConds: import("@prisma/client").Prisma.UserWhereInput[] = [];
   if (me.phone) orConds.push({ phone: me.phone });
