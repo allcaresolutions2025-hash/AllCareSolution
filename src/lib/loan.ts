@@ -15,9 +15,9 @@
 // can blow past a raw count threshold while still having a hole near the top.
 // Such a member is NOT eligible until both immediate sides are actually filled.
 // `highestEligibleTier` picks the largest tier whose level both legs fill.
-// Only certain levels grant loans: 1, 3, 5, 7, 9, 10, 11, 12, 13, 14, 15.
-// Level 1 is special-cased to direct slots (1 direct on Left + 1 on Right),
-// which is equivalent to leftFillDepth=rightFillDepth>=1.
+// Levels 1 and 2 are the small starter loans and use a raw per-leg head-count
+// (kind "legMembers": 1:1 for Rs. 1,000, 2:2 for Rs. 2,000). The higher tiers
+// (Rs. 10,000+) use the perfect-fill-depth rule described above.
 
 export type LoanTier = {
   key: string;
@@ -26,14 +26,20 @@ export type LoanTier = {
   amount: number;           // paise
   amountLabel: string;      // pretty rupee label
   totalWeeks: number;
-  // Either a leg-count tier (legCount), the directs-1-1 tier (directs), or the
-  // standalone Special Loan (special) which is unlocked by completing Level 1.
-  kind: "directs" | "legCount" | "special";
+  // Eligibility kinds:
+  //   legMembers — at least N members in EACH leg (raw leftLegCount/rightLegCount).
+  //                Used by the small starter tiers (1:1 → Rs.1,000, 2:2 → Rs.2,000).
+  //   legCount   — the leg is a perfectly filled binary tree to this tier's level.
+  //   directs    — 1 direct child on each side (legacy).
+  //   special    — the standalone Special Loan, unlocked by completing Level 2.
+  kind: "legMembers" | "directs" | "legCount" | "special";
   legCount?: number;
+  legMembers?: number;      // for kind "legMembers": min members required in each leg
 };
 
 export const LOAN_TIERS: LoanTier[] = [
-  { key: "DIRECTS_1_1", level:  1, kind: "directs",                       label: "Level 1 — 1 member on Left & 1 on Right",                amount:        200_000, amountLabel: "Rs. 2,000",     totalWeeks: 2 },
+  { key: "STARTER_1000", level:  1, kind: "legMembers", legMembers: 1,     label: "Level 1 — 1 member on Left & 1 on Right",                amount:        100_000, amountLabel: "Rs. 1,000",     totalWeeks: 1 },
+  { key: "DIRECTS_1_1",  level:  2, kind: "legMembers", legMembers: 2,     label: "Level 2 — 2 members on Left & 2 on Right",               amount:        200_000, amountLabel: "Rs. 2,000",     totalWeeks: 2 },
   { key: "LEG_7",       level:  3, kind: "legCount", legCount:     7,     label: "Level 3 — 7 members on Left & 7 on Right",               amount:      1_000_000, amountLabel: "Rs. 10,000",    totalWeeks: 4 },
   { key: "LEG_31",      level:  5, kind: "legCount", legCount:    31,     label: "Level 5 — 31 members on Left & 31 on Right",             amount:      2_000_000, amountLabel: "Rs. 20,000",    totalWeeks: 5 },
   { key: "LEG_127",     level:  7, kind: "legCount", legCount:   127,     label: "Level 7 — 127 members on Left & 127 on Right",           amount:      3_000_000, amountLabel: "Rs. 30,000",    totalWeeks: 6 },
@@ -46,14 +52,15 @@ export const LOAN_TIERS: LoanTier[] = [
   { key: "LEG_32767",   level: 15, kind: "legCount", legCount: 32767,     label: "Level 15 — 32,767 members on Left & 32,767 on Right",    amount: 10_000_000_00, amountLabel: "Rs. 1 Crore",   totalWeeks: 100 },
 ];
 
-// ---- Special Loan (post Level-1) -------------------------------------------
+// ---- Special Loan (post Level-2) -------------------------------------------
 // A one-time offer that sits OUTSIDE the leg-based ladder. Once a member has
-// completed (fully repaid) their Level-1 Rs. 2,000 loan, they may take a
+// completed (fully repaid) their Level-2 Rs. 2,000 loan, they may take a
 // Rs. 5,000 "Special Loan", credited to their Pin Wallet, repaid Rs. 2,500 per
 // week for 2 weeks. Eligibility does NOT depend on leg fill depth, and taking
 // it does not block or advance the leg-based ladder. Every Rs. 2,000-loan
-// graduate is eligible, once.
-export const LEVEL1_LOAN_KEY = "DIRECTS_1_1";
+// graduate is eligible, once. (The tier key stays "DIRECTS_1_1" for back-compat
+// with loans already recorded under that key.)
+export const LEVEL2_LOAN_KEY = "DIRECTS_1_1";
 export const SPECIAL_LOAN_KEY = "SPECIAL_5000";
 
 export const SPECIAL_LOAN_TIER: LoanTier = {
@@ -67,10 +74,10 @@ export const SPECIAL_LOAN_TIER: LoanTier = {
 };
 
 // A member qualifies for the Special Loan once they have CLOSED (fully repaid)
-// their Level-1 Rs. 2,000 loan and have not already taken the Special Loan.
+// their Level-2 Rs. 2,000 loan and have not already taken the Special Loan.
 export function specialLoanEligible(ctx: EligibilityContext): boolean {
   const done = ctx.completedTierKeys ?? [];
-  return done.includes(LEVEL1_LOAN_KEY) && !done.includes(SPECIAL_LOAN_KEY);
+  return done.includes(LEVEL2_LOAN_KEY) && !done.includes(SPECIAL_LOAN_KEY);
 }
 
 export function tierByKey(key: string): LoanTier | undefined {
@@ -113,8 +120,14 @@ export function tierIsCompleted(tier: LoanTier, ctx: EligibilityContext): boolea
 export function tierIsEligible(tier: LoanTier, ctx: EligibilityContext): boolean {
   if (tierIsCompleted(tier, ctx)) return false;
   if (tier.kind === "special") {
-    // Special Loan: gated only by having completed the Level-1 loan.
+    // Special Loan: gated only by having completed the Rs. 2,000 loan.
     return specialLoanEligible(ctx);
+  }
+  if (tier.kind === "legMembers") {
+    // At least N members in EACH leg (raw head-count), e.g. 1:1 for Rs. 1,000
+    // and 2:2 for Rs. 2,000.
+    const need = tier.legMembers ?? 0;
+    return ctx.leftLegCount >= need && ctx.rightLegCount >= need;
   }
   if (tier.kind === "directs") {
     return ctx.directLeftSlots >= 1 && ctx.directRightSlots >= 1;
@@ -192,10 +205,12 @@ export function formatRupees(paise: number): string {
 // Overdue penalty tiers (in paise per day):
 //   Loan >= Rs. 1,00,000  → Rs. 10,000 / day
 //   Loan >= Rs. 10,000    → Rs.    500 / day
-//   Otherwise             → Rs.    100 / day
+//   Loan <= Rs. 1,000     → Rs.     50 / day  (Level-1 starter)
+//   Otherwise (Rs. 2,000) → Rs.    100 / day
 export function calcDailyPenalty(loanAmountPaise: number): number {
   if (loanAmountPaise >= 10_000_000) return 1_000_000; // ₹10,000/day
   if (loanAmountPaise >= 1_000_000)  return 50_000;    // ₹500/day
+  if (loanAmountPaise <= 100_000)    return 5_000;     // ₹50/day (Rs. 1,000 starter)
   return 10_000;                                        // ₹100/day
 }
 

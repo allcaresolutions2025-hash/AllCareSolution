@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock, Wrench, ShieldAlert, Sparkles, Hourglass } from "lucide-react";
-import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE, specialLoanEligible, SPECIAL_LOAN_TIER, SPECIAL_LOAN_KEY, LEVEL1_LOAN_KEY, type EligibilityContext } from "@/lib/loan";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE, specialLoanEligible, SPECIAL_LOAN_TIER, SPECIAL_LOAN_KEY, LEVEL2_LOAN_KEY, type EligibilityContext } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 import { ApplyLoanButton } from "./apply-loan-button";
 import { RequestUnlockButton } from "./request-unlock-button";
@@ -65,7 +65,7 @@ export default async function AchievedOffersPage() {
 
   // Special Loan (standalone, post Level-1) state.
   const completedTierKeys = ctx.completedTierKeys ?? [];
-  const completedLevel1 = completedTierKeys.includes(LEVEL1_LOAN_KEY);
+  const completedLevel2 = completedTierKeys.includes(LEVEL2_LOAN_KEY);
   const completedSpecial = completedTierKeys.includes(SPECIAL_LOAN_KEY);
   const specialActive = activeLoan?.tierKey === SPECIAL_LOAN_KEY;
   const specialCanApply = specialLoanEligible(ctx) && !activeLoan && !paused && !loanBlocked;
@@ -132,7 +132,7 @@ export default async function AchievedOffersPage() {
             </div>
             {claimable ? (
               <div className="mt-1 text-sm">
-                You can apply for <span className="font-semibold text-emerald-700">{formatRupees(claimable.amount)}</span> — repay over {claimable.totalWeeks} weeks.
+                You can apply for <span className="font-semibold text-emerald-700">{formatRupees(claimable.amount)}</span> — repay over {claimable.totalWeeks} week{claimable.totalWeeks === 1 ? "" : "s"}.
               </div>
             ) : (
               <div className="mt-1 text-sm text-muted-foreground">
@@ -221,7 +221,7 @@ export default async function AchievedOffersPage() {
               >
                 View my Special Loan
               </Link>
-            ) : !completedLevel1 ? (
+            ) : !completedLevel2 ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200">
                 <Lock className="h-3.5 w-3.5" /> Complete your Rs. 2,000 loan first
               </span>
@@ -289,7 +289,7 @@ export default async function AchievedOffersPage() {
                   <div className="min-w-0">
                     <div className="font-semibold truncate">{tier.amountLabel}</div>
                     <div className="text-xs text-muted-foreground">
-                      {tier.label} · Repay over {tier.totalWeeks} weeks
+                      {tier.label} · Repay over {tier.totalWeeks} week{tier.totalWeeks === 1 ? "" : "s"}
                     </div>
                     {state === "waiting" && claimable && (
                       <div className="text-xs text-amber-700 mt-1">
