@@ -47,7 +47,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       });
 
       if (inst.paidViaWallet) {
-        // Refund the held points (installment + 9%) back to the Pin Wallet.
+        // Refund the held points (installment + 10%) back to the Pin Wallet.
         const refund = loanWalletChargePaise(inst.amount);
         const wallet = await tx.wallet.upsert({
           where: { userId: inst.loan.userId },

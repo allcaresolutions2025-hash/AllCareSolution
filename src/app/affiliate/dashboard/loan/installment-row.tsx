@@ -51,7 +51,7 @@ export function InstallmentRow({
   const isOverdue = daysOverdue > 0;
   const penalty = calcTotalPenalty(loanAmount, daysOverdue);
 
-  // Pin Wallet repayment: installment + 9% only (no overdue penalty).
+  // Pin Wallet repayment: installment + 10% only (no overdue penalty).
   const walletCost = loanWalletChargePaise(amount);
   // Only offer Pin Wallet pay before anything is submitted for this week.
   const walletEnabled = pinWalletBalance !== undefined && !loanClosed && status === "PENDING";
@@ -62,7 +62,7 @@ export function InstallmentRow({
     if (busy) return;
     if (!confirm(
       `Pay Week ${weekNumber} from your Pin Wallet?\n\n` +
-        `Installment ${formatRupees(amount)} + 9% (${formatRupees(loanWalletSurcharge(amount))})` +
+        `Installment ${formatRupees(amount)} + 10% (${formatRupees(loanWalletSurcharge(amount))})` +
         `\n= ${formatRupees(walletCost)} (points)`,
     )) return;
     setBusy(true);
@@ -191,7 +191,7 @@ export function InstallmentRow({
                   Pay {formatRupees(walletCost)} from Pin Wallet
                 </button>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {formatRupees(amount)} + 9% · paid instantly from points
+                  {formatRupees(amount)} + 10% · paid instantly from points
                 </div>
               </div>
             )}

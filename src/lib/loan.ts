@@ -244,9 +244,9 @@ export function calcTotalPenalty(loanAmountPaise: number, daysOverdue: number): 
   return calcDailyPenalty(loanAmountPaise) * daysOverdue;
 }
 
-// Paying a loan installment with Pin Wallet points carries a 9% convenience
+// Paying a loan installment with Pin Wallet points carries a 10% convenience
 // surcharge on the installment amount, plus any accrued overdue penalty. All
-// values are paise. e.g. a ₹1,000 installment costs 1,090; ₹2,500 costs 2,725.
+// values are paise. e.g. a ₹1,000 installment costs 1,100; ₹2,500 costs 2,750.
 // ---- Pin Wallet -> payout transfer floor -----------------------------------
 // Standard members must transfer at least 3,000 points at a time from the Pin
 // Wallet to their payout wallet. Members who have taken a loan of Rs. 5,000 or
@@ -257,7 +257,7 @@ export const MIN_WITHDRAW_POINTS = 3000;
 export const MIN_WITHDRAW_POINTS_BIG_LOAN = 6000;
 export const BIG_LOAN_THRESHOLD_PAISE = 500_000; // Rs. 5,000
 
-export const LOAN_WALLET_SURCHARGE_PCT = 9;
+export const LOAN_WALLET_SURCHARGE_PCT = 10;
 
 export function loanWalletSurcharge(installmentPaise: number): number {
   return Math.round((installmentPaise * LOAN_WALLET_SURCHARGE_PCT) / 100);

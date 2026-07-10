@@ -6,7 +6,7 @@ import { formatRupees, loanWalletChargePaise } from "@/lib/loan";
 
 export const dynamic = "force-dynamic";
 
-// Pay a loan installment using Pin Wallet points. Cost = installment + 9%
+// Pay a loan installment using Pin Wallet points. Cost = installment + 10%
 // surcharge only — NO overdue penalty is charged. The points are held (deducted)
 // immediately and the installment moves to the admin verification queue
 // (status RECEIPT_UPLOADED, paidViaWallet). Admin approve finalises it; reject
@@ -26,7 +26,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   if (inst.status === "VERIFIED") return NextResponse.json({ error: "This installment is already paid" }, { status: 400 });
   if (inst.status === "RECEIPT_UPLOADED") return NextResponse.json({ error: "This week is already submitted and awaiting admin approval" }, { status: 400 });
 
-  // Installment + 9% surcharge only — no overdue penalty.
+  // Installment + 10% surcharge only — no overdue penalty.
   const total = loanWalletChargePaise(inst.amount);
 
   const wallet = await prisma.wallet.findUnique({
@@ -35,7 +35,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   });
   if ((wallet?.pinWalletBalance ?? 0) < total) {
     return NextResponse.json(
-      { error: `Not enough Pin Wallet points. This installment needs ${formatRupees(total)} (incl. 9%).` },
+      { error: `Not enough Pin Wallet points. This installment needs ${formatRupees(total)} (incl. 10%).` },
       { status: 400 },
     );
   }

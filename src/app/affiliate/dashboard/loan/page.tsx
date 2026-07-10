@@ -49,7 +49,7 @@ export default async function MyLoanPage() {
         <div>
           <h1 className="text-2xl font-bold">My Loans</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Upload your weekly payment receipt, or pay instantly from your Pin Wallet (installment + 9%).
+            Upload your weekly payment receipt, or pay instantly from your Pin Wallet (installment + 10%).
           </p>
         </div>
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm">
