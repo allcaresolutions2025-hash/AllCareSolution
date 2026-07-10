@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock, Wrench, ShieldAlert, Sparkles, Hourglass } from "lucide-react";
-import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE, specialLoanEligible, SPECIAL_LOAN_TIER, SPECIAL_LOAN_KEY, LEVEL2_LOAN_KEY, type EligibilityContext } from "@/lib/loan";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE, specialLoanEligible, hasTakenLevel2Loan, SPECIAL_LOAN_TIER, SPECIAL_LOAN_KEY, LEVEL2_LOAN_KEY, type EligibilityContext } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 import { ApplyLoanButton } from "./apply-loan-button";
 import { RequestUnlockButton } from "./request-unlock-button";
@@ -14,7 +14,7 @@ export default async function AchievedOffersPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [me, directLeftSlots, directRightSlots, fillDepths, activeLoan, closedLoans, panConflict, identityConflict, latestUnlockReq] = await Promise.all([
+  const [me, directLeftSlots, directRightSlots, fillDepths, activeLoan, closedLoans, panConflict, identityConflict, latestUnlockReq, level2Taken] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { leftLegCount: true, rightLegCount: true, phone: true, whatsappNumber: true },
@@ -42,6 +42,8 @@ export default async function AchievedOffersPage() {
       orderBy: { createdAt: "desc" },
       select: { status: true, adminNote: true },
     }),
+    // Rs. 1,000 starter is hidden once the member has taken the Rs. 2,000 loan.
+    hasTakenLevel2Loan(prisma, session.user.id),
   ]);
   // "Blocked" = tripped an identity/PAN-reuse guard and not yet admin-unlocked.
   const identityBlocked = identityConflict.conflictCount > 0;
@@ -58,6 +60,7 @@ export default async function AchievedOffersPage() {
     leftFillDepth: fillDepths.leftFillDepth,
     rightFillDepth: fillDepths.rightFillDepth,
     completedTierKeys: closedLoans.map((l) => l.tierKey),
+    hasTakenLevel2Loan: level2Taken,
   };
 
   const claimable = nextClaimableTier(ctx);
@@ -203,7 +206,7 @@ export default async function AchievedOffersPage() {
               </div>
               <div className="text-sm text-muted-foreground mt-1 max-w-xl">
                 A one-time <strong className="text-amber-800">{SPECIAL_LOAN_TIER.amountLabel}</strong> loan credited
-                straight to your Pin Wallet. Repay <strong>Rs. 2,500 per week for 2 weeks</strong>. Every member who
+                straight to your Pin Wallet. Repay <strong>Rs. 5,000 within one week</strong>. Every member who
                 has completed their Rs. 2,000 loan is eligible — no leg requirement.
               </div>
             </div>

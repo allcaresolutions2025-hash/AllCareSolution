@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
-import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, loansPaused, LOAN_PAUSE_MESSAGE, LOAN_PAUSE_UNTIL, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE } from "@/lib/loan";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, hasTakenLevel2Loan, loansPaused, LOAN_PAUSE_MESSAGE, LOAN_PAUSE_UNTIL, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     const auth = await authMobile(req);
     if ("response" in auth) return auth.response;
 
-    const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans, panConflict] = await Promise.all([
+    const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans, panConflict, level2Taken] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.user.id },
         select: { leftLegCount: true, rightLegCount: true, phone: true, whatsappNumber: true },
@@ -28,6 +28,7 @@ export async function GET(req: Request) {
         select: { tierKey: true },
       }),
       countActivePanLoanConflicts(prisma, auth.user.id),
+      hasTakenLevel2Loan(prisma, auth.user.id),
     ]);
     const panBlocked = panConflict.conflictCount > 0;
 
@@ -40,6 +41,7 @@ export async function GET(req: Request) {
       leftFillDepth: fillDepths.leftFillDepth,
       rightFillDepth: fillDepths.rightFillDepth,
       completedTierKeys,
+      hasTakenLevel2Loan: level2Taken,
     };
 
     const nextTier = nextClaimableTier(ctx);

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
-import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE } from "@/lib/loan";
+import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, hasTakenLevel2Loan, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const tier = tierByKey(parsed.data.tierKey);
     if (!tier) return NextResponse.json({ error: "Unknown tier" }, { status: 400 });
 
-    const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans] = await Promise.all([
+    const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans, level2Taken] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.user.id },
         select: { leftLegCount: true, rightLegCount: true },
@@ -45,6 +45,7 @@ export async function POST(req: Request) {
         where: { userId: auth.user.id, status: "CLOSED" },
         select: { tierKey: true },
       }),
+      hasTakenLevel2Loan(prisma, auth.user.id),
     ]);
 
     if (openLoan) {
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
       leftFillDepth: fillDepths.leftFillDepth,
       rightFillDepth: fillDepths.rightFillDepth,
       completedTierKeys,
+      hasTakenLevel2Loan: level2Taken,
     };
     if (!tierIsEligible(tier, ctx)) {
       return NextResponse.json(

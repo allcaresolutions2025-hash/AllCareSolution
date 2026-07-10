@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
-import { tierByKey, tierIsEligible, nextClaimableTier, specialLoanEligible, SPECIAL_LOAN_KEY, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE } from "@/lib/loan";
+import { tierByKey, tierIsEligible, nextClaimableTier, specialLoanEligible, hasTakenLevel2Loan, SPECIAL_LOAN_KEY, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 
 // Allowed tier keys = the leg-based ladder plus the standalone Special Loan.
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
   // Re-verify eligibility server-side so a malicious client can't request a
   // tier they don't actually qualify for.
-  const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans] = await Promise.all([
+  const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans, level2Taken] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { leftLegCount: true, rightLegCount: true },
@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       where: { userId: session.user.id, status: "CLOSED" },
       select: { tierKey: true },
     }),
+    hasTakenLevel2Loan(prisma, session.user.id),
   ]);
 
   if (openLoan) {
@@ -85,6 +86,7 @@ export async function POST(req: Request) {
     leftFillDepth: fillDepths.leftFillDepth,
     rightFillDepth: fillDepths.rightFillDepth,
     completedTierKeys,
+    hasTakenLevel2Loan: level2Taken,
   };
 
   if (tier.key === SPECIAL_LOAN_KEY) {

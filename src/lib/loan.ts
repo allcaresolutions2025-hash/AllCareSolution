@@ -35,10 +35,14 @@ export type LoanTier = {
   kind: "legMembers" | "directs" | "legCount" | "special";
   legCount?: number;
   legMembers?: number;      // for kind "legMembers": min members required in each leg
+  // When true, this tier is only offered to members who have NOT yet taken the
+  // Rs. 2,000 (Level-2) loan — a new-member benefit. Existing Rs. 2,000
+  // borrowers (requested / active / due / overdue / completed) never see it.
+  newMembersOnly?: boolean;
 };
 
 export const LOAN_TIERS: LoanTier[] = [
-  { key: "STARTER_1000", level:  1, kind: "legMembers", legMembers: 1,     label: "Level 1 — 1 member on Left & 1 on Right",                amount:        100_000, amountLabel: "Rs. 1,000",     totalWeeks: 1 },
+  { key: "STARTER_1000", level:  1, kind: "legMembers", legMembers: 1, newMembersOnly: true, label: "Level 1 — 1 member on Left & 1 on Right",             amount:        100_000, amountLabel: "Rs. 1,000",     totalWeeks: 1 },
   { key: "DIRECTS_1_1",  level:  2, kind: "legMembers", legMembers: 2,     label: "Level 2 — 2 members on Left & 2 on Right",               amount:        200_000, amountLabel: "Rs. 2,000",     totalWeeks: 2 },
   { key: "LEG_7",       level:  3, kind: "legCount", legCount:     7,     label: "Level 3 — 7 members on Left & 7 on Right",               amount:      1_000_000, amountLabel: "Rs. 10,000",    totalWeeks: 4 },
   { key: "LEG_31",      level:  5, kind: "legCount", legCount:    31,     label: "Level 5 — 31 members on Left & 31 on Right",             amount:      2_000_000, amountLabel: "Rs. 20,000",    totalWeeks: 5 },
@@ -55,8 +59,8 @@ export const LOAN_TIERS: LoanTier[] = [
 // ---- Special Loan (post Level-2) -------------------------------------------
 // A one-time offer that sits OUTSIDE the leg-based ladder. Once a member has
 // completed (fully repaid) their Level-2 Rs. 2,000 loan, they may take a
-// Rs. 5,000 "Special Loan", credited to their Pin Wallet, repaid Rs. 2,500 per
-// week for 2 weeks. Eligibility does NOT depend on leg fill depth, and taking
+// Rs. 5,000 "Special Loan", credited to their Pin Wallet, repaid in full
+// within one week. Eligibility does NOT depend on leg fill depth, and taking
 // it does not block or advance the leg-based ladder. Every Rs. 2,000-loan
 // graduate is eligible, once. (The tier key stays "DIRECTS_1_1" for back-compat
 // with loans already recorded under that key.)
@@ -70,7 +74,7 @@ export const SPECIAL_LOAN_TIER: LoanTier = {
   label: "Special Loan — for members who completed the Rs. 2,000 loan",
   amount: 500_000, // Rs. 5,000
   amountLabel: "Rs. 5,000",
-  totalWeeks: 2, // Rs. 2,500 per week x 2
+  totalWeeks: 1, // full Rs. 5,000 due within one week
 };
 
 // A member qualifies for the Special Loan once they have CLOSED (fully repaid)
@@ -83,6 +87,20 @@ export function specialLoanEligible(ctx: EligibilityContext): boolean {
 export function tierByKey(key: string): LoanTier | undefined {
   if (key === SPECIAL_LOAN_KEY) return SPECIAL_LOAN_TIER;
   return LOAN_TIERS.find((t) => t.key === key);
+}
+
+// Has the member ever taken the Rs. 2,000 (Level-2) loan in any non-rejected
+// status? Existing borrowers (requested / active / due / overdue / completed)
+// are excluded from the new-members-only Rs. 1,000 starter.
+export async function hasTakenLevel2Loan(
+  prisma: import("@prisma/client").PrismaClient | import("@prisma/client").Prisma.TransactionClient,
+  userId: string,
+): Promise<boolean> {
+  const existing = await prisma.loan.findFirst({
+    where: { userId, proMax: false, tierKey: LEVEL2_LOAN_KEY, status: { not: "REJECTED" } },
+    select: { id: true },
+  });
+  return !!existing;
 }
 
 // Temporary maintenance window — new loan applications are blocked until this
@@ -111,6 +129,10 @@ export type EligibilityContext = {
   // tier can be claimed only once per user — once closed it is permanently
   // locked, regardless of whether the user still meets the leg requirements.
   completedTierKeys?: readonly string[];
+  // True if the member has ever taken the Rs. 2,000 (Level-2) loan in any
+  // non-rejected status (requested / active / due / overdue / completed). Used
+  // to hide the new-members-only Rs. 1,000 starter from existing borrowers.
+  hasTakenLevel2Loan?: boolean;
 };
 
 export function tierIsCompleted(tier: LoanTier, ctx: EligibilityContext): boolean {
@@ -124,6 +146,9 @@ export function tierIsEligible(tier: LoanTier, ctx: EligibilityContext): boolean
     return specialLoanEligible(ctx);
   }
   if (tier.kind === "legMembers") {
+    // New-member-only tiers (the Rs. 1,000 starter) are hidden once the member
+    // has taken the Rs. 2,000 loan.
+    if (tier.newMembersOnly && ctx.hasTakenLevel2Loan) return false;
     // At least N members in EACH leg (raw head-count), e.g. 1:1 for Rs. 1,000
     // and 2:2 for Rs. 2,000.
     const need = tier.legMembers ?? 0;
