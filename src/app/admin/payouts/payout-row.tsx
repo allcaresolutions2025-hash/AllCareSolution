@@ -63,7 +63,7 @@ export function PayoutRow({
       toast.error("Failed");
       return;
     }
-    toast.success("Rejected — commissions returned to available balance");
+    toast.success("Rejected — points returned to member's balance");
     router.refresh();
   }
 

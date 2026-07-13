@@ -26,12 +26,26 @@ export async function GET() {
     "Gross (points)",
     "TDS (points)",
     "Net (points)",
+    "Bank account",
+    "IFSC",
+    "Account holder",
+    "PAN",
     "UTR",
     "Reviewer notes",
   ];
 
   const rows: (string | number | null | undefined)[][] = [header];
   for (const r of requests) {
+    // bankSnapshot is a JSON string captured at request time; keys:
+    // bankAccount, ifsc, bankHolderName, panNumber.
+    let bank: { bankAccount?: string; ifsc?: string; bankHolderName?: string; panNumber?: string } = {};
+    if (r.bankSnapshot) {
+      try {
+        bank = JSON.parse(r.bankSnapshot);
+      } catch {
+        bank = {};
+      }
+    }
     rows.push([
       r.id,
       r.requestedAt.toISOString(),
@@ -44,6 +58,10 @@ export async function GET() {
       formatPoints(r.amountGross, { showLabel: false }),
       formatPoints(r.tdsAmount, { showLabel: false }),
       formatPoints(r.amountNet, { showLabel: false }),
+      bank.bankAccount ?? "",
+      bank.ifsc ?? "",
+      bank.bankHolderName ?? "",
+      bank.panNumber ?? "",
       r.utr ?? "",
       r.reviewerNotes ?? "",
     ]);

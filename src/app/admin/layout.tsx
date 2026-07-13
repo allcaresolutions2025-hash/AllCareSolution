@@ -20,7 +20,7 @@ const nav = [
   { href: "/admin/txn-password-requests", label: "Txn PW Resets", icon: <ShieldQuestion className="h-4 w-4" /> },
   { href: "/admin/loans", label: "Loan Approvals", icon: <BadgeIndianRupee className="h-4 w-4" /> },
   { href: "/admin/daily-payouts", label: "Daily Payouts", icon: <Coins className="h-4 w-4" /> },
-  { href: "/admin/payouts", label: "Payouts", icon: <Wallet className="h-4 w-4" /> },
+  { href: "/admin/payouts", label: "Withdrawals", icon: <Wallet className="h-4 w-4" /> },
   { href: "/admin/download", label: "Mobile App", icon: <Smartphone className="h-4 w-4" /> },
   { href: "/admin/settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },
 ];

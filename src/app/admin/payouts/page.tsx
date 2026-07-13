@@ -51,10 +51,11 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold mb-1">
-            Payout requests{q ? ` — "${q}"` : ""} ({total})
+            Withdrawal requests{q ? ` — "${q}"` : ""} ({total})
           </h1>
           <p className="text-sm text-muted-foreground">
-            Total pending net payout: <strong>{formatPoints(totalPending)}</strong>
+            Members request to cash out their points; pay offline then mark paid. Total pending:{" "}
+            <strong>{formatPoints(totalPending)}</strong>
           </p>
         </div>
         <a
