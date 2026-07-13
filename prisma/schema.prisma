@@ -124,6 +124,10 @@ model User {
   // Reward claims
   rewardClaims  RewardClaim[]
 
+  // 2000-pt pin rewards — one claimable per 2000-pt pin obtained; credited to
+  // the payout wallet (balanceAvailable) on admin approval.
+  pinRewards    PinReward[]
+
   // Pro Max rewards (combo box requests + admin-granted level rewards)
   proMaxRewards ProMaxReward[]
 
@@ -407,6 +411,26 @@ model PayoutRequest {
   @@index([status])
 }
 
+// A cash-back style reward for members who obtained a 2000-pt pin. Each 2000-pt
+// pin a member gets entitles ONE reward claim; on admin approval, pointsValue
+// points are credited to the member's payout wallet (Wallet.balanceAvailable),
+// which they can then withdraw or let the daily payout sweep. Rejected claims do
+// not consume the entitlement (see the eligibility count in the request route).
+model PinReward {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pointsValue Int               @default(2000) // credited to payout wallet on approval
+  status      RewardClaimStatus @default(PENDING)
+  adminNote   String?           @db.Text
+  requestedAt DateTime          @default(now())
+  processedAt DateTime?
+  updatedAt   DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([status, requestedAt])
+}
+
 // ---------- SETTINGS / MISC ----------
 
 model Setting {
@@ -465,6 +489,11 @@ model PinRequest {
   user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   quantity      Int
   mobileNumber  String
+  // Pin denomination the member selected: 1000 (standard) or 2000. Purely a
+  // value/label — it does not affect binary placement or the points engine.
+  // The 2000-pt tier additionally entitles the member to a 2000-pt reward
+  // (see PinReward) they can claim once per 2000-pt pin obtained.
+  pointsValue   Int              @default(1000)
   proMax        Boolean          @default(false) // true = Pro Max (10,000-pt) pins
   status        PinRequestStatus @default(PENDING)
   reviewerNotes String?
@@ -486,6 +515,9 @@ model Pin {
   purchaseId    String?
   purchase      PinPurchase? @relation(fields: [purchaseId], references: [id])
   proMax        Boolean     @default(false) // true = Pro Max (10,000-pt) pin, used to build the Pro Max tree
+  // Denomination carried over from the request/purchase (1000 or 2000). Used to
+  // count how many 2000-pt pins a member obtained, which gates the PinReward.
+  pointsValue   Int         @default(1000)
   status        PinStatus   @default(ACTIVE)
   usedForUserId String?     @unique
   usedForUser   User?       @relation("PinUsedFor", fields: [usedForUserId], references: [id])

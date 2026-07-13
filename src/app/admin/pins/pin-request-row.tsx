@@ -13,6 +13,7 @@ export function PinRequestRow({
   userCode,
   mobile,
   quantity,
+  pointsValue = 1000,
   proMax = false,
 }: {
   id: string;
@@ -22,6 +23,7 @@ export function PinRequestRow({
   userCode: string;
   mobile: string;
   quantity: number;
+  pointsValue?: number;
   proMax?: boolean;
 }) {
   const router = useRouter();
@@ -67,6 +69,17 @@ export function PinRequestRow({
       </td>
       <td className="px-4 py-2 text-xs font-mono">{mobile}</td>
       <td className="px-4 py-2 text-right font-bold tabular-nums">{quantity}</td>
+      <td className="px-4 py-2">
+        <span
+          className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border ${
+            pointsValue >= 2000
+              ? "bg-violet-100 text-violet-800 border-violet-300"
+              : "bg-slate-100 text-slate-700 border-slate-300"
+          }`}
+        >
+          {pointsValue.toLocaleString("en-IN")} pts
+        </span>
+      </td>
       <td className="px-4 py-2">
         <div className="flex items-center gap-2">
           <button

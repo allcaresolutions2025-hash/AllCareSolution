@@ -319,6 +319,7 @@ function PendingSection({
     createdAt: Date;
     mobileNumber: string;
     quantity: number;
+    pointsValue: number;
     proMax: boolean;
     user: { name: string; email: string; referralCode: string };
   }[];
@@ -340,6 +341,7 @@ function PendingSection({
                 <th className="px-4 py-2 font-medium">Member</th>
                 <th className="px-4 py-2 font-medium">Mobile</th>
                 <th className="px-4 py-2 font-medium text-right">Quantity</th>
+                <th className="px-4 py-2 font-medium">Pin value</th>
                 <th className="px-4 py-2 font-medium">Action</th>
               </tr>
             </thead>
@@ -354,6 +356,7 @@ function PendingSection({
                   userCode={r.user.referralCode}
                   mobile={r.mobileNumber}
                   quantity={r.quantity}
+                  pointsValue={r.pointsValue}
                   proMax={r.proMax}
                 />
               ))}

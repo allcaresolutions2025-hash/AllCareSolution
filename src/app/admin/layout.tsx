@@ -1,6 +1,6 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { PRO_MAX_ENABLED } from "@/lib/pro-max";
-import { LayoutDashboard, Package, ShoppingBag, Users, FileCheck2, Wallet, Settings, Network, KeyRound, BadgeIndianRupee, Coins, Megaphone, Trophy, GitBranch, LogIn, BookOpen, Smartphone, ShieldQuestion, Crown } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, FileCheck2, Wallet, Settings, Network, KeyRound, BadgeIndianRupee, Coins, Megaphone, Trophy, GitBranch, LogIn, BookOpen, Smartphone, ShieldQuestion, Crown, Gift } from "lucide-react";
 
 const nav = [
   { href: "/admin", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -16,6 +16,7 @@ const nav = [
   // Pro Max Tree — disabled via PRO_MAX_ENABLED.
   ...(PRO_MAX_ENABLED ? [{ href: "/admin/pro-max-genealogy", label: "Pro Max Tree", icon: <Crown className="h-4 w-4" /> }] : []),
   { href: "/admin/pins", label: "PIN Management", icon: <KeyRound className="h-4 w-4" /> },
+  { href: "/admin/pin-rewards", label: "Pin Rewards", icon: <Gift className="h-4 w-4" /> },
   { href: "/admin/kyc", label: "KYC Reviews", icon: <FileCheck2 className="h-4 w-4" /> },
   { href: "/admin/txn-password-requests", label: "Txn PW Resets", icon: <ShieldQuestion className="h-4 w-4" /> },
   { href: "/admin/loans", label: "Loan Approvals", icon: <BadgeIndianRupee className="h-4 w-4" /> },

@@ -9,6 +9,7 @@ export function RequestPinForm() {
   const router = useRouter();
   const [quantity, setQuantity] = useState("1");
   const [mobile, setMobile] = useState("");
+  const [pointsValue, setPointsValue] = useState<1000 | 2000>(1000);
   const [loading, setLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -30,7 +31,7 @@ export function RequestPinForm() {
     const res = await fetch("/api/pin-requests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quantity: q, mobileNumber: mobile }),
+      body: JSON.stringify({ quantity: q, mobileNumber: mobile, pointsValue }),
     });
     const data = await res.json();
     setLoading(false);
@@ -48,6 +49,34 @@ export function RequestPinForm() {
     <form onSubmit={submit} className="card p-6 space-y-4">
       <div className="flex items-center gap-2 text-brand-700">
         <KeyRound className="h-4 w-4" /> <h2 className="font-semibold">New pin request</h2>
+      </div>
+
+      <div>
+        <label className="label">Pin value</label>
+        <div className="grid grid-cols-2 gap-3">
+          {([1000, 2000] as const).map((v) => (
+            <button
+              type="button"
+              key={v}
+              onClick={() => setPointsValue(v)}
+              className={`rounded-lg border p-3 text-left transition ${
+                pointsValue === v
+                  ? "border-brand-500 bg-brand-50 ring-1 ring-brand-500"
+                  : "border-border hover:border-brand-300"
+              }`}
+            >
+              <div className="font-semibold tabular-nums">{v.toLocaleString("en-IN")} pts pin</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {v === 1000
+                  ? "Standard pin"
+                  : "Unlocks a 2,000 pts reward per pin (claim from admin)"}
+              </div>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          The pin value does not change tree placement — the 2,000 pts pin just adds a claimable reward.
+        </p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">

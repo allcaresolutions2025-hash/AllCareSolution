@@ -107,6 +107,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         code,
         ownerId: request.userId,
         requestId: request.id,
+        pointsValue: request.pointsValue,
         status: "ACTIVE" as const,
       })),
     });

@@ -7,6 +7,9 @@ import { z } from "zod";
 const bodySchema = z.object({
   quantity: z.number().int().min(1).max(100),
   mobileNumber: z.string().regex(/^[0-9]{10}$/, "Mobile must be 10 digits"),
+  // Pin denomination: 1000 (standard) or 2000. Defaults to 1000 for back-compat
+  // with any client that doesn't send it.
+  pointsValue: z.union([z.literal(1000), z.literal(2000)]).optional(),
 });
 
 export async function POST(req: Request) {
@@ -23,6 +26,7 @@ export async function POST(req: Request) {
       userId: session.user.id,
       quantity: parsed.data.quantity,
       mobileNumber: parsed.data.mobileNumber,
+      pointsValue: parsed.data.pointsValue ?? 1000,
     },
   });
   return NextResponse.json({ ok: true, id: request.id });

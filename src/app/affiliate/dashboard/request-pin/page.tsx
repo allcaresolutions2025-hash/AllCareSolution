@@ -3,6 +3,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { RequestPinForm } from "./request-pin-form";
 import { BuyPinForm } from "./buy-pin-form";
+import { PinRewardCard } from "./pin-reward-card";
+import { PIN_REWARD_POINTS, PIN_REWARD_PIN_VALUE } from "@/lib/pin-reward";
 import { isLeader, LEADER_DOWNLINE_THRESHOLD } from "@/lib/leader";
 import { getSetting } from "@/lib/settings";
 import { toPaise, formatINR } from "@/lib/money";
@@ -34,6 +36,18 @@ export default async function RequestPinPage() {
       orderBy: { paidAt: "desc" },
       take: 10,
       include: { _count: { select: { pins: true } } },
+    }),
+  ]);
+
+  // 2000-pt pin reward: one claimable per 2000-pt pin obtained.
+  const [eligiblePins, rewardClaims] = await Promise.all([
+    prisma.pin.count({
+      where: { ownerId: session.user.id, pointsValue: PIN_REWARD_PIN_VALUE, proMax: false },
+    }),
+    prisma.pinReward.findMany({
+      where: { userId: session.user.id },
+      orderBy: { requestedAt: "desc" },
+      select: { id: true, pointsValue: true, status: true, requestedAt: true },
     }),
   ]);
 
@@ -107,6 +121,19 @@ export default async function RequestPinPage() {
       )}
 
       <RequestPinForm />
+
+      {(eligiblePins > 0 || rewardClaims.length > 0) && (
+        <PinRewardCard
+          rewardPoints={PIN_REWARD_POINTS}
+          eligiblePins={eligiblePins}
+          claims={rewardClaims.map((c) => ({
+            id: c.id,
+            pointsValue: c.pointsValue,
+            status: c.status,
+            requestedAt: c.requestedAt.toISOString(),
+          }))}
+        />
+      )}
 
       {purchases.length > 0 && (
         <div className="card overflow-hidden">
