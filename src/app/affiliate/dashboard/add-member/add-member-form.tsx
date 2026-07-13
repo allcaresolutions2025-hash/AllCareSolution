@@ -10,6 +10,7 @@ const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 
 export function AddMemberForm({
   pins,
+  pinValues,
   defaultReferId,
   defaultSide,
   myReferralCode,
@@ -18,6 +19,10 @@ export function AddMemberForm({
   successHref = "/affiliate/dashboard/referrals",
 }: {
   pins: string[];
+  // Optional map of pin code → denomination (1000 / 2000). When supplied, each
+  // pin's value is shown in the selector so the member knows a 2000-pt pin will
+  // credit 2000 pts to the person they enroll. Omitted by the Pro Max forms.
+  pinValues?: Record<string, number>;
   defaultReferId: string;
   defaultSide: "LEFT" | "RIGHT" | "";
   myReferralCode: string;
@@ -135,9 +140,21 @@ export function AddMemberForm({
       <div>
         <label className="label">Select Pin</label>
         <select className="input font-mono" value={pin} onChange={(e) => setPin(e.target.value)} required>
-          {pins.map((p) => <option key={p} value={p}>{p}</option>)}
+          {pins.map((p) => (
+            <option key={p} value={p}>
+              {p}
+              {pinValues?.[p] ? ` — ${pinValues[p].toLocaleString("en-IN")} pts pin` : ""}
+            </option>
+          ))}
         </select>
         <p className="text-xs text-muted-foreground mt-1">You have {pins.length} active pin{pins.length === 1 ? "" : "s"}.</p>
+        {pinValues && (pinValues[pin] ?? 0) >= 2000 && (
+          <p className="text-xs mt-2 rounded-lg bg-violet-50 border border-violet-200 text-violet-800 px-3 py-2">
+            This is a <strong>{(pinValues[pin] ?? 0).toLocaleString("en-IN")} pts pin</strong> — the member
+            you enroll with it will receive <strong>{(pinValues[pin] ?? 0).toLocaleString("en-IN")} pts</strong>{" "}
+            in their payout wallet.
+          </p>
+        )}
       </div>
 
       {/* Personal */}

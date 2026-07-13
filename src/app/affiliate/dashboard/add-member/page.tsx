@@ -20,7 +20,7 @@ export default async function AddMemberPage({ searchParams }: { searchParams: { 
   const pins = await prisma.pin.findMany({
     where: { ownerId: me.id, status: "ACTIVE", proMax: false },
     orderBy: { createdAt: "asc" },
-    select: { code: true },
+    select: { code: true, pointsValue: true },
   });
 
   // Open slot summary for self.
@@ -62,7 +62,22 @@ export default async function AddMemberPage({ searchParams }: { searchParams: { 
                   {" "}before adding a member.
                 </>
               )}
-              {pins.length > 0 && <>Each pin can be used once to enroll a new member.</>}
+              {pins.length > 0 && (
+                <>
+                  Each pin can be used once to enroll a new member.
+                  {(() => {
+                    const premium = pins.filter((p) => p.pointsValue >= 2000).length;
+                    return premium > 0 ? (
+                      <>
+                        {" "}
+                        <strong className="text-violet-700">{premium}</strong> {premium === 1 ? "is a" : "are"}{" "}
+                        <strong className="text-violet-700">2,000 pts</strong> pin{premium === 1 ? "" : "s"} —
+                        those credit the new member 2,000 pts.
+                      </>
+                    ) : null;
+                  })()}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -81,6 +96,7 @@ export default async function AddMemberPage({ searchParams }: { searchParams: { 
       ) : (
         <AddMemberForm
           pins={pins.map((p) => p.code)}
+          pinValues={Object.fromEntries(pins.map((p) => [p.code, p.pointsValue]))}
           defaultReferId={prefilledReferId}
           defaultSide={prefilledSide as "LEFT" | "RIGHT" | ""}
           myReferralCode={me.referralCode}
