@@ -72,7 +72,7 @@ export default async function AddMemberPage({ searchParams }: { searchParams: { 
                         {" "}
                         <strong className="text-violet-700">{premium}</strong> {premium === 1 ? "is a" : "are"}{" "}
                         <strong className="text-violet-700">2,000 pts</strong> pin{premium === 1 ? "" : "s"} —
-                        those credit the new member 2,000 pts.
+                        those give the new member the 40 Combo Reward.
                       </>
                     ) : null;
                   })()}

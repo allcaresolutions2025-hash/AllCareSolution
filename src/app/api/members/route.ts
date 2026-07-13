@@ -4,8 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { generateUniqueReferralCode } from "@/lib/referral";
 import { awardUplinePoints } from "@/lib/points";
-import { pointsToPaise, formatPoints } from "@/lib/money";
-import { PIN_REWARD_PIN_VALUE } from "@/lib/pin-reward";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -103,11 +101,9 @@ export async function POST(req: Request) {
   const passwordHash = await bcrypt.hash(mobile, 12);
   const memberCode = await generateUniqueReferralCode();
 
-  // A premium (2000-pt) pin credits the NEW member's payout wallet with its
-  // value the moment they're enrolled. A standard (1000-pt) pin credits nothing.
-  const joinCreditPaise =
-    pin.pointsValue >= PIN_REWARD_PIN_VALUE ? pointsToPaise(pin.pointsValue) : 0;
-
+  // Both 1000-pt and 2000-pt pins follow the same points system — no wallet
+  // credit at enrollment. The 2000-pt pin's only difference is that the enrolled
+  // member gets the 40 Combo Reward (see lib/rewards) instead of the Welcome Kit.
   let newUser;
   try {
     newUser = await prisma.$transaction(async (tx) => {
@@ -130,22 +126,13 @@ export async function POST(req: Request) {
           referrerId: placementParentId,
           slot: side,
           agreedToTermsAt: new Date(),
-          wallet: { create: { balanceAvailable: joinCreditPaise } },
+          wallet: { create: {} },
         },
       });
       await tx.pin.update({
         where: { id: pin.id },
         data: { status: "USED", usedAt: new Date(), usedForUserId: created.id },
       });
-      if (joinCreditPaise > 0) {
-        await tx.notification.create({
-          data: {
-            userId: created.id,
-            title: "Welcome bonus credited",
-            body: `You were enrolled with a ${pin.pointsValue.toLocaleString("en-IN")}-pt pin — ${formatPoints(joinCreditPaise)} has been added to your payout wallet.`,
-          },
-        });
-      }
       // +200 direct-referral bonus goes to the typed Refer ID's owner
       // (parent.id) — NOT the PIN owner, and NOT the spillover placement
       // parent. This matches member expectation that "the referral code's

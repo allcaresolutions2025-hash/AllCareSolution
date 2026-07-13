@@ -108,7 +108,7 @@ export default async function RewardsPage() {
       {/* Joining reward — 2000-pt members get the 40 Combo Reward INSTEAD of the
           Welcome Kit; everyone else gets the Welcome Kit. */}
       {comboRewardPoints > 0 ? (
-        <FortyComboCard claim={fortyComboClaim} creditedPoints={comboRewardPoints} />
+        <FortyComboCard claim={fortyComboClaim} />
       ) : (
         <WelcomeKitCard claim={welcomeKitClaim} />
       )}

@@ -151,8 +151,8 @@ export function AddMemberForm({
         {pinValues && (pinValues[pin] ?? 0) >= 2000 && (
           <p className="text-xs mt-2 rounded-lg bg-violet-50 border border-violet-200 text-violet-800 px-3 py-2">
             This is a <strong>{(pinValues[pin] ?? 0).toLocaleString("en-IN")} pts pin</strong> — the member
-            you enroll with it will receive <strong>{(pinValues[pin] ?? 0).toLocaleString("en-IN")} pts</strong>{" "}
-            in their payout wallet.
+            you enroll with it gets the <strong>40 Combo Reward</strong> (claimed from admin) instead of the
+            Welcome Kit. Points and placement work the same as a standard pin.
           </p>
         )}
       </div>

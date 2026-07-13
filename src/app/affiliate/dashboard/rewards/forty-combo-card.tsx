@@ -27,7 +27,7 @@ const COLOR_CHIP: Record<string, string> = {
   red:     "bg-red-50 text-red-700 border-red-200",
 };
 
-export function FortyComboCard({ claim, creditedPoints }: { claim: ClaimInfo; creditedPoints: number }) {
+export function FortyComboCard({ claim }: { claim: ClaimInfo }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -68,12 +68,6 @@ export function FortyComboCard({ claim, creditedPoints }: { claim: ClaimInfo; cr
             <p className="text-xs text-muted-foreground mt-1 max-w-md">
               You were enrolled with a 2,000 pts pin, so you get the 40 Combo Reward instead of the Welcome
               Kit. Request it and admin will deliver it to your address.
-              {creditedPoints > 0 && (
-                <>
-                  {" "}Your <strong>{creditedPoints.toLocaleString("en-IN")} pts</strong> joining credit was
-                  already added to your payout wallet.
-                </>
-              )}
             </p>
           </div>
         </div>
