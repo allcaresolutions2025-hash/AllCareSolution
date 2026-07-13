@@ -18,6 +18,7 @@
     "db:release-commissions": "tsx scripts/release-commissions.ts",
     "db:backfill-promax": "tsx scripts/backfill-promax-counts.ts",
     "db:reverse-pin-reward-credits": "tsx scripts/reverse-old-pin-reward-credits.ts",
+    "db:diagnose-2000": "tsx scripts/diagnose-2000-credits.ts",
     "demo:seed-payout": "tsx scripts/seed-payout-test.ts"
   },
   "prisma": {
