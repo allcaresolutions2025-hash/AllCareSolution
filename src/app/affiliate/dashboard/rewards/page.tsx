@@ -6,13 +6,14 @@ import {
   rewardThresholdMet,
   WELCOME_KIT_LEVEL,
   PROMAX_COMBO_LEVEL,
+  FORTY_COMBO_LEVEL,
 } from "@/lib/rewards";
 import { getLegFillDepths } from "@/lib/network";
 import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { RewardCard } from "./reward-card";
 import { WelcomeKitCard } from "./welcome-kit-card";
 import { ProMaxComboCard } from "./pro-max-combo-card";
-import { ComboRewardCard } from "./combo-reward-card";
+import { FortyComboCard } from "./forty-combo-card";
 import { PIN_REWARD_PIN_VALUE } from "@/lib/pin-reward";
 import { Trophy, Users } from "lucide-react";
 
@@ -48,6 +49,7 @@ export default async function RewardsPage() {
   const claimByLevel = new Map(claims.map((c) => [c.level, c]));
   const welcomeKitClaim = claimByLevel.get(WELCOME_KIT_LEVEL) ?? null;
   const proMaxComboClaim = claimByLevel.get(PROMAX_COMBO_LEVEL) ?? null;
+  const fortyComboClaim = claimByLevel.get(FORTY_COMBO_LEVEL) ?? null;
 
   const ctx = {
     leftLegCount: me.leftLegCount,
@@ -103,11 +105,13 @@ export default async function RewardsPage() {
         </div>
       </div>
 
-      {/* Joining gift — Welcome Kit (not part of the L1-L15 ladder) */}
-      <WelcomeKitCard claim={welcomeKitClaim} />
-
-      {/* 40 Combo Reward — for members enrolled with a 2000-pt pin */}
-      {comboRewardPoints > 0 && <ComboRewardCard points={comboRewardPoints} />}
+      {/* Joining reward — 2000-pt members get the 40 Combo Reward INSTEAD of the
+          Welcome Kit; everyone else gets the Welcome Kit. */}
+      {comboRewardPoints > 0 ? (
+        <FortyComboCard claim={fortyComboClaim} creditedPoints={comboRewardPoints} />
+      ) : (
+        <WelcomeKitCard claim={welcomeKitClaim} />
+      )}
 
       {/* Pin Pro Max welcome reward — only for Pro Max members */}
       {PRO_MAX_ENABLED && me.isProMax && <ProMaxComboCard claim={proMaxComboClaim} />}

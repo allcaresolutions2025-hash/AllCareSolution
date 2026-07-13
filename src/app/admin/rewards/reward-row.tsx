@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, Truck, Package, FileText } from "lucide-react";
 import type { RewardClaimStatus } from "@prisma/client";
+import { FORTY_COMBO_LEVEL } from "@/lib/rewards";
 
 const STATUS_BADGE: Record<RewardClaimStatus, { label: string; cls: string }> = {
   PENDING:    { label: "Pending",    cls: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -61,6 +62,8 @@ export function RewardRow({ id, user, level, rewardName, status, adminNote, requ
         <span className="inline-flex items-center gap-1 font-semibold text-brand-700">
           {level === 100
             ? <>👑 Combo</>
+            : level === FORTY_COMBO_LEVEL
+            ? <>🎁 40 Combo</>
             : level === 0
             ? <>🎁 Welcome</>
             : <>{GIFT_ICONS[level]} L{level}</>}
@@ -137,12 +140,12 @@ export function RewardRow({ id, user, level, rewardName, status, adminNote, requ
               <Package className="h-3 w-3" /> Mark Delivered
             </button>
           )}
-          {(status === "DELIVERED" || status === "REJECTED") && level !== 0 && (
+          {(status === "DELIVERED" || status === "REJECTED") && level !== 0 && level !== FORTY_COMBO_LEVEL && (
             <span className="text-xs text-muted-foreground">—</span>
           )}
 
-          {/* Welcome Kit is the only physical reward — offer the courier slip PDF. */}
-          {level === 0 && (
+          {/* Welcome Kit and the 40 Combo are physical — offer the courier slip PDF. */}
+          {(level === 0 || level === FORTY_COMBO_LEVEL) && (
             <a
               href={`/api/admin/rewards/${id}/courier-slip`}
               target="_blank"

@@ -10,17 +10,34 @@ import {
   WELCOME_KIT_REWARD,
   PROMAX_COMBO_LEVEL,
   PROMAX_COMBO_REWARD,
+  FORTY_COMBO_LEVEL,
+  FORTY_COMBO_REWARD,
 } from "@/lib/rewards";
+import { PIN_REWARD_PIN_VALUE } from "@/lib/pin-reward";
 import { getLegFillDepths } from "@/lib/network";
 import { z } from "zod";
 
 // level 0    = Welcome Kit (joining gift, no leg-count gate)
 // level 1-15 = the reward ladder; each level is INDEPENDENTLY claimable once
 //              the per-leg threshold is met
+// level 40   = 40 Combo Reward (members enrolled with a 2000-pt pin only)
 // level 100  = Pin Pro Max "Acht Mart Combo" (Pro Max members only)
 const schema = z.object({
-  level: z.union([z.number().int().min(0).max(15), z.literal(PROMAX_COMBO_LEVEL)]),
+  level: z.union([
+    z.number().int().min(0).max(15),
+    z.literal(FORTY_COMBO_LEVEL),
+    z.literal(PROMAX_COMBO_LEVEL),
+  ]),
 });
+
+// A member is a "2000-pt member" if the pin used to enrol them was a 2000-pt pin.
+async function wasEnrolledWith2000Pin(userId: string): Promise<boolean> {
+  const pin = await prisma.pin.findFirst({
+    where: { usedForUserId: userId, pointsValue: { gte: PIN_REWARD_PIN_VALUE } },
+    select: { id: true },
+  });
+  return Boolean(pin);
+}
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -60,9 +77,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, claimId: claim.id });
   }
 
+  // 40 Combo Reward — only for members enrolled with a 2000-pt pin. Physical
+  // reward fulfilled by admin; no leg-count gate, one claim per member.
+  if (level === FORTY_COMBO_LEVEL) {
+    if (!(await wasEnrolledWith2000Pin(session.user.id))) {
+      return NextResponse.json(
+        { error: "The 40 Combo Reward is only for members enrolled with a 2000-pt pin." },
+        { status: 403 },
+      );
+    }
+    const claim = await prisma.rewardClaim.create({
+      data: {
+        userId: session.user.id,
+        level: FORTY_COMBO_LEVEL,
+        rewardName: FORTY_COMBO_REWARD.gift,
+      },
+    });
+    return NextResponse.json({ ok: true, claimId: claim.id });
+  }
+
   // Welcome Kit — every joined user can claim it once; no leg-count check, no
-  // sequential ordering against L1-L15.
+  // sequential ordering against L1-L15. EXCEPT 2000-pt members, who receive the
+  // 40 Combo Reward instead of the Welcome Kit.
   if (level === WELCOME_KIT_LEVEL) {
+    if (await wasEnrolledWith2000Pin(session.user.id)) {
+      return NextResponse.json(
+        { error: "As a 2000-pt member you receive the 40 Combo Reward instead of the Welcome Kit." },
+        { status: 403 },
+      );
+    }
     const claim = await prisma.rewardClaim.create({
       data: {
         userId: session.user.id,
