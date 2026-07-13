@@ -12,6 +12,8 @@ import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { RewardCard } from "./reward-card";
 import { WelcomeKitCard } from "./welcome-kit-card";
 import { ProMaxComboCard } from "./pro-max-combo-card";
+import { ComboRewardCard } from "./combo-reward-card";
+import { PIN_REWARD_PIN_VALUE } from "@/lib/pin-reward";
 import { Trophy, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +36,15 @@ export default async function RewardsPage() {
     where: { userId: session.user.id },
     select: { level: true, status: true, adminNote: true, requestedAt: true, updatedAt: true },
   });
+
+  // The "40 Combo Reward" — shown if this member was enrolled using a 2000-pt
+  // pin (its 2000 pts were auto-credited to their payout wallet at join time).
+  const enrollmentPin = await prisma.pin.findFirst({
+    where: { usedForUserId: session.user.id },
+    select: { pointsValue: true },
+  });
+  const comboRewardPoints =
+    enrollmentPin && enrollmentPin.pointsValue >= PIN_REWARD_PIN_VALUE ? enrollmentPin.pointsValue : 0;
   const claimByLevel = new Map(claims.map((c) => [c.level, c]));
   const welcomeKitClaim = claimByLevel.get(WELCOME_KIT_LEVEL) ?? null;
   const proMaxComboClaim = claimByLevel.get(PROMAX_COMBO_LEVEL) ?? null;
@@ -94,6 +105,9 @@ export default async function RewardsPage() {
 
       {/* Joining gift — Welcome Kit (not part of the L1-L15 ladder) */}
       <WelcomeKitCard claim={welcomeKitClaim} />
+
+      {/* 40 Combo Reward — for members enrolled with a 2000-pt pin */}
+      {comboRewardPoints > 0 && <ComboRewardCard points={comboRewardPoints} />}
 
       {/* Pin Pro Max welcome reward — only for Pro Max members */}
       {PRO_MAX_ENABLED && me.isProMax && <ProMaxComboCard claim={proMaxComboClaim} />}
