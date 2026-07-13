@@ -124,10 +124,6 @@ model User {
   // Reward claims
   rewardClaims  RewardClaim[]
 
-  // 2000-pt pin rewards — one claimable per 2000-pt pin obtained; credited to
-  // the payout wallet (balanceAvailable) on admin approval.
-  pinRewards    PinReward[]
-
   // Pro Max rewards (combo box requests + admin-granted level rewards)
   proMaxRewards ProMaxReward[]
 
@@ -409,26 +405,6 @@ model PayoutRequest {
 
   @@index([userId])
   @@index([status])
-}
-
-// A cash-back style reward for members who obtained a 2000-pt pin. Each 2000-pt
-// pin a member gets entitles ONE reward claim; on admin approval, pointsValue
-// points are credited to the member's payout wallet (Wallet.balanceAvailable),
-// which they can then withdraw or let the daily payout sweep. Rejected claims do
-// not consume the entitlement (see the eligibility count in the request route).
-model PinReward {
-  id          String            @id @default(cuid())
-  userId      String
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pointsValue Int               @default(2000) // credited to payout wallet on approval
-  status      RewardClaimStatus @default(PENDING)
-  adminNote   String?           @db.Text
-  requestedAt DateTime          @default(now())
-  processedAt DateTime?
-  updatedAt   DateTime          @updatedAt
-
-  @@index([userId])
-  @@index([status, requestedAt])
 }
 
 // ---------- SETTINGS / MISC ----------

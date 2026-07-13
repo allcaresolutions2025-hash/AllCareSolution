@@ -69,13 +69,14 @@ export function RequestPinForm() {
               <div className="text-xs text-muted-foreground mt-0.5">
                 {v === 1000
                   ? "Standard pin"
-                  : "Unlocks a 2,000 pts reward per pin (claim from admin)"}
+                  : "The member you enroll with it gets 2,000 pts in their payout wallet"}
               </div>
             </button>
           ))}
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          The pin value does not change tree placement — the 2,000 pts pin just adds a claimable reward.
+          The pin value does not change tree placement — a 2,000 pts pin simply credits 2,000 pts to the
+          new member&apos;s payout wallet when you enroll them with it.
         </p>
       </div>
 

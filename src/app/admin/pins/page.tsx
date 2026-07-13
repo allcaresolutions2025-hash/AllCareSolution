@@ -252,6 +252,7 @@ export default async function AdminPinsPage({
                   <th className="px-4 py-2 font-medium">Member</th>
                   <th className="px-4 py-2 font-medium">Mobile</th>
                   <th className="px-4 py-2 font-medium text-right">Qty</th>
+                  <th className="px-4 py-2 font-medium">Pin value</th>
                   <th className="px-4 py-2 font-medium text-right">Pins issued</th>
                   <th className="px-4 py-2 font-medium">Status</th>
                 </tr>
@@ -275,6 +276,17 @@ export default async function AdminPinsPage({
                     </td>
                     <td className="px-4 py-2 text-xs font-mono">{r.mobileNumber}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{r.quantity}</td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                          r.pointsValue >= 2000
+                            ? "bg-violet-100 text-violet-800 border-violet-300"
+                            : "bg-slate-100 text-slate-700 border-slate-300"
+                        }`}
+                      >
+                        {r.pointsValue.toLocaleString("en-IN")} pts
+                      </span>
+                    </td>
                     <td className="px-4 py-2 text-right tabular-nums">{r._count.pins}</td>
                     <td className="px-4 py-2">
                       {r.status === "APPROVED" ? (

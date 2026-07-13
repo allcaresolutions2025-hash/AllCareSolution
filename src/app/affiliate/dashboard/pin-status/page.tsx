@@ -102,6 +102,7 @@ async function UnusedPanel({ userId, page }: { userId: string; page: number }) {
             <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-4 py-2 font-medium">Pin code</th>
+                <th className="px-4 py-2 font-medium">Pin value</th>
                 <th className="px-4 py-2 font-medium">Issued</th>
                 <th className="px-4 py-2 font-medium">Status</th>
               </tr>
@@ -110,6 +111,7 @@ async function UnusedPanel({ userId, page }: { userId: string; page: number }) {
               {pins.map((p) => (
                 <tr key={p.id} className="border-t">
                   <td className="px-4 py-2 font-mono">{p.code}</td>
+                  <td className="px-4 py-2"><PinValueBadge pointsValue={p.pointsValue} /></td>
                   <td className="px-4 py-2 text-xs text-muted-foreground">
                     {p.createdAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}
                   </td>
@@ -162,6 +164,7 @@ async function UsedPanel({ userId, page }: { userId: string; page: number }) {
             <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-4 py-2 font-medium">Pin code</th>
+                <th className="px-4 py-2 font-medium">Pin value</th>
                 <th className="px-4 py-2 font-medium">Used on</th>
                 <th className="px-4 py-2 font-medium">Member name</th>
                 <th className="px-4 py-2 font-medium">Member ID</th>
@@ -172,6 +175,7 @@ async function UsedPanel({ userId, page }: { userId: string; page: number }) {
               {pins.map((p) => (
                 <tr key={p.id} className="border-t">
                   <td className="px-4 py-2 font-mono">{p.code}</td>
+                  <td className="px-4 py-2"><PinValueBadge pointsValue={p.pointsValue} /></td>
                   <td className="px-4 py-2 text-xs text-muted-foreground">
                     {p.usedAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }) ?? "—"}
                   </td>
@@ -267,5 +271,22 @@ async function TransferPanel({
         <TransferPinForm pins={activePins.map((p) => p.code)} myCode={myCode} />
       )}
     </div>
+  );
+}
+
+// Denomination indicator. A 2000-pt pin credits the new member's wallet with
+// 2000 pts when it's used to enroll them, so members plan which pin to give.
+function PinValueBadge({ pointsValue }: { pointsValue: number }) {
+  const is2000 = pointsValue >= 2000;
+  return (
+    <span
+      className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border ${
+        is2000
+          ? "bg-violet-100 text-violet-800 border-violet-300"
+          : "bg-slate-100 text-slate-700 border-slate-300"
+      }`}
+    >
+      {pointsValue.toLocaleString("en-IN")} pts
+    </span>
   );
 }
