@@ -7,6 +7,7 @@ import { BadgeIndianRupee } from "lucide-react";
 import { formatPoints } from "@/lib/money";
 
 const MIN_WITHDRAW = 500;
+const DEDUCTION_RATE = 0.1; // 10% deducted; member receives 90%
 
 export function WithdrawForm({
   balanceAvailable,
@@ -22,6 +23,8 @@ export function WithdrawForm({
   const [submitting, setSubmitting] = useState(false);
 
   const maxPoints = Math.floor(balanceAvailable / 100);
+  const deduction = Math.round(points * DEDUCTION_RATE);
+  const netReceive = points - deduction;
   const canSubmit =
     !hasPending &&
     hasBankDetails &&
@@ -40,7 +43,7 @@ export function WithdrawForm({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Withdrawal request failed");
-      toast.success(`Requested withdrawal of ${points.toLocaleString("en-IN")} pts. Awaiting admin approval.`);
+      toast.success(`Requested withdrawal of ${points.toLocaleString("en-IN")} pts (you receive ${netReceive.toLocaleString("en-IN")} pts after 10% deduction). Awaiting admin approval.`);
       setPoints(0);
       router.refresh();
     } catch (err) {
@@ -86,9 +89,16 @@ export function WithdrawForm({
         />
         <p className="mt-1 text-xs text-muted-foreground">
           Minimum <strong>{MIN_WITHDRAW.toLocaleString("en-IN")} pts</strong> per request (1 point = ₹1).
-          Points are held as soon as you request and paid 1:1 by admin — no deduction. You can withdraw up
-          to <strong>{maxPoints.toLocaleString("en-IN")} pts</strong>.
+          A <strong>10% deduction</strong> applies — the full amount is held from your balance and you
+          receive 90%. You can withdraw up to <strong>{maxPoints.toLocaleString("en-IN")} pts</strong>.
         </p>
+        {points >= MIN_WITHDRAW && points * 100 <= balanceAvailable && (
+          <div className="mt-2 rounded-lg bg-muted/40 border px-3 py-2 text-xs space-y-0.5">
+            <div className="flex justify-between"><span>Withdrawing</span><span className="tabular-nums">{points.toLocaleString("en-IN")} pts</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>Deduction (10%)</span><span className="tabular-nums">−{deduction.toLocaleString("en-IN")} pts</span></div>
+            <div className="flex justify-between font-semibold border-t pt-0.5"><span>You receive</span><span className="tabular-nums">{netReceive.toLocaleString("en-IN")} pts</span></div>
+          </div>
+        )}
       </div>
 
       <button type="submit" disabled={submitting || !canSubmit} className="btn-primary w-full">

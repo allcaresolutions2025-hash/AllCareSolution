@@ -6,15 +6,19 @@ import { pointsToPaise, PAISE_PER_POINT } from "@/lib/money";
 import { z } from "zod";
 
 // Manual points withdrawal — a member asks admin to cash out their earning
-// (e-wallet / balanceAvailable) points. Unlike the nightly daily payout, this
-// is on-demand and pays 1:1 with no forfeit. The points are HELD immediately at
-// request time (balanceAvailable is decremented) so the nightly sweep can't pay
-// them a second time; admin then disburses offline and marks the request paid
-// from the admin Payouts page. A rejected request refunds the held points.
+// (e-wallet / balanceAvailable) points. The FULL requested amount is HELD
+// immediately at request time (balanceAvailable is decremented) so the nightly
+// sweep can't pay them a second time, but the member is paid 90% — a 10%
+// deduction is forfeited, matching the daily payout. Admin disburses the net
+// offline and marks the request paid from the admin Payouts page. A rejected
+// request refunds the full held amount.
 
 // Minimum balance (in displayed points) a member must withdraw at once.
 const MIN_WITHDRAW_POINTS = 500;
 const MIN_WITHDRAW_PAISE = MIN_WITHDRAW_POINTS * PAISE_PER_POINT;
+
+// Deduction taken on every withdrawal — member receives (1 - rate) of the amount.
+const WITHDRAW_DEDUCTION_RATE = 0.1; // 10%
 
 const bodySchema = z.object({ points: z.number().int().positive() });
 
@@ -79,6 +83,12 @@ export async function POST(req: Request) {
 
   const bankSnapshot = JSON.stringify({ bankAccount, ifsc, bankHolderName, panNumber });
 
+  // 10% deduction: the full amount is held from the wallet, the member is paid
+  // the net (90%). Deduction stored in tdsAmount so the admin Gross/Net columns
+  // reflect it.
+  const deductionPaise = Math.round(amountPaise * WITHDRAW_DEDUCTION_RATE);
+  const netPaise = amountPaise - deductionPaise;
+
   // Hold the points and open the request atomically. The where-guard on
   // balanceAvailable makes the decrement fail-safe against a concurrent spend.
   try {
@@ -92,9 +102,9 @@ export async function POST(req: Request) {
         data: {
           userId: session.user.id,
           amountGross: amountPaise,
-          tdsRate: 0,
-          tdsAmount: 0,
-          amountNet: amountPaise, // 1:1, no forfeit
+          tdsRate: Math.round(WITHDRAW_DEDUCTION_RATE * 100 * 100), // percent * 100
+          tdsAmount: deductionPaise,
+          amountNet: netPaise, // member receives 90%
           status: "REQUESTED",
           bankSnapshot,
         },

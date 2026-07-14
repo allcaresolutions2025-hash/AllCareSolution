@@ -53,8 +53,9 @@ export default async function WithdrawPage({ searchParams }: { searchParams: { p
         <h1 className="text-2xl font-bold">Withdraw Points</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Request admin to withdraw your earning points to your bank. Minimum{" "}
-          <strong>500 pts</strong> must be available. Requested points are held immediately and paid{" "}
-          <strong>1:1 (no deduction)</strong> offline by admin once approved.
+          <strong>500 pts</strong> must be available. The full amount is held immediately; a{" "}
+          <strong>10% deduction</strong> applies and you receive <strong>90%</strong> offline by admin
+          once approved.
         </p>
       </div>
 
