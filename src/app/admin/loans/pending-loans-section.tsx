@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Search, Check, X, MessageCircle, ShieldAlert } from "lucide-react";
+import { Search, Check, X, MessageCircle, ShieldAlert, Download } from "lucide-react";
 import { formatRupees } from "@/lib/loan";
 import { ClientPagination } from "@/components/client-pagination";
 
@@ -69,7 +69,18 @@ export function PendingLoansSection({ rows }: { rows: PendingLoanRow[] }) {
               Search by name, email, code, phone, or PAN to find duplicate applications across the 15 IDs a PAN may hold.
             </p>
           </div>
-          <SearchBox value={q} onChange={setQ} placeholder="Search name / email / code / PAN…" />
+          <div className="flex items-center gap-2">
+            <SearchBox value={q} onChange={setQ} placeholder="Search name / email / code / PAN…" />
+            {rows.length > 0 && (
+              <a
+                href="/api/admin/loans/export-pending"
+                download
+                className="btn-outline inline-flex items-center gap-2 shrink-0"
+              >
+                <Download className="h-4 w-4" /> Download Excel
+              </a>
+            )}
+          </div>
         </div>
 
         {duplicateCount > 0 && (
