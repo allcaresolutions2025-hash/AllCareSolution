@@ -2,8 +2,8 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock, Wrench, ShieldAlert, Sparkles, Hourglass } from "lucide-react";
-import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE, specialLoanEligible, hasTakenLevel2Loan, SPECIAL_LOAN_TIER, SPECIAL_LOAN_KEY, LEVEL2_LOAN_KEY, type EligibilityContext } from "@/lib/loan";
+import { Award, Info, CheckCircle2, CircleDashed, BadgeIndianRupee, Lock, Wrench, ShieldAlert, Hourglass } from "lucide-react";
+import { LOAN_TIERS, tierIsEligible, tierIsCompleted, nextClaimableTier, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE, hasTakenLevel2Loan, level3LockedByHigherLoan, LEVEL3_5000_KEY, type EligibilityContext } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
 import { ApplyLoanButton } from "./apply-loan-button";
 import { RequestUnlockButton } from "./request-unlock-button";
@@ -14,7 +14,7 @@ export default async function AchievedOffersPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [me, directLeftSlots, directRightSlots, fillDepths, activeLoan, closedLoans, panConflict, identityConflict, latestUnlockReq, level2Taken] = await Promise.all([
+  const [me, directLeftSlots, directRightSlots, fillDepths, activeLoan, closedLoans, panConflict, identityConflict, latestUnlockReq, level2Taken, takenLoans] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { leftLegCount: true, rightLegCount: true, phone: true, whatsappNumber: true },
@@ -44,6 +44,12 @@ export default async function AchievedOffersPage() {
     }),
     // Rs. 1,000 starter is hidden once the member has taken the Rs. 2,000 loan.
     hasTakenLevel2Loan(prisma, session.user.id),
+    // All non-rejected loans — used to lock the Rs. 5,000 Level-3 for members
+    // who already took the Rs. 10,000 (Level-4) loan.
+    prisma.loan.findMany({
+      where: { userId: session.user.id, status: { not: "REJECTED" } },
+      select: { tierKey: true },
+    }),
   ]);
   // "Blocked" = tripped an identity/PAN-reuse guard and not yet admin-unlocked.
   const identityBlocked = identityConflict.conflictCount > 0;
@@ -61,17 +67,11 @@ export default async function AchievedOffersPage() {
     rightFillDepth: fillDepths.rightFillDepth,
     completedTierKeys: closedLoans.map((l) => l.tierKey),
     hasTakenLevel2Loan: level2Taken,
+    takenTierKeys: takenLoans.map((l) => l.tierKey),
   };
 
   const claimable = nextClaimableTier(ctx);
   const paused = loansPaused();
-
-  // Special Loan (standalone, post Level-1) state.
-  const completedTierKeys = ctx.completedTierKeys ?? [];
-  const completedLevel2 = completedTierKeys.includes(LEVEL2_LOAN_KEY);
-  const completedSpecial = completedTierKeys.includes(SPECIAL_LOAN_KEY);
-  const specialActive = activeLoan?.tierKey === SPECIAL_LOAN_KEY;
-  const specialCanApply = specialLoanEligible(ctx) && !activeLoan && !paused && !loanBlocked;
 
   return (
     <div className="space-y-6">
@@ -190,73 +190,14 @@ export default async function AchievedOffersPage() {
         </div>
       </div>
 
-      {/* Special Loan — standalone offer unlocked after the Level-1 Rs. 2,000 loan */}
-      <div className="card overflow-hidden ring-1 ring-amber-200">
-        <div className="p-5 bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-amber-200 flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-lg bg-amber-100 text-amber-700 grid place-items-center shrink-0">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-semibold">Special Loan</h2>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500 text-white">
-                  Special
-                </span>
-              </div>
-              <div className="text-sm text-muted-foreground mt-1 max-w-xl">
-                A one-time <strong className="text-amber-800">{SPECIAL_LOAN_TIER.amountLabel}</strong> loan credited
-                straight to your Pin Wallet. Repay <strong>Rs. 5,000 within one week</strong>. Every member who
-                has completed their Rs. 2,000 loan is eligible — no leg requirement.
-              </div>
-            </div>
-          </div>
-
-          <div className="shrink-0">
-            {completedSpecial ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300">
-                <Lock className="h-3.5 w-3.5" /> Completed
-              </span>
-            ) : specialActive ? (
-              <Link
-                href="/affiliate/dashboard/loan"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-amber-600 text-white text-sm font-medium hover:bg-amber-700"
-              >
-                View my Special Loan
-              </Link>
-            ) : !completedLevel2 ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200">
-                <Lock className="h-3.5 w-3.5" /> Complete your Rs. 2,000 loan first
-              </span>
-            ) : activeLoan ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                Clear your active loan first
-              </span>
-            ) : specialCanApply ? (
-              <ApplyLoanButton
-                tierKey={SPECIAL_LOAN_KEY}
-                amountLabel={SPECIAL_LOAN_TIER.amountLabel}
-                registeredPhone={me?.phone ?? null}
-                savedWhatsappNumber={me?.whatsappNumber ?? null}
-              />
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200">
-                Not available
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Eligibility ladder */}
       <div className="card overflow-hidden">
         <div className="p-5 border-b">
           <h2 className="font-semibold">Loan Tiers</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            You qualify for a tier when your Left and Right legs are <strong>both completely filled</strong> to
-            that tier&apos;s level — every slot occupied, no gaps. A deep but lopsided leg with an empty slot
-            does not count. You can take the highest tier you qualify for that you haven&apos;t already claimed.
-            Loans are offered at Levels 1, 3, 5, 7, 9, 10, 11, 12, 13, 14 and 15.
+            You qualify for a tier once your Left and Right legs meet its member requirement. Loans are taken
+            in order — clear one before the next unlocks. Level 3 (Rs. 5,000) needs 3 members on each leg;
+            members who already took the Rs. 10,000 loan skipped it and can no longer apply for it.
           </p>
         </div>
         <div className="divide-y">
@@ -264,18 +205,24 @@ export default async function AchievedOffersPage() {
             const completed = tierIsCompleted(tier, ctx);
             const thresholdMet = tierIsEligible(tier, ctx);
             const canClaim = claimable?.key === tier.key;
-            const state: "completed" | "canClaim" | "waiting" | "locked" = completed
+            // The Rs. 5,000 Level-3 is "missed" for members who already took the
+            // Rs. 10,000 (Level-4) loan — permanently unavailable to them.
+            const missed = tier.key === LEVEL3_5000_KEY && !completed && level3LockedByHigherLoan(ctx);
+            const state: "completed" | "canClaim" | "waiting" | "locked" | "missed" = completed
               ? "completed"
-              : canClaim
-                ? "canClaim"
-                : thresholdMet
-                  ? "waiting"
-                  : "locked";
+              : missed
+                ? "missed"
+                : canClaim
+                  ? "canClaim"
+                  : thresholdMet
+                    ? "waiting"
+                    : "locked";
             const badge = {
               completed: { label: "Completed",   cls: "bg-slate-100 text-slate-700 border-slate-300" },
               canClaim:  { label: "Apply now",   cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
               waiting:   { label: "Eligible — clear previous loan first", cls: "bg-amber-50 text-amber-800 border-amber-200" },
               locked:    { label: "Locked",      cls: "bg-slate-50 text-slate-600 border-slate-200" },
+              missed:    { label: "Not available", cls: "bg-slate-50 text-slate-500 border-slate-200" },
             }[state];
             return (
               <div key={tier.key} className="p-4 flex items-center justify-between gap-4">

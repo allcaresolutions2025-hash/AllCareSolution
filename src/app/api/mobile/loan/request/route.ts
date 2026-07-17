@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const tier = tierByKey(parsed.data.tierKey);
     if (!tier) return NextResponse.json({ error: "Unknown tier" }, { status: 400 });
 
-    const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans, level2Taken] = await Promise.all([
+    const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans, level2Taken, takenLoans] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.user.id },
         select: { leftLegCount: true, rightLegCount: true },
@@ -46,6 +46,10 @@ export async function POST(req: Request) {
         select: { tierKey: true },
       }),
       hasTakenLevel2Loan(prisma, auth.user.id),
+      prisma.loan.findMany({
+        where: { userId: auth.user.id, status: { not: "REJECTED" } },
+        select: { tierKey: true },
+      }),
     ]);
 
     if (openLoan) {
@@ -85,6 +89,7 @@ export async function POST(req: Request) {
       rightFillDepth: fillDepths.rightFillDepth,
       completedTierKeys,
       hasTakenLevel2Loan: level2Taken,
+      takenTierKeys: takenLoans.map((l) => l.tierKey),
     };
     if (!tierIsEligible(tier, ctx)) {
       return NextResponse.json(

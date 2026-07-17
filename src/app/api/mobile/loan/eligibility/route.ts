@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     const auth = await authMobile(req);
     if ("response" in auth) return auth.response;
 
-    const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans, panConflict, level2Taken] = await Promise.all([
+    const [me, directLeftSlots, directRightSlots, fillDepths, openLoan, closedLoans, panConflict, level2Taken, takenLoans] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.user.id },
         select: { leftLegCount: true, rightLegCount: true, phone: true, whatsappNumber: true },
@@ -29,6 +29,10 @@ export async function GET(req: Request) {
       }),
       countActivePanLoanConflicts(prisma, auth.user.id),
       hasTakenLevel2Loan(prisma, auth.user.id),
+      prisma.loan.findMany({
+        where: { userId: auth.user.id, status: { not: "REJECTED" } },
+        select: { tierKey: true },
+      }),
     ]);
     const panBlocked = panConflict.conflictCount > 0;
 
@@ -42,6 +46,7 @@ export async function GET(req: Request) {
       rightFillDepth: fillDepths.rightFillDepth,
       completedTierKeys,
       hasTakenLevel2Loan: level2Taken,
+      takenTierKeys: takenLoans.map((l) => l.tierKey),
     };
 
     const nextTier = nextClaimableTier(ctx);
