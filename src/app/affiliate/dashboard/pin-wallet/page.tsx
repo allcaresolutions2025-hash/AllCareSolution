@@ -107,7 +107,7 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
           ) : (
             <>
               <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-                You can access the Pin Wallet — buy pins and transfer points to and from your
+                You can access the Pin Wallet — buy pins and transfer points to your
                 payout wallet — once you have <strong>more than one</strong> member on both your
                 left and right legs (left and right filled, plus another member below).
               </p>
@@ -134,8 +134,8 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
           <Wallet className="h-6 w-6 text-brand-600" /> Pin Wallet
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Use Pin Wallet points to buy pins instantly — no admin approval needed. Your approved loan is
-          credited here, and you can top up anytime from your payout wallet.
+          Use Pin Wallet points to buy pins instantly — no admin approval needed. Your approved loan
+          and admin credits are added here.
         </p>
       </div>
 
@@ -153,7 +153,7 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
             <Coins className="h-5 w-5" />
           </div>
           <div className="mt-3 text-2xl font-bold tabular-nums text-emerald-700">{formatPoints(payoutBalance)}</div>
-          <div className="text-xs text-muted-foreground">Payout wallet (transferable)</div>
+          <div className="text-xs text-muted-foreground">Payout wallet balance</div>
         </div>
         <div className="card p-5">
           <div className="h-9 w-9 rounded-lg bg-sky-100 text-sky-700 grid place-items-center">
@@ -167,7 +167,6 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
       {/* Buy + transfer actions */}
       <PinWalletActions
         pinWalletBalance={pinWalletBalance}
-        payoutBalance={payoutBalance}
         pricePerPin={pricePerPin}
         maxBuyable={maxBuyable}
         minWithdraw={minWithdraw}

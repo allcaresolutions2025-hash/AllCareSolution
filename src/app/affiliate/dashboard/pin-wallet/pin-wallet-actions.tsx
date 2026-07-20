@@ -3,21 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { KeyRound, ArrowRightLeft, ArrowLeftRight } from "lucide-react";
+import { KeyRound, ArrowLeftRight } from "lucide-react";
 import { formatPoints } from "@/lib/money";
-
-// Per-transfer minimums (points = whole rupees).
-const MIN_TOPUP = 200;     // payout -> pin wallet
 
 export function PinWalletActions({
   pinWalletBalance,
-  payoutBalance,
   pricePerPin,
   maxBuyable,
   minWithdraw = 3000,
 }: {
   pinWalletBalance: number;
-  payoutBalance: number;
   pricePerPin: number; // paise
   maxBuyable: number;
   // Pin Wallet -> payout floor. 3,000 for standard members; 6,000 for members
@@ -30,10 +25,8 @@ export function PinWalletActions({
   // a number only where we need it. Forcing a numeric min on the value made the
   // "1" impossible to delete.
   const [qty, setQty] = useState("1");
-  const [transferPts, setTransferPts] = useState(0);
   const [withdrawPts, setWithdrawPts] = useState(0);
   const [buying, setBuying] = useState(false);
-  const [transferring, setTransferring] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
 
   const qtyNum = parseInt(qty, 10) || 0;
@@ -62,28 +55,6 @@ export function PinWalletActions({
     }
   }
 
-  async function transfer(e: React.FormEvent) {
-    e.preventDefault();
-    if (transferPts < MIN_TOPUP || transferPts * 100 > payoutBalance) return;
-    setTransferring(true);
-    try {
-      const res = await fetch("/api/affiliate/pin-wallet/transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ points: transferPts }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Transfer failed");
-      toast.success(`Transferred ${transferPts.toLocaleString("en-IN")} points to your Pin Wallet.`);
-      setTransferPts(0);
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Transfer failed");
-    } finally {
-      setTransferring(false);
-    }
-  }
-
   async function withdraw(e: React.FormEvent) {
     e.preventDefault();
     if (withdrawPts < MIN_WITHDRAW || withdrawPts * 100 > pinWalletBalance) return;
@@ -107,7 +78,7 @@ export function PinWalletActions({
   }
 
   return (
-    <div className="grid md:grid-cols-3 gap-4">
+    <div className="grid md:grid-cols-2 gap-4">
       {/* Buy pins */}
       <form onSubmit={buyPins} className="card p-5 space-y-3">
         <div className="flex items-center gap-2">
@@ -142,42 +113,6 @@ export function PinWalletActions({
 
         <button type="submit" disabled={buying || !canAfford} className="btn-primary w-full">
           {buying ? "Buying…" : canAfford ? "Buy pins" : "Not enough points"}
-        </button>
-      </form>
-
-      {/* Transfer from payout */}
-      <form onSubmit={transfer} className="card p-5 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-lg bg-emerald-100 text-emerald-700 grid place-items-center">
-            <ArrowRightLeft className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-semibold">Top up from payout wallet</h2>
-            <p className="text-xs text-muted-foreground">Available: {formatPoints(payoutBalance)}</p>
-          </div>
-        </div>
-
-        <div>
-          <label className="label">Points to transfer</label>
-          <input
-            type="number"
-            min={0}
-            value={transferPts || ""}
-            onChange={(e) => setTransferPts(Math.max(0, parseInt(e.target.value, 10) || 0))}
-            className="input"
-            placeholder="e.g. 200"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            Moves points from payout into the Pin Wallet (1 point = ₹1). Minimum <strong>{MIN_TOPUP.toLocaleString("en-IN")}</strong> points per transfer.
-          </p>
-        </div>
-
-        <button
-          type="submit"
-          disabled={transferring || transferPts < MIN_TOPUP || transferPts * 100 > payoutBalance}
-          className="btn-secondary w-full"
-        >
-          {transferring ? "Transferring…" : "Transfer to Pin Wallet"}
         </button>
       </form>
 

@@ -42,10 +42,10 @@ export type LoanTier = {
 };
 
 export const LOAN_TIERS: LoanTier[] = [
-  { key: "STARTER_1000", level:  1, kind: "legMembers", legMembers: 1, newMembersOnly: true, label: "Level 1 — 1 member on Left & 1 on Right",             amount:        100_000, amountLabel: "Rs. 1,000",     totalWeeks: 1 },
+  { key: "STARTER_1000", level:  1, kind: "legMembers", legMembers: 1, newMembersOnly: true, label: "Level 1 — 1 member on Left & 1 on Right",             amount:        100_000, amountLabel: "Rs. 1,000",     totalWeeks: 2 },
   { key: "DIRECTS_1_1",  level:  2, kind: "legMembers", legMembers: 2,     label: "Level 2 — 2 members on Left & 2 on Right",               amount:        200_000, amountLabel: "Rs. 2,000",     totalWeeks: 2 },
-  { key: "LEG3_5000",    level:  3, kind: "legMembers", legMembers: 3,     label: "Level 3 — 3 members on Left & 3 on Right",               amount:        500_000, amountLabel: "Rs. 5,000",     totalWeeks: 2 },
-  { key: "LEG_7",       level:  3, kind: "legCount", legCount:     7,     label: "Level 4 — 7 members on Left & 7 on Right",               amount:      1_000_000, amountLabel: "Rs. 10,000",    totalWeeks: 4 },
+  { key: "LEG3_5000",    level:  3, kind: "legMembers", legMembers: 3,     label: "Level 3 — 3 members on Left & 3 on Right",               amount:        500_000, amountLabel: "Rs. 5,000",     totalWeeks: 5 },
+  { key: "LEG_7",       level:  3, kind: "legCount", legCount:     7,     label: "Level 4 — 7 members on Left & 7 on Right",               amount:      1_000_000, amountLabel: "Rs. 10,000",    totalWeeks: 5 },
   { key: "LEG_31",      level:  5, kind: "legCount", legCount:    31,     label: "Level 5 — 31 members on Left & 31 on Right",             amount:      2_000_000, amountLabel: "Rs. 20,000",    totalWeeks: 5 },
   { key: "LEG_127",     level:  7, kind: "legCount", legCount:   127,     label: "Level 7 — 127 members on Left & 127 on Right",           amount:      3_000_000, amountLabel: "Rs. 30,000",    totalWeeks: 6 },
   { key: "LEG_511",     level:  9, kind: "legCount", legCount:   511,     label: "Level 9 — 511 members on Left & 511 on Right",           amount:      5_000_000, amountLabel: "Rs. 50,000",    totalWeeks: 10 },
@@ -69,7 +69,7 @@ export const LEVEL2_LOAN_KEY = "DIRECTS_1_1";
 export const SPECIAL_LOAN_KEY = "SPECIAL_5000";
 
 // The Rs. 5,000 loan now lives in the ladder as Level 3 (3 members on each leg,
-// repaid Rs. 2,500 x 2 weeks). The former Rs. 10,000 "Level 3" became Level 4
+// repaid Rs. 1,000 x 5 weeks). The former Rs. 10,000 "Level 3" became Level 4
 // (its LEG_7 key/requirement are unchanged). A member who already took the
 // Rs. 10,000 loan skipped the Rs. 5,000 — it stays locked for them.
 export const LEVEL3_5000_KEY = "LEG3_5000";
@@ -90,7 +90,7 @@ export const SPECIAL_LOAN_TIER: LoanTier = {
   label: "Special Loan — for members who completed the Rs. 2,000 loan",
   amount: 500_000, // Rs. 5,000
   amountLabel: "Rs. 5,000",
-  totalWeeks: 1, // full Rs. 5,000 due within one week
+  totalWeeks: 5, // Rs. 1,000 per week — matches the Level-3 Rs. 5,000 schedule
 };
 
 // A member qualifies for the Special Loan once they have CLOSED (fully repaid)
@@ -222,10 +222,11 @@ export function tierCanClaim(tier: LoanTier, ctx: EligibilityContext): boolean {
   return next !== null && next.key === tier.key;
 }
 
-// Build the per-week installment plan. Most tiers split evenly. The 2,000 tier
-// is special-cased to 1,000 + 1,000 per spec, which is already even — but the
-// general "split principal across weeks, give rounding remainder to the last
-// week" approach handles it correctly without a branch.
+// Build the per-week installment plan. All tiers split evenly per spec —
+// Rs. 1,000 over 2 weeks (500/wk), Rs. 2,000 over 2 weeks (1,000/wk),
+// Rs. 5,000 over 5 weeks (1,000/wk), Rs. 10,000 over 5 weeks (2,000/wk) — and
+// the general "split principal across weeks, give rounding remainder to the
+// last week" approach handles them all without a branch.
 export function buildInstallmentPlan(
   amountPaise: number,
   totalWeeks: number,
