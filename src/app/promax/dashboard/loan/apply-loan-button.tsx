@@ -71,7 +71,7 @@ export function ProMaxApplyLoanButton({
               <div>
                 <h2 className="font-bold text-lg">Apply for {amountLabel}</h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Admin verifies and disburses to your Pin Wallet. We&apos;ll contact you on WhatsApp for repayment reminders.
+                  Admin verifies and disburses the amount offline. We&apos;ll contact you on WhatsApp for repayment reminders.
                 </p>
               </div>
               <button onClick={() => !busy && setOpen(false)} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Close">

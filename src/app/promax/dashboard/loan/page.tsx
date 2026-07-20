@@ -54,8 +54,8 @@ export default async function ProMaxLoanPage() {
           <BadgeIndianRupee className="h-6 w-6 text-promax-600" /> My Loan
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Unlock loan levels by filling both Pro Max legs. Apply for the next level; admin approves and credits
-          your Pin Wallet. Repay weekly per the schedule.
+          Unlock loan levels by filling both Pro Max legs. Apply for the next level; admin approves and the
+          amount is handed over offline. Repay weekly per the schedule.
         </p>
       </div>
 

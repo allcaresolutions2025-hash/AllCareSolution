@@ -41,7 +41,7 @@ export default async function ProMaxAdminLoansPage({ searchParams }: { searchPar
           <BadgeIndianRupee className="h-6 w-6 text-promax-600" /> Loans
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Approve Pro Max loan requests (disbursed to the member&apos;s Pin Wallet) and verify weekly repayment receipts.
+          Approve Pro Max loan requests (the amount is disbursed offline) and verify weekly repayment receipts.
         </p>
       </div>
 

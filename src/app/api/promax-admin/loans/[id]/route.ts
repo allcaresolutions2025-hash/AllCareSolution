@@ -32,8 +32,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ ok: true });
   }
 
-  // Approve: build the weekly installment schedule and disburse the loan amount
-  // into the member's Pin Wallet (same model as the 1,000-pt programme).
+  // Approve: build the weekly installment schedule. The loan amount itself is
+  // handed over offline — no Pin Wallet points are credited.
   const now = new Date();
   const plan = buildInstallmentPlan(loan.amount, loan.totalWeeks, now);
   const finalDue = plan[plan.length - 1]?.dueDate ?? now;
@@ -46,26 +46,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     await tx.loanInstallment.createMany({
       data: plan.map((p) => ({ loanId: loan.id, weekNumber: p.weekNumber, amount: p.amount, dueDate: p.dueDate })),
     });
-    const wallet = await tx.wallet.upsert({
-      where: { userId: loan.userId },
-      update: { pinWalletBalance: { increment: loan.amount } },
-      create: { userId: loan.userId, pinWalletBalance: loan.amount },
-      select: { pinWalletBalance: true },
-    });
-    await tx.pinWalletTxn.create({
-      data: {
-        userId: loan.userId,
-        type: "LOAN_CREDIT",
-        amount: loan.amount,
-        balanceAfter: wallet.pinWalletBalance,
-        note: `${formatRupees(loan.amount)} Pro Max loan credited to Pin Wallet`,
-      },
-    });
     await tx.notification.create({
       data: {
         userId: loan.userId,
         title: "Loan approved",
-        body: `Your ${formatRupees(loan.amount)} Pro Max loan was approved and credited to your Pin Wallet. Repay weekly per the schedule.`,
+        body: `Your ${formatRupees(loan.amount)} Pro Max loan was approved. The amount will be handed over offline. Repay weekly per the schedule.`,
       },
     });
   });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { z } from "zod";
-import { buildInstallmentPlan, formatRupees } from "@/lib/loan";
+import { buildInstallmentPlan } from "@/lib/loan";
 
 const bodySchema = z.object({
   action: z.enum(["approve", "reject"]),
@@ -34,14 +34,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ ok: true });
   }
 
-  // Approve: create the per-week installment schedule.
+  // Approve: create the per-week installment schedule. The loan amount itself
+  // is handed over offline — no Pin Wallet points are credited.
   const now = new Date();
   const plan = buildInstallmentPlan(loan.amount, loan.totalWeeks, now);
   const finalDue = plan[plan.length - 1]?.dueDate ?? now;
-
-  // Every approved loan is disbursed as points into the member's Pin Wallet
-  // (instead of offline cash), regardless of tier/amount.
-  const creditsPinWallet = true;
 
   await prisma.$transaction(async (tx) => {
     await tx.loan.update({
@@ -61,27 +58,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         dueDate: p.dueDate,
       })),
     });
-
-    if (creditsPinWallet) {
-      // Ensure a wallet row exists, then credit the loan amount as pin-wallet
-      // points and record the ledger entry.
-      const wallet = await tx.wallet.upsert({
-        where: { userId: loan.userId },
-        update: { pinWalletBalance: { increment: loan.amount } },
-        create: { userId: loan.userId, pinWalletBalance: loan.amount },
-        select: { pinWalletBalance: true },
-      });
-      await tx.pinWalletTxn.create({
-        data: {
-          userId: loan.userId,
-          type: "LOAN_CREDIT",
-          amount: loan.amount,
-          balanceAfter: wallet.pinWalletBalance,
-          note: `${formatRupees(loan.amount)} loan credited to Pin Wallet`,
-        },
-      });
-    }
   });
 
-  return NextResponse.json({ ok: true, installments: plan.length, pinWalletCredited: creditsPinWallet });
+  return NextResponse.json({ ok: true, installments: plan.length });
 }

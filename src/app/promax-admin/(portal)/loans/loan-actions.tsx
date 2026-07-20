@@ -12,7 +12,7 @@ export function LoanActions({ id }: { id: string }) {
 
   async function act(action: "approve" | "reject") {
     if (busy) return;
-    if (action === "approve" && !confirm("Approve this loan? It will be disbursed to the member's Pin Wallet and a weekly repayment schedule created.")) return;
+    if (action === "approve" && !confirm("Approve this loan? The amount is disbursed offline and a weekly repayment schedule will be created.")) return;
     setBusy(true);
     const res = await fetch(`/api/promax-admin/loans/${id}`, {
       method: "POST",
