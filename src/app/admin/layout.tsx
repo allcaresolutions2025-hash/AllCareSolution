@@ -1,6 +1,6 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { PRO_MAX_ENABLED } from "@/lib/pro-max";
-import { LayoutDashboard, Package, ShoppingBag, Users, FileCheck2, Wallet, Settings, Network, KeyRound, BadgeIndianRupee, Coins, Megaphone, Trophy, GitBranch, LogIn, BookOpen, Smartphone, ShieldQuestion, Crown } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, FileCheck2, Wallet, Settings, Network, KeyRound, BadgeIndianRupee, Coins, Megaphone, Trophy, GitBranch, LogIn, BookOpen, Smartphone, ShieldQuestion, Crown, Store } from "lucide-react";
 
 const nav = [
   { href: "/admin", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -19,6 +19,7 @@ const nav = [
   { href: "/admin/kyc", label: "KYC Reviews", icon: <FileCheck2 className="h-4 w-4" /> },
   { href: "/admin/txn-password-requests", label: "Txn PW Resets", icon: <ShieldQuestion className="h-4 w-4" /> },
   { href: "/admin/loans", label: "Loan Approvals", icon: <BadgeIndianRupee className="h-4 w-4" /> },
+  { href: "/admin/franchise", label: "Franchise", icon: <Store className="h-4 w-4" /> },
   { href: "/admin/daily-payouts", label: "Daily Payouts", icon: <Coins className="h-4 w-4" /> },
   { href: "/admin/payouts", label: "Withdrawals", icon: <Wallet className="h-4 w-4" /> },
   { href: "/admin/download", label: "Mobile App", icon: <Smartphone className="h-4 w-4" /> },

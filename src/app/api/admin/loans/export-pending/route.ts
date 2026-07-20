@@ -12,7 +12,9 @@ export async function GET() {
   if (!auth.ok) return auth.response;
 
   const pendingLoans = await prisma.loan.findMany({
-    where: { status: "REQUESTED", proMax: false },
+    // Same rule as the admin loans page: anything still with a franchise leader
+    // is not yet the admin's to action.
+    where: { status: "REQUESTED", proMax: false, franchiseStatus: { in: ["NONE", "APPROVED"] } },
     orderBy: { requestedAt: "asc" },
     include: {
       user: {

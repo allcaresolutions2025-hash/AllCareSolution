@@ -43,6 +43,22 @@ const config: Config = {
           900: "#78350f",
           950: "#451a03",
         },
+        // Franchise portal palette — indigo/violet, deliberately distinct from
+        // the green base app and the gold Pro Max portals so a franchise leader
+        // can tell at a glance which hat they're wearing.
+        franchise: {
+          50: "#eef2ff",
+          100: "#e0e7ff",
+          200: "#c7d2fe",
+          300: "#a5b4fc",
+          400: "#818cf8",
+          500: "#6366f1",
+          600: "#4f46e5",
+          700: "#4338ca",
+          800: "#3730a3",
+          900: "#312e81",
+          950: "#1e1b4b",
+        },
         accent: {
           50: "#fff8ed",
           100: "#ffefd4",
@@ -94,11 +110,15 @@ const config: Config = {
         "brand-sm": "0 8px 20px -8px rgba(41,129,67,0.35)",
         promax: "0 16px 40px -12px rgba(202,138,4,0.40)",
         "promax-sm": "0 8px 20px -8px rgba(202,138,4,0.35)",
+        franchise: "0 16px 40px -12px rgba(79,70,229,0.40)",
+        "franchise-sm": "0 8px 20px -8px rgba(79,70,229,0.35)",
       },
       backgroundImage: {
         "brand-gradient": "linear-gradient(135deg, #298143 0%, #0d9488 100%)",
         "promax-gradient": "linear-gradient(135deg, #ca8a04 0%, #854d0e 100%)",
         "promax-soft": "linear-gradient(135deg, #fffbeb 0%, #fefce8 100%)",
+        "franchise-gradient": "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+        "franchise-soft": "linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)",
         "brand-gradient-dark": "linear-gradient(135deg, #1d5230 0%, #115e59 100%)",
         "brand-soft": "linear-gradient(135deg, #f0faf2 0%, #ecfeff 100%)",
         // Long, soft section washes used as full-bleed backgrounds.

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { z } from "zod";
-import { buildInstallmentPlan } from "@/lib/loan";
+import { buildInstallmentPlan, formatRupees } from "@/lib/loan";
 
 const bodySchema = z.object({
   action: z.enum(["approve", "reject"]),
@@ -20,6 +20,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!loan) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (loan.status !== "REQUESTED") {
     return NextResponse.json({ error: `Already ${loan.status.toLowerCase()}` }, { status: 400 });
+  }
+  // A request still with its franchise leader isn't the admin's to action yet.
+  if (loan.franchiseStatus === "PENDING") {
+    return NextResponse.json(
+      { error: "This request is awaiting approval from the member's franchise" },
+      { status: 400 },
+    );
   }
 
   if (parsed.data.action === "reject") {
@@ -58,6 +65,20 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         dueDate: p.dueDate,
       })),
     });
+    // Close the loop for the franchise leader who forwarded this request.
+    if (loan.franchiseId) {
+      const borrower = await tx.user.findUnique({
+        where: { id: loan.userId },
+        select: { name: true, referralCode: true },
+      });
+      await tx.notification.create({
+        data: {
+          userId: loan.franchiseId,
+          title: "Admin approved a loan you forwarded",
+          body: `The ${formatRupees(loan.amount)} loan for ${borrower?.name ?? "your member"} (${borrower?.referralCode ?? ""}) has been approved and disbursed. It now shows in your franchise portal.`,
+        },
+      });
+    }
   });
 
   return NextResponse.json({ ok: true, installments: plan.length });

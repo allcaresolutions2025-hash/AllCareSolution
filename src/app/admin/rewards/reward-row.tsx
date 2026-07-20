@@ -28,9 +28,12 @@ interface Props {
   status: RewardClaimStatus;
   adminNote: string | null;
   requestedAt: string;
+  // Set when a franchise leader owns this claim — they approve and deliver it,
+  // so the admin row is informational rather than something to act on.
+  franchiseName?: string | null;
 }
 
-export function RewardRow({ id, user, level, rewardName, status, adminNote, requestedAt }: Props) {
+export function RewardRow({ id, user, level, rewardName, status, adminNote, requestedAt, franchiseName }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
@@ -57,6 +60,11 @@ export function RewardRow({ id, user, level, rewardName, status, adminNote, requ
         <div className="font-medium">{user.name}</div>
         <div className="text-xs text-muted-foreground">{user.email}</div>
         <div className="text-xs text-muted-foreground font-mono">{user.referralCode}</div>
+        {franchiseName && (
+          <div className="mt-1 inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-franchise-50 text-franchise-700 border border-franchise-200">
+            Franchise: {franchiseName}
+          </div>
+        )}
       </td>
       <td className="px-4 py-3">
         <span className="inline-flex items-center gap-1 font-semibold text-brand-700">

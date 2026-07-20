@@ -24,15 +24,22 @@ export function DashboardShell({
   description?: string;
   nav: DashboardNavItem[];
   children: React.ReactNode;
-  variant?: "brand" | "promax";
+  variant?: "brand" | "promax" | "franchise";
 }) {
   const pathname = usePathname();
-  // Theme tokens swap between the green base app and the violet Pro Max portals.
+  // Theme tokens swap between the green base app, the gold Pro Max portals and
+  // the indigo franchise portal.
   const theme = variant === "promax"
     ? {
         activeLink: "bg-promax-gradient text-white font-semibold shadow-promax-sm",
         activeIcon: "text-promax-700",
         menuBtn: "border-promax-200 bg-promax-50 text-promax-700 hover:bg-promax-100",
+      }
+    : variant === "franchise"
+    ? {
+        activeLink: "bg-franchise-gradient text-white font-semibold shadow-franchise-sm",
+        activeIcon: "text-franchise-700",
+        menuBtn: "border-franchise-200 bg-franchise-50 text-franchise-700 hover:bg-franchise-100",
       }
     : {
         activeLink: "bg-brand-gradient text-white font-semibold shadow-brand-sm",

@@ -29,14 +29,19 @@ export default async function AdminRewardsPage({
     orderBy: { requestedAt: "desc" },
     include: {
       user: { select: { name: true, email: true, phone: true, referralCode: true } },
+      franchise: { select: { name: true } },
     },
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
   });
 
-  // Welcome Kit (level 0) is the only physical reward to dispatch.
+  // Welcome Kit (level 0) is the only physical reward to dispatch — and kits
+  // belonging to a franchise are delivered by that franchise, so they stay off
+  // the admin's dispatch list.
   const [wkApprovedCount, deliveredWelcomeKits, deliveredWkTotal] = await Promise.all([
-    prisma.rewardClaim.count({ where: { level: WELCOME_KIT_LEVEL, status: "APPROVED" } }),
+    prisma.rewardClaim.count({
+      where: { level: WELCOME_KIT_LEVEL, status: "APPROVED", franchiseStatus: "NONE" },
+    }),
     prisma.rewardClaim.findMany({
       where: { level: WELCOME_KIT_LEVEL, status: "DELIVERED" },
       orderBy: { updatedAt: "desc" },
@@ -143,6 +148,7 @@ export default async function AdminRewardsPage({
                 status={claim.status}
                 adminNote={claim.adminNote}
                 requestedAt={claim.requestedAt.toISOString()}
+                franchiseName={claim.franchise?.name ?? null}
               />
             ))}
             {claims.length === 0 && (

@@ -111,6 +111,17 @@ model User {
   pinsOwned     Pin[]          @relation("PinOwner")
   pinUsedToJoin Pin?           @relation("PinUsedFor")
 
+  // ---- Franchise. A franchise leader is an ordinary member the admin has
+  // promoted. Their downline's loan requests and Welcome Kit claims route to
+  // them first for vetting, then on to the admin. Ownership is by nearest
+  // franchise ancestor in the referral chain (see lib/franchise.ts).
+  isFranchise        Boolean   @default(false)
+  franchiseGrantedAt DateTime?
+  franchiseRequests  FranchiseRequest[]
+  // Rows this member vetted in their capacity as a franchise leader.
+  franchiseLoans        Loan[]        @relation("FranchiseLoans")
+  franchiseRewardClaims RewardClaim[] @relation("FranchiseRewardClaims")
+
   // Loans
   loans         Loan[]
   // Admin override: when true, the loan identity/PAN-reuse guards are bypassed
@@ -137,6 +148,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   @@index([referrerId])
+  @@index([isFranchise])
   @@index([referrerId, slot])
   @@index([proMaxReferrerId, proMaxSlot])
   @@index([panNumber])
@@ -575,6 +587,40 @@ model DailyPayout {
   @@index([runDate])
 }
 
+// ---------- FRANCHISE ----------
+
+enum FranchiseRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A member asking the admin to be made a franchise leader. The admin can also
+// promote someone directly (the "offline" path) without a request row existing.
+model FranchiseRequest {
+  id         String                 @id @default(cuid())
+  userId     String
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note       String?                @db.Text // member's pitch / area they cover
+  status     FranchiseRequestStatus @default(PENDING)
+  adminNote  String?                @db.Text
+  requestedAt DateTime              @default(now())
+  reviewedAt DateTime?
+
+  @@index([status, requestedAt])
+  @@index([userId])
+}
+
+// Where a request sits in the franchise → admin approval chain. NONE means the
+// member has no franchise leader above them, so the row goes straight to the
+// admin queue exactly as it did before franchises existed.
+enum FranchiseApproval {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ---------- LOANS ----------
 
 enum LoanStatus {
@@ -624,6 +670,15 @@ model Loan {
   proMax        Boolean       @default(false) // true = Pro Max (10,000-pt) loan, separate ladder + admin
   status        LoanStatus    @default(REQUESTED)
 
+  // ---- Franchise pre-approval. When the borrower sits under a franchise
+  // leader, the request goes to that leader first; the admin queue only shows
+  // it once franchiseStatus is APPROVED. NONE = no leader, straight to admin.
+  franchiseId         String?
+  franchise           User?             @relation("FranchiseLoans", fields: [franchiseId], references: [id])
+  franchiseStatus     FranchiseApproval @default(NONE)
+  franchiseNotes      String?           @db.Text
+  franchiseReviewedAt DateTime?
+
   reviewerNotes String?
   requestedAt   DateTime      @default(now())
   approvedAt    DateTime?
@@ -638,6 +693,7 @@ model Loan {
 
   @@index([userId])
   @@index([status])
+  @@index([franchiseId, franchiseStatus])
 }
 
 model LoanInstallment {
@@ -709,8 +765,20 @@ model RewardClaim {
   requestedAt DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
+  // ---- Franchise fulfilment. Only the Welcome Kit (level 0) is handled by a
+  // franchise leader: they approve the claim and physically deliver it, and the
+  // admin is notified rather than shipping it themselves. Every other level
+  // stays on the admin's own dispatch queue (franchiseStatus NONE).
+  franchiseId         String?
+  franchise           User?             @relation("FranchiseRewardClaims", fields: [franchiseId], references: [id])
+  franchiseStatus     FranchiseApproval @default(NONE)
+  franchiseNotes      String?           @db.Text
+  franchiseReviewedAt DateTime?
+  franchiseDeliveredAt DateTime?
+
   @@unique([userId, level])
   @@index([status, requestedAt])
+  @@index([franchiseId, franchiseStatus])
 }
 
 // Pro Max programme reward ladder — separate from the 1,000-pt RewardClaim.

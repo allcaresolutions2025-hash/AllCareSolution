@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { tierByKey, tierIsEligible, nextClaimableTier, hasTakenLevel2Loan, formatRupees, LOAN_TIERS, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
+import { franchiseRoutingFor } from "@/lib/franchise";
 
 // Allowed tier keys = the leg-based ladder. (The former standalone Special Loan
 // is now Level 3 in the ladder.)
@@ -112,6 +113,10 @@ export async function POST(req: Request) {
     );
   }
 
+  // Members under a franchise leader get vetted by them first; everyone else
+  // goes straight to the admin queue as before.
+  const routing = await franchiseRoutingFor(session.user.id);
+
   const loan = await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: session.user.id },
@@ -124,6 +129,7 @@ export async function POST(req: Request) {
         amount: tier.amount,
         totalWeeks: tier.totalWeeks,
         status: "REQUESTED",
+        ...routing,
       },
     });
   });

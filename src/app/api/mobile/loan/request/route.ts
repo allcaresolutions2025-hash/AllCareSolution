@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { authMobile, mobileServerError } from "@/lib/mobile-auth";
 import { LOAN_TIERS, tierByKey, tierIsEligible, nextClaimableTier, hasTakenLevel2Loan, formatRupees, loansPaused, LOAN_PAUSE_MESSAGE, countActivePanLoanConflicts, PAN_CONFLICT_MESSAGE, countIdentityLoanConflicts, IDENTITY_CONFLICT_MESSAGE } from "@/lib/loan";
 import { getLegFillDepths } from "@/lib/network";
+import { franchiseRoutingFor } from "@/lib/franchise";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,9 @@ export async function POST(req: Request) {
       );
     }
 
+    // Route through the member's franchise leader when they have one.
+    const routing = await franchiseRoutingFor(auth.user.id);
+
     const loan = await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: auth.user.id },
@@ -121,6 +125,7 @@ export async function POST(req: Request) {
           amount: tier.amount,
           totalWeeks: tier.totalWeeks,
           status: "REQUESTED",
+          ...routing,
         },
       });
     });

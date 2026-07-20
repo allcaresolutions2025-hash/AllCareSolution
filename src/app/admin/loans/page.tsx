@@ -37,7 +37,9 @@ export default async function AdminLoansPage() {
     paidTodayInstallments,
   ] = await Promise.all([
     prisma.loan.findMany({
-      where: { status: "REQUESTED", proMax: false },
+      // Requests still sitting with a franchise leader (franchiseStatus PENDING)
+      // are theirs to vet first, and rejected ones never reach the admin.
+      where: { status: "REQUESTED", proMax: false, franchiseStatus: { in: ["NONE", "APPROVED"] } },
       orderBy: { requestedAt: "asc" },
       include: {
         user: {
@@ -46,6 +48,7 @@ export default async function AdminLoansPage() {
             leftLegCount: true, rightLegCount: true,
           },
         },
+        franchise: { select: { name: true } },
       },
     }),
     prisma.loanInstallment.findMany({
@@ -206,6 +209,7 @@ export default async function AdminLoansPage() {
       leftLegCount: l.user.leftLegCount,
       rightLegCount: l.user.rightLegCount,
       duplicatePanCount: duplicates,
+      franchiseName: l.franchise?.name ?? null,
     };
   });
 

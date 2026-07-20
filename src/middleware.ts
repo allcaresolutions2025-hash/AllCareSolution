@@ -21,6 +21,7 @@ const PROTECTED_PREFIXES = [
   "/checkout",
   "/promax/dashboard",
   "/promax-admin",
+  "/franchise",
 ];
 
 // Login pages that live UNDER a protected prefix but must stay public so people

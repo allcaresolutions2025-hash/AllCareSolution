@@ -28,6 +28,9 @@ export type PendingLoanRow = {
   // already has a pending or disbursed loan — strong signal the admin
   // should not approve a second loan for the same identity.
   duplicatePanCount: number;
+  // Set when a franchise leader vetted and forwarded this request — the admin
+  // is doing the final approval on their recommendation.
+  franchiseName: string | null;
 };
 
 function matches(row: PendingLoanRow, q: string): boolean {
@@ -194,6 +197,11 @@ function PendingLoanTr({ row }: { row: PendingLoanRow }) {
           {row.userEmail} · <code className="font-mono">{row.userCode}</code>
         </div>
         {row.userPhone && <div className="text-xs text-muted-foreground">{row.userPhone}</div>}
+        {row.franchiseName && (
+          <div className="mt-1 inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-franchise-50 text-franchise-700 border border-franchise-200">
+            Forwarded by {row.franchiseName}
+          </div>
+        )}
       </td>
       <td className="px-4 py-2 text-center">
         <div className="inline-flex items-center gap-1 text-xs tabular-nums">

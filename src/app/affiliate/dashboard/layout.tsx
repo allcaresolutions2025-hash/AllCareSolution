@@ -4,7 +4,8 @@ import { prisma } from "@/lib/db";
 import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { DashboardShell, type DashboardNavItem } from "@/components/dashboard-shell";
 import { BreakingNewsTicker } from "@/components/breaking-news-ticker";
-import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy, Smartphone, WalletCards, Crown, GitFork, HandCoins } from "lucide-react";
+import { canRequestFranchise } from "@/lib/franchise";
+import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy, Smartphone, WalletCards, Crown, GitFork, HandCoins, Store } from "lucide-react";
 
 const baseNav: DashboardNavItem[] = [
   { href: "/affiliate/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -41,14 +42,31 @@ export default async function AffiliateLayout({ children }: { children: React.Re
   // Pro Max fully off → drop all Pro Max nav. (Flip PRO_MAX_ENABLED to restore.)
   let nav: DashboardNavItem[] = baseNav.filter((n) => PRO_MAX_ENABLED || !("proMax" in n && n.proMax));
 
-  if (PRO_MAX_ENABLED && session) {
-    const me = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { isProMax: true },
-    });
-    if (me?.isProMax) {
-      const i = nav.findIndex((n) => n.href === "/affiliate/dashboard/pin-pro-max");
-      nav = [...nav.slice(0, i + 1), proMaxTreeItem, ...nav.slice(i + 1)];
+  const me = session
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { isProMax: true, isFranchise: true, leftLegCount: true, rightLegCount: true },
+      })
+    : null;
+
+  if (PRO_MAX_ENABLED && me?.isProMax) {
+    const i = nav.findIndex((n) => n.href === "/affiliate/dashboard/pin-pro-max");
+    nav = [...nav.slice(0, i + 1), proMaxTreeItem, ...nav.slice(i + 1)];
+  }
+
+  // Franchise entry point: leaders get a direct door into their portal; everyone
+  // else sees the request page only while they're still eligible to apply.
+  if (me) {
+    const franchiseItem: DashboardNavItem | null = me.isFranchise
+      ? { href: "/franchise", label: "Login into Franchise", icon: <Store className="h-4 w-4" /> }
+      : canRequestFranchise(me)
+      ? { href: "/affiliate/dashboard/franchise", label: "Request Franchise", icon: <Store className="h-4 w-4" /> }
+      : null;
+    if (franchiseItem) {
+      const i = nav.findIndex((n) => n.href === "/affiliate/dashboard/loan");
+      nav = i >= 0
+        ? [...nav.slice(0, i + 1), franchiseItem, ...nav.slice(i + 1)]
+        : [...nav, franchiseItem];
     }
   }
 

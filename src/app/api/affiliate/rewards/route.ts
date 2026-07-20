@@ -14,6 +14,7 @@ import {
   FORTY_COMBO_REWARD,
 } from "@/lib/rewards";
 import { PIN_REWARD_PIN_VALUE } from "@/lib/pin-reward";
+import { franchiseRoutingFor } from "@/lib/franchise";
 import { getLegFillDepths } from "@/lib/network";
 import { z } from "zod";
 
@@ -106,11 +107,16 @@ export async function POST(req: Request) {
         { status: 403 },
       );
     }
+    // The Welcome Kit is the one reward a franchise handles: if this member sits
+    // under a franchise leader, the claim goes to them to approve and deliver
+    // instead of onto the admin's dispatch queue.
+    const routing = await franchiseRoutingFor(session.user.id);
     const claim = await prisma.rewardClaim.create({
       data: {
         userId: session.user.id,
         level: WELCOME_KIT_LEVEL,
         rewardName: WELCOME_KIT_REWARD.gift,
+        ...routing,
       },
     });
     return NextResponse.json({ ok: true, claimId: claim.id });
