@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getFranchiseMemberIds, whatsappLink } from "@/lib/franchise";
+import { getFranchiseMemberIds, whatsappLink, memberSearchWhere } from "@/lib/franchise";
 import { formatRupees, daysOverdueIst, calcTotalPenalty } from "@/lib/loan";
 import { Pagination } from "@/components/pagination";
+import { FranchiseSearchForm, SearchSummary } from "../search-form";
 import { AlertTriangle, MessageCircle, CalendarDays } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -20,11 +21,12 @@ function pageNum(v: string | undefined): number {
 export default async function FranchiseUnpaidPage({
   searchParams,
 }: {
-  searchParams: { opage?: string; spage?: string };
+  searchParams: { q?: string; opage?: string; spage?: string };
 }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
+  const q = (searchParams.q ?? "").trim();
   const opage = pageNum(searchParams.opage);
   const spage = pageNum(searchParams.spage);
 
@@ -36,15 +38,24 @@ export default async function FranchiseUnpaidPage({
     select: { name: true, referralCode: true, phone: true, whatsappNumber: true },
   };
 
+  // Both tables search the same way — by the member who owes the instalment.
+  const userSearch = memberSearchWhere(q);
+  const loanWhere: Prisma.LoanWhereInput = {
+    status: "APPROVED",
+    proMax: false,
+    userId: { in: scopedIds },
+    ...(userSearch ? { user: userSearch } : {}),
+  };
+
   const overdueWhere: Prisma.LoanInstallmentWhereInput = {
     status: "PENDING",
     dueDate: { lt: now },
-    loan: { status: "APPROVED", proMax: false, userId: { in: scopedIds } },
+    loan: loanWhere,
   };
   const dueSoonWhere: Prisma.LoanInstallmentWhereInput = {
     status: "PENDING",
     dueDate: { gte: now, lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) },
-    loan: { status: "APPROVED", proMax: false, userId: { in: scopedIds } },
+    loan: loanWhere,
   };
 
   const [overdue, overdueTotal, dueSoon, dueSoonTotal] = await Promise.all([
@@ -67,6 +78,7 @@ export default async function FranchiseUnpaidPage({
   ]);
 
   const others = (skip: "opage" | "spage") => ({
+    q: q || undefined,
     opage: skip !== "opage" && opage > 1 ? String(opage) : undefined,
     spage: skip !== "spage" && spage > 1 ? String(spage) : undefined,
   });
@@ -82,13 +94,16 @@ export default async function FranchiseUnpaidPage({
         </p>
       </div>
 
+      <FranchiseSearchForm basePath="/franchise/unpaid" q={q} />
+      <SearchSummary q={q} total={overdueTotal + dueSoonTotal} noun="instalment" />
+
       <section className="card overflow-hidden">
         <h2 className="font-semibold flex items-center gap-2 p-5 pb-4">
           <AlertTriangle className="h-4 w-4 text-red-600" /> Overdue ({overdueTotal})
         </h2>
         {overdueTotal === 0 ? (
           <p className="text-sm text-muted-foreground px-5 pb-5">
-            Nobody in your team is overdue. Nice work.
+            {q ? "No overdue instalments match this search." : "Nobody in your team is overdue. Nice work."}
           </p>
         ) : (
           <>
@@ -170,7 +185,9 @@ export default async function FranchiseUnpaidPage({
           <CalendarDays className="h-4 w-4 text-amber-600" /> Due in the next 7 days ({dueSoonTotal})
         </h2>
         {dueSoonTotal === 0 ? (
-          <p className="text-sm text-muted-foreground px-5 pb-5">Nothing falling due this week.</p>
+          <p className="text-sm text-muted-foreground px-5 pb-5">
+            {q ? "Nothing due this week matches this search." : "Nothing falling due this week."}
+          </p>
         ) : (
           <>
             <ul className="divide-y px-5">

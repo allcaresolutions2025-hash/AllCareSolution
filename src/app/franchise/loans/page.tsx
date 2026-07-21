@@ -1,14 +1,14 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
-import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getFranchiseMemberIds } from "@/lib/franchise";
+import { getFranchiseMemberIds, memberSearchWhere } from "@/lib/franchise";
 import { formatRupees, tierByKey } from "@/lib/loan";
 import { Pagination } from "@/components/pagination";
+import { FranchiseSearchForm, SearchSummary } from "../search-form";
 import { FranchiseLoanActions } from "./loan-actions";
-import { BadgeIndianRupee, Clock, CheckCircle2, Search } from "lucide-react";
+import { BadgeIndianRupee, Clock, CheckCircle2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Loan Requests — Franchise" };
@@ -44,21 +44,9 @@ export default async function FranchiseLoansPage({
   const memberIds = await getFranchiseMemberIds(leaderId);
   const scopedIds = memberIds.length ? memberIds : ["-"];
 
-  // One search box filters all three tables, matching on the borrower rather
-  // than the loan itself — name, email, member ID or phone.
-  const searchWhere: Prisma.LoanWhereInput = q
-    ? {
-        user: {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } },
-            { referralCode: { contains: q.toUpperCase() } },
-            { phone: { contains: q } },
-            { whatsappNumber: { contains: q } },
-          ],
-        },
-      }
-    : {};
+  // One search box filters all three tables, matching on the borrower.
+  const userSearch = memberSearchWhere(q);
+  const searchWhere: Prisma.LoanWhereInput = userSearch ? { user: userSearch } : {};
 
   const pendingWhere: Prisma.LoanWhereInput = {
     franchiseId: leaderId,
@@ -135,35 +123,9 @@ export default async function FranchiseLoansPage({
         </p>
       </div>
 
-      {/* Search applies to all three tables below. Submitting drops the page
-          params, so results always start from page 1. */}
-      <form className="card p-4 flex items-center gap-2" method="get">
-        <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="Search by member name, email, member ID or phone…"
-          className="input flex-1"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 rounded-xl bg-franchise-gradient text-white font-semibold text-sm shadow-franchise-sm hover:opacity-95 shrink-0"
-        >
-          Search
-        </button>
-        {q && (
-          <Link href="/franchise/loans" className="btn-outline shrink-0">
-            Clear
-          </Link>
-        )}
-      </form>
-
-      {q && (
-        <p className="text-sm text-muted-foreground -mt-2">
-          Showing results for <span className="font-semibold text-foreground">&ldquo;{q}&rdquo;</span> —{" "}
-          {pendingTotal + forwardedTotal + teamTotal} matching loan(s).
-        </p>
-      )}
+      {/* Search applies to all three tables below. */}
+      <FranchiseSearchForm basePath="/franchise/loans" q={q} />
+      <SearchSummary q={q} total={pendingTotal + forwardedTotal + teamTotal} noun="loan" />
 
       {/* ---- Awaiting my approval ---- */}
       <section className="card overflow-hidden">

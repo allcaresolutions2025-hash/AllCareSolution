@@ -110,12 +110,20 @@ export async function getFranchiseMemberIds(leaderId: string): Promise<string[]>
  */
 export async function getFranchiseMembers(
   leaderId: string,
-  { skip = 0, take = 20 }: { skip?: number; take?: number } = {},
+  { skip = 0, take = 20, q = "" }: { skip?: number; take?: number; q?: string } = {},
 ) {
   const ids = await getFranchiseMemberIds(leaderId);
   if (ids.length === 0) return { members: [], total: 0 };
+
+  const search = memberSearchWhere(q);
+  const where: Prisma.UserWhereInput = { id: { in: ids }, ...(search ?? {}) };
+
+  // With a search active the total has to be counted, not taken from the id
+  // list, or the pagination bar would describe the unfiltered team.
+  const total = search ? await prisma.user.count({ where }) : ids.length;
+
   const members = await prisma.user.findMany({
-    where: { id: { in: ids } },
+    where,
     select: {
       id: true,
       name: true,
@@ -133,7 +141,7 @@ export async function getFranchiseMembers(
     skip,
     take,
   });
-  return { members, total: ids.length };
+  return { members, total };
 }
 
 /**
@@ -172,6 +180,26 @@ export async function notifyAdmins(
   await tx.notification.createMany({
     data: admins.map((a) => ({ userId: a.id, title, body })),
   });
+}
+
+/**
+ * Search filter for the franchise portal tables. Every table there is keyed to
+ * a member, so they all search the same way: by who the person is (name, email,
+ * member ID, phone) rather than by anything on the loan or claim itself.
+ * Returns undefined for an empty query so callers can spread it away.
+ */
+export function memberSearchWhere(q: string): Prisma.UserWhereInput | undefined {
+  const term = q.trim();
+  if (!term) return undefined;
+  return {
+    OR: [
+      { name: { contains: term, mode: "insensitive" } },
+      { email: { contains: term, mode: "insensitive" } },
+      { referralCode: { contains: term.toUpperCase() } },
+      { phone: { contains: term } },
+      { whatsappNumber: { contains: term } },
+    ],
+  };
 }
 
 /** Digits-only phone for a wa.me link, defaulting to the Indian country code. */

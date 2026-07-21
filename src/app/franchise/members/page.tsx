@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getFranchiseMembers, whatsappLink } from "@/lib/franchise";
 import { formatRupees } from "@/lib/loan";
 import { Pagination } from "@/components/pagination";
+import { FranchiseSearchForm, SearchSummary } from "../search-form";
 import { Users, MessageCircle, Store } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -15,16 +16,18 @@ const PAGE_SIZE = 20;
 export default async function FranchiseMembersPage({
   searchParams,
 }: {
-  searchParams: { page?: string };
+  searchParams: { q?: string; page?: string };
 }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
+  const q = (searchParams.q ?? "").trim();
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
 
   const { members, total } = await getFranchiseMembers(session.user.id, {
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
+    q,
   });
   const ids = members.map((m) => m.id);
 
@@ -51,9 +54,14 @@ export default async function FranchiseMembersPage({
         </p>
       </div>
 
+      <FranchiseSearchForm basePath="/franchise/members" q={q} />
+      <SearchSummary q={q} total={total} noun="member" />
+
       <section className="card overflow-hidden">
         {total === 0 ? (
-          <p className="text-sm text-muted-foreground p-5">No members under you yet.</p>
+          <p className="text-sm text-muted-foreground p-5">
+            {q ? "No members match this search." : "No members under you yet."}
+          </p>
         ) : (
           <>
           <div className="overflow-x-auto p-5 pb-0">
@@ -123,6 +131,7 @@ export default async function FranchiseMembersPage({
             pageSize={PAGE_SIZE}
             total={total}
             basePath="/franchise/members"
+            params={{ q: q || undefined }}
             variant="franchise"
           />
           </>

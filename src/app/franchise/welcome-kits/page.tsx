@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { whatsappLink } from "@/lib/franchise";
+import { whatsappLink, memberSearchWhere } from "@/lib/franchise";
 import { WELCOME_KIT_LEVEL } from "@/lib/rewards";
 import { Pagination } from "@/components/pagination";
+import { FranchiseSearchForm, SearchSummary } from "../search-form";
 import { WelcomeKitActions } from "./kit-actions";
 import { Gift, MessageCircle, Truck } from "lucide-react";
 
@@ -29,18 +30,25 @@ function pageNum(v: string | undefined): number {
 export default async function FranchiseWelcomeKitsPage({
   searchParams,
 }: {
-  searchParams: { ppage?: string; dpage?: string; cpage?: string };
+  searchParams: { q?: string; ppage?: string; dpage?: string; cpage?: string };
 }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
+  const q = (searchParams.q ?? "").trim();
   const ppage = pageNum(searchParams.ppage);
   const dpage = pageNum(searchParams.dpage);
   const cpage = pageNum(searchParams.cpage);
 
   // Welcome Kit is level 0. Only kits routed to this franchise appear here —
-  // every other reward level stays on the admin's own dispatch queue.
-  const base = { franchiseId: session.user.id, level: WELCOME_KIT_LEVEL };
+  // every other reward level stays on the admin's own dispatch queue. The
+  // search narrows all three sections to one member.
+  const userSearch = memberSearchWhere(q);
+  const base = {
+    franchiseId: session.user.id,
+    level: WELCOME_KIT_LEVEL,
+    ...(userSearch ? { user: userSearch } : {}),
+  };
   const include = {
     user: {
       select: {
@@ -85,8 +93,9 @@ export default async function FranchiseWelcomeKitsPage({
     prisma.rewardClaim.count({ where: doneWhere }),
   ]);
 
-  // Carry the other sections' page numbers so paging one doesn't reset the rest.
+  // Carry the search and other sections' pages so paging one doesn't reset them.
   const others = (skip: "ppage" | "dpage" | "cpage") => ({
+    q: q || undefined,
     ppage: skip !== "ppage" && ppage > 1 ? String(ppage) : undefined,
     dpage: skip !== "dpage" && dpage > 1 ? String(dpage) : undefined,
     cpage: skip !== "cpage" && cpage > 1 ? String(cpage) : undefined,
@@ -105,6 +114,9 @@ export default async function FranchiseWelcomeKitsPage({
         </p>
       </div>
 
+      <FranchiseSearchForm basePath="/franchise/welcome-kits" q={q} />
+      <SearchSummary q={q} total={pendingTotal + inFlightTotal + doneTotal} noun="kit" />
+
       <KitSection
         title={`Awaiting your approval (${pendingTotal})`}
         claims={pending}
@@ -112,7 +124,7 @@ export default async function FranchiseWelcomeKitsPage({
         page={ppage}
         pageParam="ppage"
         params={others("ppage")}
-        empty="No new kit claims."
+        empty={q ? "No matching kit claims awaiting approval." : "No new kit claims."}
       />
       <KitSection
         title={`To deliver (${inFlightTotal})`}
@@ -121,7 +133,7 @@ export default async function FranchiseWelcomeKitsPage({
         page={dpage}
         pageParam="dpage"
         params={others("dpage")}
-        empty="Nothing out for delivery."
+        empty={q ? "No matching kits out for delivery." : "Nothing out for delivery."}
         icon={<Truck className="h-4 w-4 text-blue-600" />}
       />
       <KitSection
@@ -131,7 +143,7 @@ export default async function FranchiseWelcomeKitsPage({
         page={cpage}
         pageParam="cpage"
         params={others("cpage")}
-        empty="Nothing completed yet."
+        empty={q ? "No matching completed kits." : "Nothing completed yet."}
       />
     </div>
   );
