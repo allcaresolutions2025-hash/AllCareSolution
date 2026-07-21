@@ -17,6 +17,7 @@ export function Pagination({
   basePath,
   params = {},
   pageParam = "page",
+  variant = "brand",
 }: {
   page: number;
   pageSize: number;
@@ -29,6 +30,8 @@ export function Pagination({
    * more than one independent paginated table.
    */
   pageParam?: string;
+  /** Active-page colour — matches the portal the table lives in. */
+  variant?: "brand" | "franchise";
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const current = Math.min(Math.max(1, page), totalPages);
@@ -82,7 +85,7 @@ export function Pagination({
                 …
               </span>
             ) : (
-              <PageLink key={p} href={href(p)} active={p === current}>
+              <PageLink key={p} href={href(p)} active={p === current} variant={variant}>
                 {p}
               </PageLink>
             )
@@ -103,11 +106,13 @@ function PageLink({
   active,
   disabled,
   children,
+  variant = "brand",
 }: {
   href: string;
   active?: boolean;
   disabled?: boolean;
   children: React.ReactNode;
+  variant?: "brand" | "franchise";
 }) {
   const base =
     "inline-flex items-center gap-1 min-w-9 h-9 justify-center rounded-lg border px-3 text-sm font-medium transition-colors";
@@ -123,11 +128,12 @@ function PageLink({
     );
   }
   if (active) {
+    const activeCls =
+      variant === "franchise"
+        ? "border-franchise-600 bg-franchise-600 text-white"
+        : "border-brand-600 bg-brand-600 text-white";
     return (
-      <span
-        aria-current="page"
-        className={`${base} border-brand-600 bg-brand-600 text-white`}
-      >
+      <span aria-current="page" className={`${base} ${activeCls}`}>
         {children}
       </span>
     );

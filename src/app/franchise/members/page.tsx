@@ -4,16 +4,28 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getFranchiseMembers, whatsappLink } from "@/lib/franchise";
 import { formatRupees } from "@/lib/loan";
+import { Pagination } from "@/components/pagination";
 import { Users, MessageCircle, Store } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "My Members — Franchise" };
 
-export default async function FranchiseMembersPage() {
+const PAGE_SIZE = 20;
+
+export default async function FranchiseMembersPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  const members = await getFranchiseMembers(session.user.id);
+  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+
+  const { members, total } = await getFranchiseMembers(session.user.id, {
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+  });
   const ids = members.map((m) => m.id);
 
   // One grouped query for open loan exposure per member, rather than N queries.
@@ -39,11 +51,12 @@ export default async function FranchiseMembersPage() {
         </p>
       </div>
 
-      <section className="card p-5">
-        {members.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No members under you yet.</p>
+      <section className="card overflow-hidden">
+        {total === 0 ? (
+          <p className="text-sm text-muted-foreground p-5">No members under you yet.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="overflow-x-auto p-5 pb-0">
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground border-b">
                 <tr>
@@ -105,6 +118,14 @@ export default async function FranchiseMembersPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            basePath="/franchise/members"
+            variant="franchise"
+          />
+          </>
         )}
       </section>
     </div>

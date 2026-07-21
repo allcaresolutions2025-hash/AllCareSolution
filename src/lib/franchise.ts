@@ -103,11 +103,18 @@ export async function getFranchiseMemberIds(leaderId: string): Promise<string[]>
   return rows.map((r) => r.id);
 }
 
-/** Franchise-owned members with the profile fields the portal tables need. */
-export async function getFranchiseMembers(leaderId: string) {
+/**
+ * One page of franchise-owned members, with the profile fields the portal
+ * tables need. Returns the page plus the full count so the caller can render a
+ * pagination bar.
+ */
+export async function getFranchiseMembers(
+  leaderId: string,
+  { skip = 0, take = 20 }: { skip?: number; take?: number } = {},
+) {
   const ids = await getFranchiseMemberIds(leaderId);
-  if (ids.length === 0) return [];
-  return prisma.user.findMany({
+  if (ids.length === 0) return { members: [], total: 0 };
+  const members = await prisma.user.findMany({
     where: { id: { in: ids } },
     select: {
       id: true,
@@ -123,7 +130,10 @@ export async function getFranchiseMembers(leaderId: string) {
       createdAt: true,
     },
     orderBy: { createdAt: "desc" },
+    skip,
+    take,
   });
+  return { members, total: ids.length };
 }
 
 /**

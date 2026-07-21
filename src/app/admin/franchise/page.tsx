@@ -1,37 +1,67 @@
 import { prisma } from "@/lib/db";
+import { Pagination } from "@/components/pagination";
 import { GrantFranchiseCard, FranchiseRequestActions, RevokeFranchiseButton } from "./franchise-actions";
 import { Store, Clock, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Franchise — Admin" };
 
-export default async function AdminFranchisePage() {
-  const [pending, franchises, reviewed] = await Promise.all([
+const PAGE_SIZE = 20;
+
+function pageNum(v: string | undefined): number {
+  return Math.max(1, parseInt(v ?? "1", 10) || 1);
+}
+
+export default async function AdminFranchisePage({
+  searchParams,
+}: {
+  searchParams: { ppage?: string; apage?: string; rpage?: string };
+}) {
+  const ppage = pageNum(searchParams.ppage);
+  const apage = pageNum(searchParams.apage);
+  const rpage = pageNum(searchParams.rpage);
+
+  const [pending, pendingTotal, franchises, franchisesTotal, reviewed, reviewedTotal] = await Promise.all([
     prisma.franchiseRequest.findMany({
       where: { status: "PENDING" },
       orderBy: { requestedAt: "asc" },
+      skip: (ppage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: {
         user: {
           select: { name: true, email: true, phone: true, referralCode: true, leftLegCount: true, rightLegCount: true },
         },
       },
     }),
+    prisma.franchiseRequest.count({ where: { status: "PENDING" } }),
     prisma.user.findMany({
       where: { isFranchise: true },
       orderBy: { franchiseGrantedAt: "desc" },
+      skip: (apage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       select: {
         id: true, name: true, email: true, referralCode: true, phone: true,
         franchiseGrantedAt: true, leftLegCount: true, rightLegCount: true,
         _count: { select: { franchiseLoans: true, franchiseRewardClaims: true } },
       },
     }),
+    prisma.user.count({ where: { isFranchise: true } }),
     prisma.franchiseRequest.findMany({
       where: { status: { not: "PENDING" } },
       orderBy: { reviewedAt: "desc" },
-      take: 25,
+      skip: (rpage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: { user: { select: { name: true, referralCode: true } } },
     }),
+    prisma.franchiseRequest.count({ where: { status: { not: "PENDING" } } }),
   ]);
+
+  // Carry the other tables' page numbers so paging one doesn't reset the rest.
+  const others = (skip: "ppage" | "apage" | "rpage") => ({
+    ppage: skip !== "ppage" && ppage > 1 ? String(ppage) : undefined,
+    apage: skip !== "apage" && apage > 1 ? String(apage) : undefined,
+    rpage: skip !== "rpage" && rpage > 1 ? String(rpage) : undefined,
+  });
 
   return (
     <div className="space-y-6">
@@ -48,14 +78,15 @@ export default async function AdminFranchisePage() {
 
       <GrantFranchiseCard />
 
-      <section className="card p-5">
-        <h2 className="font-semibold flex items-center gap-2 mb-4">
-          <Clock className="h-4 w-4 text-amber-600" /> Pending requests ({pending.length})
+      <section className="card overflow-hidden">
+        <h2 className="font-semibold flex items-center gap-2 p-5 pb-4">
+          <Clock className="h-4 w-4 text-amber-600" /> Pending requests ({pendingTotal})
         </h2>
-        {pending.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No franchise requests waiting.</p>
+        {pendingTotal === 0 ? (
+          <p className="text-sm text-muted-foreground px-5 pb-5">No franchise requests waiting.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="overflow-x-auto px-5">
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground border-b">
                 <tr>
@@ -91,17 +122,28 @@ export default async function AdminFranchisePage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={ppage}
+            pageSize={PAGE_SIZE}
+            total={pendingTotal}
+            basePath="/admin/franchise"
+            pageParam="ppage"
+            params={others("ppage")}
+            variant="franchise"
+          />
+          </>
         )}
       </section>
 
-      <section className="card p-5">
-        <h2 className="font-semibold flex items-center gap-2 mb-4">
-          <Users className="h-4 w-4 text-franchise-600" /> Active franchises ({franchises.length})
+      <section className="card overflow-hidden">
+        <h2 className="font-semibold flex items-center gap-2 p-5 pb-4">
+          <Users className="h-4 w-4 text-franchise-600" /> Active franchises ({franchisesTotal})
         </h2>
-        {franchises.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No franchises yet.</p>
+        {franchisesTotal === 0 ? (
+          <p className="text-sm text-muted-foreground px-5 pb-5">No franchises yet.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="overflow-x-auto px-5">
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground border-b">
                 <tr>
@@ -137,13 +179,23 @@ export default async function AdminFranchisePage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={apage}
+            pageSize={PAGE_SIZE}
+            total={franchisesTotal}
+            basePath="/admin/franchise"
+            pageParam="apage"
+            params={others("apage")}
+            variant="franchise"
+          />
+          </>
         )}
       </section>
 
-      {reviewed.length > 0 && (
-        <section className="card p-5">
-          <h2 className="font-semibold mb-4">Recently reviewed</h2>
-          <ul className="divide-y text-sm">
+      {reviewedTotal > 0 && (
+        <section className="card overflow-hidden">
+          <h2 className="font-semibold p-5 pb-4">Reviewed requests ({reviewedTotal})</h2>
+          <ul className="divide-y text-sm px-5">
             {reviewed.map((r) => (
               <li key={r.id} className="py-2.5 flex items-center justify-between gap-3">
                 <div>
@@ -160,6 +212,15 @@ export default async function AdminFranchisePage() {
               </li>
             ))}
           </ul>
+          <Pagination
+            page={rpage}
+            pageSize={PAGE_SIZE}
+            total={reviewedTotal}
+            basePath="/admin/franchise"
+            pageParam="rpage"
+            params={others("rpage")}
+            variant="franchise"
+          />
         </section>
       )}
     </div>
