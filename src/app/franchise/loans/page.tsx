@@ -1,13 +1,14 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
+import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getFranchiseMemberIds } from "@/lib/franchise";
 import { formatRupees, tierByKey } from "@/lib/loan";
 import { Pagination } from "@/components/pagination";
 import { FranchiseLoanActions } from "./loan-actions";
-import { BadgeIndianRupee, Clock, CheckCircle2 } from "lucide-react";
+import { BadgeIndianRupee, Clock, CheckCircle2, Search } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Loan Requests — Franchise" };
@@ -29,12 +30,13 @@ function pageNum(v: string | undefined): number {
 export default async function FranchiseLoansPage({
   searchParams,
 }: {
-  searchParams: { ppage?: string; fpage?: string; tpage?: string };
+  searchParams: { q?: string; ppage?: string; fpage?: string; tpage?: string };
 }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
   const leaderId = session.user.id;
 
+  const q = (searchParams.q ?? "").trim();
   const ppage = pageNum(searchParams.ppage);
   const fpage = pageNum(searchParams.fpage);
   const tpage = pageNum(searchParams.tpage);
@@ -42,21 +44,40 @@ export default async function FranchiseLoansPage({
   const memberIds = await getFranchiseMemberIds(leaderId);
   const scopedIds = memberIds.length ? memberIds : ["-"];
 
+  // One search box filters all three tables, matching on the borrower rather
+  // than the loan itself — name, email, member ID or phone.
+  const searchWhere: Prisma.LoanWhereInput = q
+    ? {
+        user: {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
+            { referralCode: { contains: q.toUpperCase() } },
+            { phone: { contains: q } },
+            { whatsappNumber: { contains: q } },
+          ],
+        },
+      }
+    : {};
+
   const pendingWhere: Prisma.LoanWhereInput = {
     franchiseId: leaderId,
     franchiseStatus: "PENDING",
     status: "REQUESTED",
+    ...searchWhere,
   };
   const forwardedWhere: Prisma.LoanWhereInput = {
     franchiseId: leaderId,
     franchiseStatus: "APPROVED",
     status: "REQUESTED",
+    ...searchWhere,
   };
   // Pro Max loans belong to the Pro Max admin, not to a franchise.
   const teamWhere: Prisma.LoanWhereInput = {
     userId: { in: scopedIds },
     proMax: false,
     status: { in: ["APPROVED", "CLOSED", "REJECTED"] },
+    ...searchWhere,
   };
 
   const [pending, pendingTotal, forwarded, forwardedTotal, teamLoans, teamTotal] = await Promise.all([
@@ -93,8 +114,10 @@ export default async function FranchiseLoansPage({
     prisma.loan.count({ where: teamWhere }),
   ]);
 
-  // Carry the other tables' page numbers so paging one doesn't reset the rest.
+  // Carry the active search and the other tables' page numbers so paging one
+  // table doesn't reset the search or the rest.
   const others = (skip: "ppage" | "fpage" | "tpage") => ({
+    q: q || undefined,
     ppage: skip !== "ppage" && ppage > 1 ? String(ppage) : undefined,
     fpage: skip !== "fpage" && fpage > 1 ? String(fpage) : undefined,
     tpage: skip !== "tpage" && tpage > 1 ? String(tpage) : undefined,
@@ -112,13 +135,45 @@ export default async function FranchiseLoansPage({
         </p>
       </div>
 
+      {/* Search applies to all three tables below. Submitting drops the page
+          params, so results always start from page 1. */}
+      <form className="card p-4 flex items-center gap-2" method="get">
+        <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+        <input
+          name="q"
+          defaultValue={q}
+          placeholder="Search by member name, email, member ID or phone…"
+          className="input flex-1"
+        />
+        <button
+          type="submit"
+          className="px-4 py-2 rounded-xl bg-franchise-gradient text-white font-semibold text-sm shadow-franchise-sm hover:opacity-95 shrink-0"
+        >
+          Search
+        </button>
+        {q && (
+          <Link href="/franchise/loans" className="btn-outline shrink-0">
+            Clear
+          </Link>
+        )}
+      </form>
+
+      {q && (
+        <p className="text-sm text-muted-foreground -mt-2">
+          Showing results for <span className="font-semibold text-foreground">&ldquo;{q}&rdquo;</span> —{" "}
+          {pendingTotal + forwardedTotal + teamTotal} matching loan(s).
+        </p>
+      )}
+
       {/* ---- Awaiting my approval ---- */}
       <section className="card overflow-hidden">
         <h2 className="font-semibold flex items-center gap-2 p-5 pb-4">
           <Clock className="h-4 w-4 text-amber-600" /> Awaiting your approval ({pendingTotal})
         </h2>
         {pendingTotal === 0 ? (
-          <p className="text-sm text-muted-foreground px-5 pb-5">Nothing waiting on you right now.</p>
+          <p className="text-sm text-muted-foreground px-5 pb-5">
+            {q ? "No matching requests awaiting your approval." : "Nothing waiting on you right now."}
+          </p>
         ) : (
           <>
             <div className="overflow-x-auto px-5">
@@ -178,7 +233,9 @@ export default async function FranchiseLoansPage({
           <CheckCircle2 className="h-4 w-4 text-franchise-600" /> Forwarded to admin ({forwardedTotal})
         </h2>
         {forwardedTotal === 0 ? (
-          <p className="text-sm text-muted-foreground px-5 pb-5">Nothing pending with the admin.</p>
+          <p className="text-sm text-muted-foreground px-5 pb-5">
+            {q ? "No matching requests with the admin." : "Nothing pending with the admin."}
+          </p>
         ) : (
           <>
             <ul className="divide-y px-5">
@@ -214,7 +271,9 @@ export default async function FranchiseLoansPage({
       <section className="card overflow-hidden">
         <h2 className="font-semibold p-5 pb-4">Team loan status ({teamTotal})</h2>
         {teamTotal === 0 ? (
-          <p className="text-sm text-muted-foreground px-5 pb-5">No loans in your team yet.</p>
+          <p className="text-sm text-muted-foreground px-5 pb-5">
+            {q ? "No matching loans in your team." : "No loans in your team yet."}
+          </p>
         ) : (
           <>
             <div className="overflow-x-auto px-5">
