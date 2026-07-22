@@ -8,7 +8,7 @@ import { WELCOME_KIT_LEVEL } from "@/lib/rewards";
 import { Pagination } from "@/components/pagination";
 import { FranchiseSearchForm, SearchSummary } from "../search-form";
 import { WelcomeKitActions } from "./kit-actions";
-import { Gift, MessageCircle, Truck } from "lucide-react";
+import { Gift, MessageCircle, Truck, PackagePlus, Boxes } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Welcome Kits — Franchise" };
@@ -66,7 +66,11 @@ export default async function FranchiseWelcomeKitsPage({
   const inFlightWhere: Prisma.RewardClaimWhereInput = { ...base, status: { in: ["APPROVED", "DISPATCHED"] } };
   const doneWhere: Prisma.RewardClaimWhereInput = { ...base, status: { in: ["DELIVERED", "REJECTED"] } };
 
-  const [pending, pendingTotal, inFlight, inFlightTotal, done, doneTotal] = await Promise.all([
+  const [me, pending, pendingTotal, inFlight, inFlightTotal, done, doneTotal] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { franchiseStockReceived: true, franchiseStockCurrent: true },
+    }),
     prisma.rewardClaim.findMany({
       where: pendingWhere,
       orderBy: { requestedAt: "asc" },
@@ -112,6 +116,29 @@ export default async function FranchiseWelcomeKitsPage({
           notified at each step — they don&apos;t ship these. Welcome Kit is the only product
           a franchise handles.
         </p>
+      </div>
+
+      {/* Welcome Kit stock the admin has shipped to this franchise. Received is
+          the lifetime total; current drops by one on each delivery. */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="card p-5 flex items-center gap-4">
+          <div className="h-11 w-11 rounded-xl grid place-items-center bg-franchise-100 text-franchise-700">
+            <PackagePlus className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="text-2xl font-bold tabular-nums">{me?.franchiseStockReceived ?? 0}</div>
+            <div className="text-xs text-muted-foreground">Total kits received from admin</div>
+          </div>
+        </div>
+        <div className="card p-5 flex items-center gap-4 border-2 border-franchise-200">
+          <div className="h-11 w-11 rounded-xl grid place-items-center bg-franchise-gradient text-white">
+            <Boxes className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="text-2xl font-bold tabular-nums text-franchise-700">{me?.franchiseStockCurrent ?? 0}</div>
+            <div className="text-xs text-muted-foreground">Current stock on hand</div>
+          </div>
+        </div>
       </div>
 
       <FranchiseSearchForm basePath="/franchise/welcome-kits" q={q} />

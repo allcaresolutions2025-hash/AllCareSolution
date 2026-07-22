@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Pagination } from "@/components/pagination";
-import { GrantFranchiseCard, FranchiseRequestActions, RevokeFranchiseButton } from "./franchise-actions";
+import { GrantFranchiseCard, FranchiseRequestActions, RevokeFranchiseButton, SendStockCard, SendStockInline } from "./franchise-actions";
 import { Store, Clock, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +42,7 @@ export default async function AdminFranchisePage({
       select: {
         id: true, name: true, email: true, referralCode: true, phone: true,
         franchiseGrantedAt: true, leftLegCount: true, rightLegCount: true,
+        franchiseStockReceived: true, franchiseStockCurrent: true,
         _count: { select: { franchiseLoans: true, franchiseRewardClaims: true } },
       },
     }),
@@ -76,7 +77,10 @@ export default async function AdminFranchisePage({
         </p>
       </div>
 
-      <GrantFranchiseCard />
+      <div className="grid lg:grid-cols-2 gap-4">
+        <GrantFranchiseCard />
+        <SendStockCard />
+      </div>
 
       <section className="card overflow-hidden">
         <h2 className="font-semibold flex items-center gap-2 p-5 pb-4">
@@ -149,6 +153,7 @@ export default async function AdminFranchisePage({
                 <tr>
                   <th className="text-left py-2 pr-3">Franchise</th>
                   <th className="text-left py-2 pr-3">Team</th>
+                  <th className="text-left py-2 pr-3">Kit stock</th>
                   <th className="text-left py-2 pr-3">Handled</th>
                   <th className="text-left py-2 pr-3">Since</th>
                   <th className="text-right py-2">Action</th>
@@ -166,13 +171,20 @@ export default async function AdminFranchisePage({
                       L {f.leftLegCount} / R {f.rightLegCount}
                     </td>
                     <td className="py-3 pr-3 text-xs tabular-nums">
+                      <span className="font-semibold text-franchise-700">{f.franchiseStockCurrent}</span>
+                      <span className="text-muted-foreground"> / {f.franchiseStockReceived} recd</span>
+                    </td>
+                    <td className="py-3 pr-3 text-xs tabular-nums">
                       {f._count.franchiseLoans} loans · {f._count.franchiseRewardClaims} kits
                     </td>
                     <td className="py-3 pr-3 text-xs text-muted-foreground">
                       {f.franchiseGrantedAt ? f.franchiseGrantedAt.toLocaleDateString("en-IN") : "—"}
                     </td>
                     <td className="py-3 text-right">
-                      <RevokeFranchiseButton referralCode={f.referralCode} name={f.name} />
+                      <div className="inline-flex items-center gap-2">
+                        <SendStockInline referralCode={f.referralCode} name={f.name} />
+                        <RevokeFranchiseButton referralCode={f.referralCode} name={f.name} />
+                      </div>
                     </td>
                   </tr>
                 ))}

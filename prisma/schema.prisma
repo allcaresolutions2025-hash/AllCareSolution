@@ -121,6 +121,14 @@ model User {
   // Rows this member vetted in their capacity as a franchise leader.
   franchiseLoans        Loan[]        @relation("FranchiseLoans")
   franchiseRewardClaims RewardClaim[] @relation("FranchiseRewardClaims")
+  // ---- Franchise Welcome Kit stock. The admin ships physical Welcome Kits to a
+  // franchise leader; `franchiseStockReceived` is the running total ever sent
+  // (never decreases) and `franchiseStockCurrent` is what's left on their shelf
+  // — it drops by one each time they mark a Welcome Kit delivered. Both are
+  // backed by the append-only FranchiseStockTxn ledger.
+  franchiseStockReceived Int @default(0)
+  franchiseStockCurrent  Int @default(0)
+  franchiseStockTxns     FranchiseStockTxn[]
 
   // Loans
   loans         Loan[]
@@ -619,6 +627,30 @@ enum FranchiseApproval {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum FranchiseStockTxnType {
+  GRANT   // admin shipped kits to the franchise (positive)
+  CONSUME // franchise delivered a Welcome Kit, one leaves stock (negative)
+  ADJUST  // admin manual correction (signed)
+}
+
+// Append-only ledger behind a franchise leader's Welcome Kit stock counters.
+// Every admin shipment and every delivery lands one row here, so the two
+// cached totals on User can always be reconciled from history.
+model FranchiseStockTxn {
+  id           String                @id @default(cuid())
+  franchiseId  String                // the franchise leader (User.id)
+  franchise    User                  @relation(fields: [franchiseId], references: [id], onDelete: Cascade)
+  type         FranchiseStockTxnType
+  quantity     Int                   // signed: +granted, -consumed
+  balanceAfter Int                   // franchiseStockCurrent immediately after this txn
+  note         String?               @db.Text
+  actorId      String?               // admin who granted/adjusted; null for auto CONSUME
+  rewardClaimId String?              // the delivered Welcome Kit claim, for CONSUME rows
+  createdAt    DateTime              @default(now())
+
+  @@index([franchiseId, createdAt])
 }
 
 // ---------- LOANS ----------

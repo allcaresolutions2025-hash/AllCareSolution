@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { RewardRow } from "./reward-row";
-import { Trophy, Download, PackageCheck, FileText } from "lucide-react";
+import { Trophy, Download, PackageCheck, FileText, Search } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 import { ResetPendingRewardsCard } from "./reset-pending-card";
 import { CourierSettingsCard } from "./courier-settings-card";
@@ -16,24 +16,44 @@ const PAGE_SIZE = 20;
 export default async function AdminRewardsPage({
   searchParams,
 }: {
-  searchParams: { status?: string; page?: string; dpage?: string };
+  searchParams: { status?: string; page?: string; dpage?: string; q?: string };
 }) {
   const filterStatus = STATUS_ORDER.includes(searchParams.status as (typeof STATUS_ORDER)[number])
     ? (searchParams.status as (typeof STATUS_ORDER)[number])
     : undefined;
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const dpage = Math.max(1, parseInt(searchParams.dpage ?? "1", 10) || 1);
+  const q = (searchParams.q ?? "").trim();
 
-  const claims = await prisma.rewardClaim.findMany({
-    where: filterStatus ? { status: filterStatus } : undefined,
-    orderBy: { requestedAt: "desc" },
-    include: {
-      user: { select: { name: true, email: true, phone: true, referralCode: true } },
-      franchise: { select: { name: true } },
-    },
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  // Search by the member so the admin can pull up one person's claim by ID,
+  // name, email or phone and send their product without scrolling the list.
+  const searchWhere = q
+    ? {
+        user: {
+          OR: [
+            { name: { contains: q, mode: "insensitive" as const } },
+            { email: { contains: q, mode: "insensitive" as const } },
+            { referralCode: { contains: q.toUpperCase() } },
+            { phone: { contains: q } },
+          ],
+        },
+      }
+    : {};
+  const where = { ...(filterStatus ? { status: filterStatus } : {}), ...searchWhere };
+
+  const [claims, filteredTotal] = await Promise.all([
+    prisma.rewardClaim.findMany({
+      where,
+      orderBy: { requestedAt: "desc" },
+      include: {
+        user: { select: { name: true, email: true, phone: true, referralCode: true } },
+        franchise: { select: { name: true } },
+      },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.rewardClaim.count({ where }),
+  ]);
 
   // Welcome Kit (level 0) is the only physical reward to dispatch — and kits
   // belonging to a franchise are delivered by that franchise, so they stay off
@@ -60,8 +80,8 @@ export default async function AdminRewardsPage({
   });
   const countMap = Object.fromEntries(counts.map((c) => [c.status, c._count.id]));
   const total = Object.values(countMap).reduce((a, b) => a + b, 0);
-  // Total rows for the active filter — drives the pagination bar.
-  const filteredTotal = filterStatus ? (countMap[filterStatus] ?? 0) : total;
+  // filteredTotal (drives the pagination bar) is computed above alongside the
+  // claims query so it honours both the status filter and the search term.
 
   const tabs: { label: string; value: string | undefined; count: number }[] = [
     { label: "All", value: undefined, count: total },
@@ -100,11 +120,38 @@ export default async function AdminRewardsPage({
       {/* One-time cleanup: clear pending claims so members re-request under the new rule */}
       <ResetPendingRewardsCard />
 
+      {/* Search by member — find one person's claim quickly to send their gift. */}
+      <form className="card p-4 flex items-center gap-2" method="get">
+        {filterStatus && <input type="hidden" name="status" value={filterStatus} />}
+        <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+        <input
+          name="q"
+          defaultValue={q}
+          placeholder="Search by member ID, name, email or phone…"
+          className="input flex-1"
+        />
+        <button type="submit" className="btn-primary shrink-0">Search</button>
+        {q && (
+          <a href={filterStatus ? `/admin/rewards?status=${filterStatus}` : "/admin/rewards"} className="btn-outline shrink-0">
+            Clear
+          </a>
+        )}
+      </form>
+      {q && (
+        <p className="text-sm text-muted-foreground -mt-2">
+          Showing results for <span className="font-semibold text-foreground">&ldquo;{q}&rdquo;</span> —{" "}
+          {filteredTotal} matching claim{filteredTotal === 1 ? "" : "s"}.
+        </p>
+      )}
+
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
         {tabs.map((tab) => {
           const active = filterStatus === tab.value;
-          const href = tab.value ? `/admin/rewards?status=${tab.value}` : "/admin/rewards";
+          const sp = new URLSearchParams();
+          if (tab.value) sp.set("status", tab.value);
+          if (q) sp.set("q", q);
+          const href = sp.toString() ? `/admin/rewards?${sp.toString()}` : "/admin/rewards";
           return (
             <a
               key={tab.label}
@@ -166,7 +213,7 @@ export default async function AdminRewardsPage({
           pageSize={PAGE_SIZE}
           total={filteredTotal}
           basePath="/admin/rewards"
-          params={{ status: filterStatus }}
+          params={{ status: filterStatus, q: q || undefined }}
         />
       </div>
 
@@ -226,7 +273,7 @@ export default async function AdminRewardsPage({
             pageSize={PAGE_SIZE}
             total={deliveredWkTotal}
             basePath="/admin/rewards"
-            params={{ status: filterStatus, page: page > 1 ? String(page) : undefined }}
+            params={{ status: filterStatus, q: q || undefined, page: page > 1 ? String(page) : undefined }}
           />
         )}
       </div>

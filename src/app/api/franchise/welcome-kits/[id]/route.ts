@@ -99,6 +99,32 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         franchiseDeliveredAt: next === "DELIVERED" ? now : claim.franchiseDeliveredAt,
       },
     });
+    // Delivering a kit takes one off the franchise leader's shelf. Floor at
+    // zero so a leader who ran out (or delivered before any stock was logged)
+    // never goes negative, and record the movement in the ledger.
+    if (next === "DELIVERED") {
+      const leader = await tx.user.findUnique({
+        where: { id: auth.leaderId },
+        select: { franchiseStockCurrent: true },
+      });
+      const nextStock = Math.max(0, (leader?.franchiseStockCurrent ?? 0) - 1);
+      if (nextStock !== (leader?.franchiseStockCurrent ?? 0)) {
+        await tx.user.update({
+          where: { id: auth.leaderId },
+          data: { franchiseStockCurrent: nextStock },
+        });
+        await tx.franchiseStockTxn.create({
+          data: {
+            franchiseId: auth.leaderId,
+            type: "CONSUME",
+            quantity: -1,
+            balanceAfter: nextStock,
+            note: `Delivered Welcome Kit to ${claim.user.name} (${claim.user.referralCode})`,
+            rewardClaimId: claim.id,
+          },
+        });
+      }
+    }
     await tx.notification.create({
       data: { userId: claim.userId, ...memberMessage[next] },
     });
