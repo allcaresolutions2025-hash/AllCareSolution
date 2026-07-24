@@ -6,8 +6,9 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-// Save the member's preferred display language for product names (EN/TA/HI).
-const bodySchema = z.object({ language: z.enum(["EN", "TA", "HI"]) });
+// Save the member's display-language choice. "AUTO" follows the delivery region;
+// EN/TA/HI is an explicit manual pick that overrides the region.
+const bodySchema = z.object({ language: z.enum(["AUTO", "EN", "TA", "HI"]) });
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -18,9 +19,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid language" }, { status: 400 });
   }
 
+  const choice = parsed.data.language;
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { preferredLanguage: parsed.data.language },
+    data:
+      choice === "AUTO"
+        ? { languageIsManual: false }
+        : { languageIsManual: true, preferredLanguage: choice },
   });
 
   return NextResponse.json({ ok: true });

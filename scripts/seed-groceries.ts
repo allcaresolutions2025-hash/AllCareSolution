@@ -5,20 +5,18 @@
  * Idempotent: upserts by SKU (GRC-0001…), so re-running updates in place.
  * Run:  npx tsx scripts/seed-groceries.ts   (or: npm run db:seed-groceries)
  *
- * Notes / defaults (see plan): GST 5%, MRP = price, stock 100, placeholder
- * image, prices treated as GST-inclusive paise. Coriander powder priced at the
- * low end of its ₹40–₹70 range. Update prices/images later as needed.
+ * Notes / defaults (see plan): GST 5%, MRP = price, stock 100, prices treated
+ * as GST-inclusive paise. Coriander powder priced at the low end of its ₹40–₹70
+ * range. These items have NO product photo — the shop shows name + details only
+ * (imageUrl is left blank). Update prices/images later as needed.
  */
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Neutral self-contained placeholder (data URI) so no external image is needed.
-const PLACEHOLDER =
-  "data:image/svg+xml;utf8," +
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="#f1f5f4"/><text x="50%" y="50%" font-family="sans-serif" font-size="20" fill="#0f766e" text-anchor="middle" dominant-baseline="middle">ACHT MART</text></svg>`,
-  );
+// No photos for the grocery range — the storefront renders name + details only
+// when imageUrl is blank.
+const NO_IMAGE = "";
 
 type Item = { en: string; ta: string; hi: string; price: number; pack: string };
 type Group = { sub: string; items: Item[] };
@@ -174,7 +172,7 @@ async function main() {
           price,
           stock: 100,
           sku,
-          imageUrl: PLACEHOLDER,
+          imageUrl: NO_IMAGE,
           gstRate: 5,
           isActive: true,
           sortOrder: seq,
@@ -188,6 +186,7 @@ async function main() {
           shortDesc: `${it.pack} pack`,
           mrp: price,
           price,
+          imageUrl: NO_IMAGE,
           gstRate: 5,
           sortOrder: seq,
         },

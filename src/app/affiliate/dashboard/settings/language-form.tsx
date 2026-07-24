@@ -4,19 +4,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Languages, Check } from "lucide-react";
-import { LANGUAGES, type Lang } from "@/lib/i18n";
+import { LANGUAGES, type Lang, type LangChoice } from "@/lib/i18n";
 
 // Lets a member choose the language product names appear in across the shop and
-// their orders. Saved to their profile; English is the default.
-export function LanguageForm({ initial }: { initial: Lang }) {
+// their orders. "Auto" follows their delivery region; a specific language
+// overrides it. Saved to their profile.
+export function LanguageForm({ initial, autoLang }: { initial: LangChoice; autoLang: Lang }) {
   const router = useRouter();
-  const [lang, setLang] = useState<Lang>(initial);
+  const [choice, setChoice] = useState<LangChoice>(initial);
   const [saving, setSaving] = useState(false);
 
-  async function choose(next: Lang) {
-    if (next === lang || saving) return;
-    const prev = lang;
-    setLang(next);
+  const autoLabel = LANGUAGES.find((l) => l.code === autoLang)?.native ?? "English";
+  const options: { code: LangChoice; native: string; label: string }[] = [
+    { code: "AUTO", native: "Auto", label: `Based on your area · ${autoLabel}` },
+    ...LANGUAGES.map((l) => ({ code: l.code as LangChoice, native: l.native, label: l.label })),
+  ];
+
+  async function pick(next: LangChoice) {
+    if (next === choice || saving) return;
+    const prev = choice;
+    setChoice(next);
     setSaving(true);
     try {
       const res = await fetch("/api/affiliate/preferences/language", {
@@ -28,7 +35,7 @@ export function LanguageForm({ initial }: { initial: Lang }) {
       toast.success("Language updated");
       router.refresh();
     } catch {
-      setLang(prev);
+      setChoice(prev);
       toast.error("Could not update language");
     } finally {
       setSaving(false);
@@ -44,26 +51,26 @@ export function LanguageForm({ initial }: { initial: Lang }) {
         <div>
           <div className="font-semibold">Display language</div>
           <div className="text-xs text-muted-foreground">
-            Choose the language for product names in the shop and your orders.
+            Language for product names in the shop and your orders. You can also change it on the Shop page.
           </div>
         </div>
       </div>
-      <div className="grid sm:grid-cols-3 gap-3">
-        {LANGUAGES.map((l) => {
-          const active = l.code === lang;
+      <div className="grid sm:grid-cols-2 gap-3">
+        {options.map((o) => {
+          const active = o.code === choice;
           return (
             <button
-              key={l.code}
+              key={o.code}
               type="button"
-              onClick={() => choose(l.code)}
+              onClick={() => pick(o.code)}
               disabled={saving}
               className={`flex items-center justify-between gap-2 rounded-lg border p-3 text-left transition disabled:opacity-60 ${
                 active ? "border-brand-500 bg-brand-50 ring-1 ring-brand-200" : "hover:bg-muted"
               }`}
             >
               <span>
-                <span className="block font-medium text-sm">{l.native}</span>
-                <span className="block text-xs text-muted-foreground">{l.label}</span>
+                <span className="block font-medium text-sm">{o.native}</span>
+                <span className="block text-xs text-muted-foreground">{o.label}</span>
               </span>
               {active && <Check className="h-4 w-4 text-brand-600 shrink-0" />}
             </button>

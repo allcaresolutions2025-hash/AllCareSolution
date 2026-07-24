@@ -3,9 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ShoppingBag, PackageSearch } from "lucide-react";
-import { productName, type Lang } from "@/lib/i18n";
+import { productName, effectiveLanguage, currentChoice, languageForState, type Lang } from "@/lib/i18n";
 import { ProductCard } from "./product-card";
 import { CartBar } from "./cart-bar";
+import { ShopLanguageSwitcher } from "./language-switcher";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +17,18 @@ export const dynamic = "force-dynamic";
 export default async function StorePage() {
   const session = await getServerSession(authOptions);
 
-  const [me, products] = await Promise.all([
+  const [me, address, products] = await Promise.all([
     session
       ? prisma.user.findUnique({
           where: { id: session.user.id },
-          select: { preferredLanguage: true },
+          select: { preferredLanguage: true, languageIsManual: true },
+        })
+      : Promise.resolve(null),
+    session
+      ? prisma.address.findFirst({
+          where: { userId: session.user.id },
+          orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+          select: { state: true },
         })
       : Promise.resolve(null),
     prisma.product.findMany({
@@ -33,7 +41,10 @@ export default async function StorePage() {
       },
     }),
   ]);
-  const lang: Lang = me?.preferredLanguage ?? "EN";
+  const prefs = me ?? { preferredLanguage: "EN" as Lang, languageIsManual: false };
+  const lang: Lang = effectiveLanguage(prefs, address?.state);
+  const choice = currentChoice(prefs);
+  const autoLang = languageForState(address?.state);
 
   // Resolve display names once, then split by category. Groceries are further
   // bucketed by sub-category (preserving the query's ordering).
@@ -63,12 +74,15 @@ export default async function StorePage() {
             Add products to your cart, then pay by Cash on Delivery or with your payout wallet points.
           </p>
         </div>
-        <Link
-          href="/affiliate/dashboard/store/orders"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium hover:bg-muted"
-        >
-          <PackageSearch className="h-4 w-4" /> My Orders
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <ShopLanguageSwitcher initial={choice} autoLang={autoLang} />
+          <Link
+            href="/affiliate/dashboard/store/orders"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium hover:bg-muted"
+          >
+            <PackageSearch className="h-4 w-4" /> My Orders
+          </Link>
+        </div>
       </div>
 
       {cards.length === 0 ? (

@@ -5,6 +5,7 @@ import { TransactionPasswordForm } from "./transaction-password-form";
 import { LoginPasswordForm } from "./login-password-form";
 import { ProfileEditForm } from "./profile-edit-form";
 import { LanguageForm } from "./language-form";
+import { currentChoice, languageForState } from "@/lib/i18n";
 import { ShieldCheck, ShieldAlert, Lock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function SettingsPage() {
         mustChangePassword: true,
         mustChangeTransactionPassword: true,
         preferredLanguage: true,
+        languageIsManual: true,
         name: true,
         email: true,
         phone: true,
@@ -41,6 +43,13 @@ export default async function SettingsPage() {
     }),
   ]);
   if (!me) return null;
+  const address = await prisma.address.findFirst({
+    where: { userId: session.user.id },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+    select: { state: true },
+  });
+  const langChoice = currentChoice(me);
+  const autoLang = languageForState(address?.state);
   const isSet = !!me.transactionPasswordHash;
   const hasPendingResetRequest = !!pendingReset;
 
@@ -77,7 +86,7 @@ export default async function SettingsPage() {
         </div>
       </div>
 
-      <LanguageForm initial={me.preferredLanguage} />
+      <LanguageForm initial={langChoice} autoLang={autoLang} />
 
       <LoginPasswordForm mustChange={me.mustChangePassword} />
 

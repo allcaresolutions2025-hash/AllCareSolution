@@ -61,6 +61,10 @@ model User {
   // Member's preferred display language for product names in the shop & orders
   // (English default). See lib/i18n.ts; admin UI always stays English.
   preferredLanguage Language @default(EN)
+  // When false (default), the display language is auto-derived from the member's
+  // delivery-address state (Tamil Nadu→Tamil, Hindi-belt→Hindi, else English).
+  // Set true once the member picks a language by hand — then preferredLanguage wins.
+  languageIsManual  Boolean  @default(false)
   // Admin override: when true, the member can use the 1000-pt Pin Wallet even
   // if they don't meet the both-legs-filled requirement. See lib/pin-wallet-access.
   pinWalletUnlocked Boolean @default(false)

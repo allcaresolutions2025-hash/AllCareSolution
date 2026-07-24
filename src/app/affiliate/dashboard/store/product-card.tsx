@@ -46,14 +46,20 @@ export function ProductCard({ product }: { product: ProductCardData }) {
     setTimeout(() => setJustAdded(false), 1500);
   }
 
+  // Products without a real photo (e.g. the grocery range) show no image box —
+  // just the name and details. The old SVG placeholder counts as "no image".
+  const hasImage = !!product.imageUrl && !product.imageUrl.startsWith("data:image/svg");
+
   return (
     <div className="card overflow-hidden flex flex-col">
-      <div className="aspect-square bg-brand-50 overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={product.imageUrl} alt={product.displayName} className="h-full w-full object-cover" />
-      </div>
+      {hasImage && (
+        <div className="aspect-square bg-brand-50 overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={product.imageUrl} alt={product.displayName} className="h-full w-full object-cover" />
+        </div>
+      )}
       <div className="p-4 flex flex-col flex-1">
-        <h3 className="font-semibold line-clamp-1">{product.displayName}</h3>
+        <h3 className="font-semibold line-clamp-2">{product.displayName}</h3>
         <p className="text-xs text-muted-foreground line-clamp-2 mt-1 min-h-[2.5em]">
           {product.shortDesc}
         </p>

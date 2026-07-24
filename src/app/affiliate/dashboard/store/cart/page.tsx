@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart-provider";
 import { formatINR } from "@/lib/money";
-import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Package } from "lucide-react";
+
+// A product has a real photo only if imageUrl is set and isn't the SVG placeholder.
+const hasImage = (url: string) => !!url && !url.startsWith("data:image/svg");
 
 // Cart review inside the dashboard. Reuses the app-wide cart provider so items
 // added on the catalog page appear here.
@@ -35,9 +38,13 @@ export default function StoreCartPage() {
         <h1 className="text-2xl font-bold mb-2">Your Cart ({count})</h1>
         {items.map((it) => (
           <div key={it.productId} className="card p-4 flex gap-4">
-            <div className="h-24 w-24 shrink-0 bg-brand-50 rounded-md overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={it.imageUrl} alt={it.name} className="h-full w-full object-cover" />
+            <div className="h-24 w-24 shrink-0 bg-brand-50 rounded-md overflow-hidden grid place-items-center">
+              {hasImage(it.imageUrl) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={it.imageUrl} alt={it.name} className="h-full w-full object-cover" />
+              ) : (
+                <Package className="h-8 w-8 text-brand-300" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-semibold">{it.name}</div>
