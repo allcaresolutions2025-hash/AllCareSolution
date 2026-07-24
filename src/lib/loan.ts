@@ -206,6 +206,10 @@ export function highestEligibleTier(ctx: EligibilityContext): LoanTier | null {
 export function nextClaimableTier(ctx: EligibilityContext): LoanTier | null {
   for (const tier of LOAN_TIERS) {
     if (tierIsCompleted(tier, ctx)) continue;
+    // The Rs. 1,000 starter is new-members-only. A member who took the Rs. 2,000
+    // loan bypassed it — it is never completed and never eligible for them, so
+    // skip it rather than letting it wrongly gate (return null) the whole ladder.
+    if (tier.newMembersOnly && ctx.hasTakenLevel2Loan) continue;
     // A member who took the Rs. 10,000 loan skipped the Rs. 5,000 Level-3 — treat
     // it as passed so it neither blocks the ladder nor is offered to them.
     if (tier.key === LEVEL3_5000_KEY && level3LockedByHigherLoan(ctx)) continue;
