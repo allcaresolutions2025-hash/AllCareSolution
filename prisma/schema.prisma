@@ -24,6 +24,14 @@ enum Role {
   PROMAX_ADMIN
 }
 
+// Member-selectable display language for product names. EN is the default and
+// the fallback whenever a localized name is missing.
+enum Language {
+  EN
+  TA
+  HI
+}
+
 enum Slot {
   LEFT
   RIGHT
@@ -50,6 +58,9 @@ model User {
   mustOnboard        Boolean  @default(false) // true for fresher accounts — forced through the Add Member form on first login
   role         Role     @default(CUSTOMER)
   isActive     Boolean  @default(true)
+  // Member's preferred display language for product names in the shop & orders
+  // (English default). See lib/i18n.ts; admin UI always stays English.
+  preferredLanguage Language @default(EN)
   // Admin override: when true, the member can use the 1000-pt Pin Wallet even
   // if they don't meet the both-legs-filled requirement. See lib/pin-wallet-access.
   pinWalletUnlocked Boolean @default(false)
@@ -246,10 +257,23 @@ model PinWalletTxn {
 
 // ---------- CATALOG ----------
 
+// Top-level catalog split. WELLNESS is the original Ayurvedic/wellness range;
+// GROCERIES is the Tamil grocery/podi/mix range (grouped further by subCategory).
+enum ProductCategory {
+  WELLNESS
+  GROCERIES
+}
+
 model Product {
   id           String   @id @default(cuid())
   slug         String   @unique
-  name         String
+  name         String   // English name (default display + admin/order snapshot)
+  // Optional localized names shown to members per their preferredLanguage.
+  // Null falls back to the English `name`. See lib/i18n.ts.
+  nameTa       String?  // Tamil
+  nameHi       String?  // Hindi (Devanagari)
+  category     ProductCategory @default(WELLNESS)
+  subCategory  String?  // grocery group label (e.g. "Masala Powders"); null for wellness
   shortDesc    String
   description  String   @db.Text
   ingredients  String?  @db.Text

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { formatINR } from "@/lib/money";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { ShoppingBag, Wallet, Banknote } from "lucide-react";
+import { productName, type Lang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +13,25 @@ export default async function StoreOrdersPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const orders = await prisma.order.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    include: { items: { select: { name: true, quantity: true } } },
-  });
+  const [me, orders] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { preferredLanguage: true },
+    }),
+    prisma.order.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: {
+          select: {
+            name: true, quantity: true,
+            product: { select: { name: true, nameTa: true, nameHi: true } },
+          },
+        },
+      },
+    }),
+  ]);
+  const lang: Lang = me?.preferredLanguage ?? "EN";
 
   return (
     <div className="space-y-4">
@@ -50,7 +65,7 @@ export default async function StoreOrdersPage() {
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1 truncate">
-                  {o.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}
+                  {o.items.map((i) => `${productName(i.product ?? { name: i.name }, lang)} ×${i.quantity}`).join(", ")}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Placed {new Date(o.placedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}

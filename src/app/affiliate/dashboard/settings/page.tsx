@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { TransactionPasswordForm } from "./transaction-password-form";
 import { LoginPasswordForm } from "./login-password-form";
 import { ProfileEditForm } from "./profile-edit-form";
+import { LanguageForm } from "./language-form";
 import { ShieldCheck, ShieldAlert, Lock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export default async function SettingsPage() {
         transactionPasswordHash: true,
         mustChangePassword: true,
         mustChangeTransactionPassword: true,
+        preferredLanguage: true,
         name: true,
         email: true,
         phone: true,
@@ -74,6 +76,8 @@ export default async function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <LanguageForm initial={me.preferredLanguage} />
 
       <LoginPasswordForm mustChange={me.mustChangePassword} />
 

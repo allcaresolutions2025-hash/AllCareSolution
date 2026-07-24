@@ -9,7 +9,8 @@ import { formatINR } from "@/lib/money";
 type ProductCardData = {
   id: string;
   slug: string;
-  name: string;
+  // Display name already resolved to the member's language (English fallback).
+  displayName: string;
   shortDesc: string;
   price: number; // paise
   mrp: number;   // paise
@@ -33,14 +34,14 @@ export function ProductCard({ product }: { product: ProductCardData }) {
     const line: CartLine = {
       productId: product.id,
       slug: product.slug,
-      name: product.name,
+      name: product.displayName,
       price: product.price,
       imageUrl: product.imageUrl,
       quantity: qty,
       stock: product.stock,
     };
     add(line);
-    toast.success(`Added ${qty} × ${product.name} to cart`);
+    toast.success(`Added ${qty} × ${product.displayName} to cart`);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1500);
   }
@@ -49,10 +50,10 @@ export function ProductCard({ product }: { product: ProductCardData }) {
     <div className="card overflow-hidden flex flex-col">
       <div className="aspect-square bg-brand-50 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+        <img src={product.imageUrl} alt={product.displayName} className="h-full w-full object-cover" />
       </div>
       <div className="p-4 flex flex-col flex-1">
-        <h3 className="font-semibold line-clamp-1">{product.name}</h3>
+        <h3 className="font-semibold line-clamp-1">{product.displayName}</h3>
         <p className="text-xs text-muted-foreground line-clamp-2 mt-1 min-h-[2.5em]">
           {product.shortDesc}
         </p>

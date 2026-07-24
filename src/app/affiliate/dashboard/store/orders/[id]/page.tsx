@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { formatINR } from "@/lib/money";
 import { CheckCircle2, Circle, Package, Truck, Home, BadgeCheck, Wallet, Banknote, ArrowLeft } from "lucide-react";
 import type { OrderStatus } from "@prisma/client";
+import { productName, type Lang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +35,20 @@ export default async function StoreOrderDetailPage({
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const order = await prisma.order.findUnique({
-    where: { id: params.id },
-    include: { items: true },
-  });
+  const [me, order] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { preferredLanguage: true },
+    }),
+    prisma.order.findUnique({
+      where: { id: params.id },
+      include: {
+        items: { include: { product: { select: { name: true, nameTa: true, nameHi: true } } } },
+      },
+    }),
+  ]);
   if (!order || order.userId !== session.user.id) notFound();
+  const lang: Lang = me?.preferredLanguage ?? "EN";
 
   const currentStep = stepIndex(order.status);
   const isCancelled = ["CANCELLED", "RETURNED", "REFUNDED"].includes(order.status);
@@ -147,7 +157,7 @@ export default async function StoreOrderDetailPage({
             {order.items.map((it) => (
               <div key={it.id} className="flex justify-between text-sm">
                 <div>
-                  <div className="font-medium">{it.name}</div>
+                  <div className="font-medium">{productName(it.product ?? { name: it.name }, lang)}</div>
                   <div className="text-muted-foreground">SKU {it.sku} · GST {it.gstRate}%</div>
                 </div>
                 <div className="text-right">
