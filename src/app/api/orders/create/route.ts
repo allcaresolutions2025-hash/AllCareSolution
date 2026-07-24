@@ -18,7 +18,13 @@ const bodySchema = z.object({
       quantity: z.number().int().positive().max(50),
     })
   ).min(1),
+  // How the member pays. COD keeps the legacy pay-on-delivery flow; WALLET_POINTS
+  // debits the payout wallet (balanceAvailable) up-front for the full total.
+  paymentMethod: z.enum(["COD", "WALLET_POINTS"]).default("COD"),
 });
+
+const INSUFFICIENT_WALLET_MESSAGE =
+  "Insufficient payout wallet balance to pay for this order.";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -28,7 +34,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input", issues: parsed.error.flatten() }, { status: 400 });
   }
-  const { shipping, items } = parsed.data;
+  const { shipping, items, paymentMethod } = parsed.data;
 
   // Fetch products fresh from DB — never trust client prices
   const productIds = items.map((i) => i.productId);
@@ -70,13 +76,30 @@ export async function POST(req: Request) {
   const chain = await getReferralChain(session.user.id);
   const orderNumber = generateOrderNumber();
 
-  // COD: create order as PAID, decrement stock, accrue commissions in one transaction.
+  // Both payment methods create the order as PAID, decrement stock and accrue
+  // commissions in one transaction. WALLET_POINTS additionally debits the payout
+  // wallet (balanceAvailable) up-front — the whole thing rolls back on failure.
+  let insufficientWallet = false;
   const order = await prisma.$transaction(async (tx) => {
+    if (paymentMethod === "WALLET_POINTS") {
+      // Read the wallet inside the transaction, then debit only if it covers the
+      // full total. Prisma's updateMany with a balance guard makes the debit
+      // atomic — count === 0 means another concurrent spend beat us to it.
+      const debited = await tx.wallet.updateMany({
+        where: { userId: session.user.id, balanceAvailable: { gte: totalAmount } },
+        data: { balanceAvailable: { decrement: totalAmount } },
+      });
+      if (debited.count === 0) {
+        insufficientWallet = true;
+        throw new Error("INSUFFICIENT_WALLET");
+      }
+    }
     const created = await tx.order.create({
       data: {
         orderNumber,
         userId: session.user.id,
         status: "PAID",
+        paymentMethod,
         paidAt: new Date(),
         subtotal,
         gstAmount,
@@ -103,7 +126,14 @@ export async function POST(req: Request) {
     }
     await accrueCommissionsForOrder(created.id, tx);
     return created;
+  }).catch((err) => {
+    if (insufficientWallet) return null;
+    throw err;
   });
+
+  if (!order) {
+    return NextResponse.json({ error: INSUFFICIENT_WALLET_MESSAGE }, { status: 400 });
+  }
 
   return NextResponse.json({ ok: true, orderId: order.id, orderNumber: order.orderNumber });
 }

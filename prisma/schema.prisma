@@ -293,13 +293,22 @@ enum OrderStatus {
   REFUNDED
 }
 
+// How the member paid for the order.
+//   COD           — Cash on Delivery, paid when the parcel arrives.
+//   WALLET_POINTS — paid up-front by debiting the payout wallet (balanceAvailable).
+enum PaymentMethod {
+  COD
+  WALLET_POINTS
+}
+
 model Order {
   id             String      @id @default(cuid())
   orderNumber    String      @unique
   userId         String
   user           User        @relation(fields: [userId], references: [id])
 
-  status         OrderStatus @default(PENDING_PAYMENT)
+  status         OrderStatus   @default(PENDING_PAYMENT)
+  paymentMethod  PaymentMethod @default(COD)
 
   subtotal       Int // sum of (item price * qty) in paise, exclusive of GST
   gstAmount      Int // total GST in paise

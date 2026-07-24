@@ -83,6 +83,10 @@ export default async function AdminOrderDetail({ params }: { params: { id: strin
                   Razorpay: {order.razorpayOrderId}<br />
                   Payment ID: {order.razorpayPaymentId || "—"}
                 </p>
+              ) : order.paymentMethod === "WALLET_POINTS" ? (
+                <span className="inline-flex items-center gap-1.5 font-semibold text-brand-700 bg-brand-100 px-3 py-1 rounded-full text-xs">
+                  Paid via payout wallet points
+                </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full text-xs">
                   Cash on Delivery
