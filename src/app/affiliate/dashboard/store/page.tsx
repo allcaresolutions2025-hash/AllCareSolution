@@ -4,16 +4,17 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ShoppingBag, PackageSearch } from "lucide-react";
 import { productName, effectiveLanguage, currentChoice, languageForState, type Lang } from "@/lib/i18n";
-import { ProductCard } from "./product-card";
-import { CartBar } from "./cart-bar";
+import { CategoryList, type CatalogCategory } from "./category-list";
+import { FloatingCartButton } from "./floating-cart-button";
 import { ShopLanguageSwitcher } from "./language-switcher";
 
 export const dynamic = "force-dynamic";
 
-// Single-page catalog: every active product on one page so members can pick and
-// add to cart without opening a detail page. Products are grouped into Wellness
-// and Groceries (the latter further split by sub-category). Names are shown in
-// the member's preferred language (English fallback).
+// Catalog as a list of clickable category fields (Wellness, and each grocery
+// sub-category). Tapping one opens its products to add to cart — see
+// CategoryList. A floating cart icon (FloatingCartButton) stays on screen so
+// the member can review what they've added and proceed to checkout. Names are
+// shown in the member's preferred language (English fallback).
 export default async function StorePage() {
   const session = await getServerSession(authOptions);
 
@@ -46,32 +47,36 @@ export default async function StorePage() {
   const choice = currentChoice(prefs);
   const autoLang = languageForState(address?.state);
 
-  // Resolve display names once, then split by category. Groceries are further
-  // bucketed by sub-category (preserving the query's ordering).
-  const cards = products.map((p) => ({
+  // Resolve display names once, then group into category "fields": Wellness as
+  // one field, and each grocery sub-category as its own field.
+  const items = products.map((p) => ({
     id: p.id, slug: p.slug, displayName: productName(p, lang),
     shortDesc: p.shortDesc, price: p.price, mrp: p.mrp,
     imageUrl: p.imageUrl, stock: p.stock,
     category: p.category, subCategory: p.subCategory,
   }));
-  const wellness = cards.filter((c) => c.category === "WELLNESS");
-  const groceries = cards.filter((c) => c.category === "GROCERIES");
-  const grocerySections = new Map<string, typeof cards>();
+  const wellness = items.filter((c) => c.category === "WELLNESS");
+  const groceries = items.filter((c) => c.category === "GROCERIES");
+  const grocerySections = new Map<string, typeof items>();
   for (const c of groceries) {
     const key = c.subCategory || "Other";
     if (!grocerySections.has(key)) grocerySections.set(key, []);
     grocerySections.get(key)!.push(c);
   }
+  const categories: CatalogCategory[] = [
+    ...(wellness.length > 0 ? [{ key: "WELLNESS", title: "Wellness", items: wellness }] : []),
+    ...[...grocerySections.entries()].map(([sub, list]) => ({ key: `GROCERIES:${sub}`, title: sub, items: list })),
+  ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ShoppingBag className="h-6 w-6 text-brand-600" /> Shop
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Add products to your cart, then pay by Cash on Delivery or with your payout wallet points.
+            Tap a category to browse and add to cart, then pay by Cash on Delivery or with your payout wallet points.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -85,55 +90,15 @@ export default async function StorePage() {
         </div>
       </div>
 
-      {cards.length === 0 ? (
+      {categories.length === 0 ? (
         <div className="card p-10 text-center text-muted-foreground">
           No products available right now. Please check back soon.
         </div>
       ) : (
-        <>
-          {wellness.length > 0 && (
-            <Section title="Wellness">
-              <Grid cards={wellness} />
-            </Section>
-          )}
-
-          {grocerySections.size > 0 && (
-            <Section title="Groceries">
-              <div className="space-y-6">
-                {[...grocerySections.entries()].map(([sub, list]) => (
-                  <div key={sub}>
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                      {sub}
-                    </h3>
-                    <Grid cards={list} />
-                  </div>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          <CartBar />
-        </>
+        <CategoryList categories={categories} />
       )}
-    </div>
-  );
-}
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-bold border-b pb-2">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function Grid({ cards }: { cards: React.ComponentProps<typeof ProductCard>["product"][] }) {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-      {cards.map((c) => (
-        <ProductCard key={c.id} product={c} />
-      ))}
+      <FloatingCartButton />
     </div>
   );
 }
