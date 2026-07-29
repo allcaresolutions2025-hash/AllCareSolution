@@ -1,0 +1,29 @@
+name: Nightly points-decay payout
+
+# Replaces the Vercel cron (vercel.json → /api/cron/points-decay).
+# Fires 18:30 UTC = 00:00 IST, the same schedule Vercel used.
+#
+# Requires two GitHub repo secrets (Settings → Secrets and variables → Actions):
+#   APP_URL      e.g. https://your-app.up.railway.app  (no trailing slash)
+#   CRON_SECRET  the same value set in Railway's env vars
+#
+# The endpoint is idempotent per IST-date, so an occasional GitHub Actions
+# delay or a re-run is harmless — a second call the same day is a no-op.
+
+on:
+  schedule:
+    - cron: "30 18 * * *"
+  workflow_dispatch: {} # lets you trigger it manually from the Actions tab
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call points-decay endpoint
+        run: |
+          curl -fsS --retry 3 --retry-delay 10 -X POST \
+            "${APP_URL}/api/cron/points-decay" \
+            -H "x-cron-secret: ${CRON_SECRET}"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
