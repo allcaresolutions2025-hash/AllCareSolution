@@ -104,49 +104,68 @@ export async function POST(req: Request) {
   // Both 1000-pt and 2000-pt pins follow the same points system — no wallet
   // credit at enrollment. The 2000-pt pin's only difference is that the enrolled
   // member gets the 40 Combo Reward (see lib/rewards) instead of the Welcome Kit.
+  // The upline walk in awardUplinePoints issues one query per ancestor, so the
+  // transaction can stay open long enough for Neon's pooler to recycle the
+  // backing connection mid-flight — Prisma then aborts with P2028. The whole
+  // op is atomic, so a failed attempt commits nothing; retrying on P2028 is
+  // safe (memberCode is generated once above, so no duplicate is created).
+  // Also raise the interactive-transaction timeout from the 5s default to
+  // absorb DB latency. Real fix is co-locating the app with the DB region.
   let newUser;
-  try {
-    newUser = await prisma.$transaction(async (tx) => {
-      const created = await tx.user.create({
-        data: {
-          email,
-          phone: mobile,
-          name,
-          nominee,
-          gender,
-          address,
-          panNumber,
-          bankAccountName,
-          bankAccountNumber,
-          bankIfsc,
-          bankName,
-          passwordHash,
-          mustChangePassword: true,
-          referralCode: memberCode,
-          referrerId: placementParentId,
-          slot: side,
-          agreedToTermsAt: new Date(),
-          wallet: { create: {} },
+  const MAX_TX_ATTEMPTS = 3;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      newUser = await prisma.$transaction(
+        async (tx) => {
+          const created = await tx.user.create({
+            data: {
+              email,
+              phone: mobile,
+              name,
+              nominee,
+              gender,
+              address,
+              panNumber,
+              bankAccountName,
+              bankAccountNumber,
+              bankIfsc,
+              bankName,
+              passwordHash,
+              mustChangePassword: true,
+              referralCode: memberCode,
+              referrerId: placementParentId,
+              slot: side,
+              agreedToTermsAt: new Date(),
+              wallet: { create: {} },
+            },
+          });
+          await tx.pin.update({
+            where: { id: pin.id },
+            data: { status: "USED", usedAt: new Date(), usedForUserId: created.id },
+          });
+          // +200 direct-referral bonus goes to the typed Refer ID's owner
+          // (parent.id) — NOT the PIN owner, and NOT the spillover placement
+          // parent. This matches member expectation that "the referral code's
+          // owner gets the money."
+          await awardUplinePoints(tx, created.id, parent.id);
+          await tx.user.update({
+            where: { id: session.user.id },
+            data: { mustOnboard: false },
+          });
+          return created;
         },
-      });
-      await tx.pin.update({
-        where: { id: pin.id },
-        data: { status: "USED", usedAt: new Date(), usedForUserId: created.id },
-      });
-      // +200 direct-referral bonus goes to the typed Refer ID's owner
-      // (parent.id) — NOT the PIN owner, and NOT the spillover placement
-      // parent. This matches member expectation that "the referral code's
-      // owner gets the money."
-      await awardUplinePoints(tx, created.id, parent.id);
-      await tx.user.update({
-        where: { id: session.user.id },
-        data: { mustOnboard: false },
-      });
-      return created;
-    });
-  } catch (err) {
-    console.error("[MEMBER_CREATE]", err);
-    return NextResponse.json({ error: "Could not create member. Please try again." }, { status: 500 });
+        { maxWait: 10000, timeout: 20000 },
+      );
+      break;
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      if (code === "P2028" && attempt < MAX_TX_ATTEMPTS) {
+        console.warn(`[MEMBER_CREATE] P2028 (connection dropped) on attempt ${attempt}/${MAX_TX_ATTEMPTS} — retrying`);
+        continue;
+      }
+      console.error("[MEMBER_CREATE]", err);
+      return NextResponse.json({ error: "Could not create member. Please try again." }, { status: 500 });
+    }
   }
 
   const placementParent = await prisma.user.findUnique({
