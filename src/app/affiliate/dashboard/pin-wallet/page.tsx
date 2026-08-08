@@ -37,10 +37,16 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
 
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
 
-  const [user, wallet, txns, txnTotal, activePins, pinWalletPriceInr, bigLoan] = await Promise.all([
+  const [user, wallet, txns, txnTotal, activePins, pinWalletPriceInr, bigLoan, lastTopUpRequest] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { leftLegCount: true, rightLegCount: true, pinWalletUnlocked: true, pinWalletLocked: true },
+      select: {
+        leftLegCount: true,
+        rightLegCount: true,
+        pinWalletUnlocked: true,
+        pinWalletLocked: true,
+        pinTopUpEnabled: true,
+      },
     }),
     prisma.wallet.findUnique({
       where: { userId: session.user.id },
@@ -64,6 +70,13 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
         amount: { gte: BIG_LOAN_THRESHOLD_PAISE },
       },
       select: { id: true },
+    }),
+    // Latest payout -> Pin Wallet activation request, to decide whether the
+    // member sees the transfer form, a "pending" notice, or the request form.
+    prisma.pinTopUpAccessRequest.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      select: { status: true, adminNote: true },
     }),
   ]);
 
@@ -135,7 +148,8 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Use Pin Wallet points to buy pins instantly — no admin approval needed. Your approved loan
-          and admin credits are added here.
+          and admin credits are added here. Topping up from your payout wallet needs a one-time
+          admin activation.
         </p>
       </div>
 
@@ -167,9 +181,15 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
       {/* Buy + transfer actions */}
       <PinWalletActions
         pinWalletBalance={pinWalletBalance}
+        payoutBalance={payoutBalance}
         pricePerPin={pricePerPin}
         maxBuyable={maxBuyable}
         minWithdraw={minWithdraw}
+        topUp={{
+          enabled: user?.pinTopUpEnabled ?? false,
+          lastStatus: lastTopUpRequest?.status ?? null,
+          adminNote: lastTopUpRequest?.adminNote ?? null,
+        }}
       />
 
       {/* Ledger */}

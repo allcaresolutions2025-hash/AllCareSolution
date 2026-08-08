@@ -26,6 +26,27 @@ export async function canAccessPinWallet(userId: string): Promise<boolean> {
   return !!u && pinWalletAccessAllowed(u);
 }
 
+// Moving points the other way — payout wallet INTO the Pin Wallet — needs an
+// explicit admin approval on top of ordinary Pin Wallet access. Members request
+// it (PinTopUpAccessRequest); approving sets pinTopUpEnabled, revoking clears
+// it. Wallet access still applies: a locked wallet blocks top-ups too.
+export async function canTopUpPinWallet(userId: string): Promise<boolean> {
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      pinTopUpEnabled: true,
+      pinWalletLocked: true,
+      pinWalletUnlocked: true,
+      leftLegCount: true,
+      rightLegCount: true,
+    },
+  });
+  return !!u && u.pinTopUpEnabled && pinWalletAccessAllowed(u);
+}
+
+export const PIN_TOPUP_NOT_APPROVED_MESSAGE =
+  "Transferring points into the Pin Wallet needs admin approval. Send an activation request from the Pin Wallet page and an admin will review it.";
+
 export const PIN_WALLET_LOCKED_MESSAGE =
   "Add more than one member on both your left and right legs to unlock the Pin Wallet, or ask an admin to enable it for you.";
 

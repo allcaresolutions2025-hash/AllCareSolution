@@ -71,6 +71,11 @@ model User {
   // Admin kill-switch: when true, the Pin Wallet is force-locked regardless of
   // legs or the unlock override — used to freeze a member if there's an issue.
   pinWalletLocked   Boolean @default(false)
+  // Moving points payout wallet -> Pin Wallet is off for everyone by default.
+  // The member asks for it (PinTopUpAccessRequest) and an admin approves; the
+  // admin can revoke later, which flips this back to false. See
+  // lib/pin-wallet-access.ts (canTopUpPinWallet).
+  pinTopUpEnabled   Boolean @default(false)
 
   referralCode String   @unique
   referrerId   String?
@@ -123,6 +128,7 @@ model User {
   pinRequests   PinRequest[]
   pinPurchases  PinPurchase[]
   pinWalletTxns PinWalletTxn[]
+  pinTopUpRequests PinTopUpAccessRequest[]
   pinsOwned     Pin[]          @relation("PinOwner")
   pinUsedToJoin Pin?           @relation("PinUsedFor")
 
@@ -256,6 +262,34 @@ model PinWalletTxn {
   note         String?
   createdAt    DateTime         @default(now())
 
+  @@index([userId, createdAt])
+}
+
+// Members must be approved before they can move points from their payout
+// (e-wallet) balance into the Pin Wallet. They raise a request here, an admin
+// reviews it, and approving sets User.pinTopUpEnabled = true. Revoking an
+// already-approved request flips the flag back off — the row stays as the audit
+// trail of who had access and when it was taken away.
+enum PinTopUpAccessStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED  // was approved, later withdrawn by an admin
+}
+
+model PinTopUpAccessRequest {
+  id         String               @id @default(cuid())
+  userId     String
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason     String?              @db.Text // member's note on why they need it
+  status     PinTopUpAccessStatus @default(PENDING)
+  adminNote  String?              @db.Text // shown to the member on reject/revoke
+  reviewerId String?              // admin who approved/rejected/revoked
+  createdAt  DateTime             @default(now())
+  reviewedAt DateTime?
+  revokedAt  DateTime?
+
+  @@index([status, createdAt])
   @@index([userId, createdAt])
 }
 
