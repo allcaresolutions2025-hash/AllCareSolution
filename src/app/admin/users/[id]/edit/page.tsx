@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { AdminUserEditForm } from "./admin-user-edit-form";
 import { CreditPinWalletForm } from "./credit-pin-wallet-form";
+import { CreditPayoutWalletForm } from "./credit-payout-wallet-form";
 import { PinWalletAccessForm } from "./pin-wallet-access-form";
 import { ArrowLeft } from "lucide-react";
 
@@ -32,7 +33,7 @@ export default async function AdminEditUserPage({ params }: { params: { id: stri
       pinWalletLocked: true,
       leftLegCount: true,
       rightLegCount: true,
-      wallet: { select: { pinWalletBalance: true } },
+      wallet: { select: { pinWalletBalance: true, balanceAvailable: true } },
     },
   });
   if (!user) notFound();
@@ -84,6 +85,8 @@ export default async function AdminEditUserPage({ params }: { params: { id: stri
       />
 
       <CreditPinWalletForm userId={user.id} currentBalancePaise={user.wallet?.pinWalletBalance ?? 0} />
+
+      <CreditPayoutWalletForm userId={user.id} currentBalancePaise={user.wallet?.balanceAvailable ?? 0} />
     </div>
   );
 }
