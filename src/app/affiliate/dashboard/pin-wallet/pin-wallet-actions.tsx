@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { KeyRound, ArrowLeftRight, ArrowRightLeft, Clock, ShieldCheck } from "lucide-react";
+import { KeyRound, ArrowLeftRight, ArrowRightLeft } from "lucide-react";
 import { formatPoints } from "@/lib/money";
 
 // Per-transfer minimum for payout -> pin wallet (points = whole rupees).
@@ -47,8 +47,6 @@ export function PinWalletActions({
   const [withdrawing, setWithdrawing] = useState(false);
   const [transferPts, setTransferPts] = useState(0);
   const [transferring, setTransferring] = useState(false);
-  const [reason, setReason] = useState("");
-  const [requesting, setRequesting] = useState(false);
 
   const qtyNum = parseInt(qty, 10) || 0;
   const cost = qtyNum * pricePerPin;
@@ -76,8 +74,6 @@ export function PinWalletActions({
     }
   }
 
-  // payout wallet -> Pin Wallet. Only reachable once an admin has approved the
-  // member's activation request.
   async function transfer(e: React.FormEvent) {
     e.preventDefault();
     if (transferPts < MIN_TOPUP || transferPts * 100 > payoutBalance) return;
@@ -97,28 +93,6 @@ export function PinWalletActions({
       toast.error(err instanceof Error ? err.message : "Transfer failed");
     } finally {
       setTransferring(false);
-    }
-  }
-
-  // Ask an admin to switch the payout -> Pin Wallet transfer on for this account.
-  async function requestAccess(e: React.FormEvent) {
-    e.preventDefault();
-    setRequesting(true);
-    try {
-      const res = await fetch("/api/affiliate/pin-wallet/topup-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: reason.trim() || undefined }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Could not send request");
-      toast.success("Request sent. An admin will review it shortly.");
-      setReason("");
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not send request");
-    } finally {
-      setRequesting(false);
     }
   }
 
@@ -183,107 +157,41 @@ export function PinWalletActions({
         </button>
       </form>
 
-      {/* Top up from payout — needs admin approval before it goes live */}
-      {topUp.enabled ? (
-        <form onSubmit={transfer} className="card p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-emerald-100 text-emerald-700 grid place-items-center">
-              <ArrowRightLeft className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-semibold">Top up from payout wallet</h2>
-              <p className="text-xs text-muted-foreground">Available: {formatPoints(payoutBalance)}</p>
-            </div>
+      <form onSubmit={transfer} className="card p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-9 w-9 rounded-lg bg-emerald-100 text-emerald-700 grid place-items-center">
+            <ArrowRightLeft className="h-5 w-5" />
           </div>
-
           <div>
-            <label className="label">Points to transfer</label>
-            <input
-              type="number"
-              min={0}
-              value={transferPts || ""}
-              onChange={(e) => setTransferPts(Math.max(0, parseInt(e.target.value, 10) || 0))}
-              className="input"
-              placeholder="e.g. 200"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Moves points from payout into the Pin Wallet (1 point = ₹1). Minimum{" "}
-              <strong>{MIN_TOPUP.toLocaleString("en-IN")}</strong> points per transfer.
-            </p>
+            <h2 className="font-semibold">Top up from payout wallet</h2>
+            <p className="text-xs text-muted-foreground">Available: {formatPoints(payoutBalance)}</p>
           </div>
-
-          <button
-            type="submit"
-            disabled={transferring || transferPts < MIN_TOPUP || transferPts * 100 > payoutBalance}
-            className="btn-secondary w-full"
-          >
-            {transferring ? "Transferring…" : "Transfer to Pin Wallet"}
-          </button>
-        </form>
-      ) : topUp.lastStatus === "PENDING" ? (
-        <div className="card p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-amber-100 text-amber-700 grid place-items-center">
-              <Clock className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-semibold">Activation pending</h2>
-              <p className="text-xs text-muted-foreground">Payout → Pin Wallet transfer</p>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Your request is with the admin for review. You&apos;ll get a notification here as soon as
-            it&apos;s approved, and the transfer form will appear in this spot.
-          </p>
-          <button disabled className="btn-secondary w-full opacity-60">
-            Awaiting admin approval
-          </button>
         </div>
-      ) : (
-        <form onSubmit={requestAccess} className="card p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-emerald-100 text-emerald-700 grid place-items-center">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-semibold">Top up from payout wallet</h2>
-              <p className="text-xs text-muted-foreground">Needs admin approval</p>
-            </div>
-          </div>
 
-          {topUp.lastStatus === "REJECTED" || topUp.lastStatus === "REVOKED" ? (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-800">
-              <p className="font-medium">
-                {topUp.lastStatus === "REJECTED"
-                  ? "Your last request was declined."
-                  : "An admin turned this off for your account."}
-              </p>
-              {topUp.adminNote && <p className="mt-1">“{topUp.adminNote}”</p>}
-              <p className="mt-1">You can send a fresh request below.</p>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Moving points from your payout wallet into the Pin Wallet has to be activated by an
-              admin first. Send a request and they&apos;ll review it.
-            </p>
-          )}
+        <div>
+          <label className="label">Points to transfer</label>
+          <input
+            type="number"
+            min={0}
+            value={transferPts || ""}
+            onChange={(e) => setTransferPts(Math.max(0, parseInt(e.target.value, 10) || 0))}
+            className="input"
+            placeholder="e.g. 200"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Moves points from payout into the Pin Wallet (1 point = ₹1). Minimum{" "}
+            <strong>{MIN_TOPUP.toLocaleString("en-IN")}</strong> points per transfer.
+          </p>
+        </div>
 
-          <div>
-            <label className="label">Reason (optional)</label>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value.slice(0, 500))}
-              rows={2}
-              className="input"
-              placeholder="e.g. I want to buy more pins for my team"
-            />
-          </div>
-
-          <button type="submit" disabled={requesting} className="btn-secondary w-full">
-            {requesting ? "Sending…" : "Request activation"}
-          </button>
-        </form>
-      )}
+        <button
+          type="submit"
+          disabled={transferring || transferPts < MIN_TOPUP || transferPts * 100 > payoutBalance}
+          className="btn-secondary w-full"
+        >
+          {transferring ? "Transferring…" : "Transfer to Pin Wallet"}
+        </button>
+      </form>
 
       {/* Move back to payout */}
       <form onSubmit={withdraw} className="card p-5 space-y-3">

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { MIN_WITHDRAW_POINTS, MIN_WITHDRAW_POINTS_BIG_LOAN, BIG_LOAN_THRESHOLD_PAISE } from "@/lib/loan";
 import { toPaise, formatPoints } from "@/lib/money";
-import { Wallet, KeyRound, ArrowDownLeft, ArrowUpRight, Coins, Lock } from "lucide-react";
+import { Wallet, KeyRound, ArrowDownLeft, ArrowUpRight, Coins } from "lucide-react";
 import { PinWalletActions } from "./pin-wallet-actions";
 import { Pagination } from "@/components/pagination";
 
@@ -86,60 +86,6 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
   const pricePerPin = toPaise(pinWalletPriceInr);
   const maxBuyable = pricePerPin > 0 ? Math.floor(pinWalletBalance / pricePerPin) : 0;
 
-  // Pin Wallet access is unlocked once BOTH binary legs have more than one
-  // member (left and right filled PLUS another member below) — the same rule as
-  // daily-payout eligibility — OR when an admin has manually enabled it. An admin
-  // can also force-lock the wallet, which overrides everything. Until enabled the
-  // member can't buy pins or transfer to/from the payout wallet.
-  const leftFilled = (user?.leftLegCount ?? 0) > 1;
-  const rightFilled = (user?.rightLegCount ?? 0) > 1;
-  const adminUnlocked = user?.pinWalletUnlocked ?? false;
-  const adminLocked = user?.pinWalletLocked ?? false;
-  const canAccess = !adminLocked && (adminUnlocked || (leftFilled && rightFilled));
-
-  if (!canAccess) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Wallet className="h-6 w-6 text-brand-600" /> Pin Wallet
-          </h1>
-        </div>
-        <div className="card p-8 text-center">
-          <div className="mx-auto h-12 w-12 rounded-full bg-amber-100 text-amber-700 grid place-items-center">
-            <Lock className="h-6 w-6" />
-          </div>
-          <h2 className="mt-4 text-lg font-semibold">
-            {adminLocked ? "Pin Wallet is disabled" : "Pin Wallet is locked"}
-          </h2>
-          {adminLocked ? (
-            <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-              Your Pin Wallet has been temporarily disabled by the admin. Please contact support
-              for details.
-            </p>
-          ) : (
-            <>
-              <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-                You can access the Pin Wallet — buy pins and transfer points to your
-                payout wallet — once you have <strong>more than one</strong> member on both your
-                left and right legs (left and right filled, plus another member below).
-              </p>
-              <div className="mt-4 inline-flex items-center gap-3 text-sm">
-                <span className={`inline-flex items-center gap-1.5 font-medium ${leftFilled ? "text-emerald-700" : "text-red-600"}`}>
-                  Left leg: {leftFilled ? "filled" : "empty"}
-                </span>
-                <span className="text-muted-foreground">•</span>
-                <span className={`inline-flex items-center gap-1.5 font-medium ${rightFilled ? "text-emerald-700" : "text-red-600"}`}>
-                  Right leg: {rightFilled ? "filled" : "empty"}
-                </span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -148,8 +94,7 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Use Pin Wallet points to buy pins instantly — no admin approval needed. Your approved loan
-          and admin credits are added here. Topping up from your payout wallet needs a one-time
-          admin activation.
+          and admin credits are added here. Minimum payout-to-Pin Wallet transfer is 200 points.
         </p>
       </div>
 
