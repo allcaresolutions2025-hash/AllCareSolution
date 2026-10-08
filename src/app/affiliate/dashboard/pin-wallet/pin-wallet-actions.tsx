@@ -51,6 +51,7 @@ export function PinWalletActions({
   const qtyNum = parseInt(qty, 10) || 0;
   const cost = qtyNum * pricePerPin;
   const canAfford = qtyNum >= 1 && cost <= pinWalletBalance;
+  const transferStatus = topUp.enabled ? "Transfer enabled" : "Direct transfer available";
 
   async function buyPins(e: React.FormEvent) {
     e.preventDefault();
@@ -164,7 +165,9 @@ export function PinWalletActions({
           </div>
           <div>
             <h2 className="font-semibold">Top up from payout wallet</h2>
-            <p className="text-xs text-muted-foreground">Available: {formatPoints(payoutBalance)}</p>
+            <p className="text-xs text-muted-foreground">
+              Available: {formatPoints(payoutBalance)} · {transferStatus}
+            </p>
           </div>
         </div>
 
