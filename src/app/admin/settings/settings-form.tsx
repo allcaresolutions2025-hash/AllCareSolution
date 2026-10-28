@@ -93,7 +93,7 @@ export function SettingsForm({ initial }: { initial: Record<string, number> }) {
           onChange={(v) => setForm({ ...form, PIN_WALLET_PRICE_INR: v })}
         />
       </Section>
-      <Section title="Package Plan" caption="Applies to new approvals and the next nightly matching run. The payout ceiling keeps total package payouts within a share of real package sales — keep it below your product margin.">
+      <Section title="Package Plan" caption="Applies to new approvals and the next nightly matching run. The payout ceiling keeps total package payouts within a share of approved package points.">
         <Field
           label="Starter package (pts)"
           value={form.PKG_STARTER_POINTS}
@@ -105,7 +105,7 @@ export function SettingsForm({ initial }: { initial: Record<string, number> }) {
           onChange={(v) => setForm({ ...form, PKG_MIN_POINTS: v })}
         />
         <Field
-          label="BV % of package price"
+          label="BV % of package points"
           value={form.PKG_BV_PERCENT}
           onChange={(v) => setForm({ ...form, PKG_BV_PERCENT: v })}
         />
@@ -130,7 +130,7 @@ export function SettingsForm({ initial }: { initial: Record<string, number> }) {
           onChange={(v) => setForm({ ...form, PKG_CARRY_EXPIRY_DAYS: v })}
         />
         <Field
-          label="Payout ceiling % of 30-day sales"
+          label="Payout ceiling % of 30-day package points"
           value={form.PKG_PAYOUT_CEILING_PERCENT}
           onChange={(v) => setForm({ ...form, PKG_PAYOUT_CEILING_PERCENT: v })}
         />

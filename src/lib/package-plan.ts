@@ -1,11 +1,11 @@
 // Package Plan engine — product packages that earn binary income from BV.
 //
 // Flow:
-//   1. A member requests a package (Starter = fixed price, or a custom amount
-//      >= the minimum), picks the product they'll receive, and pays offline
-//      (UTR reference) or from their e-wallet. Status PENDING.
-//   2. An admin verifies payment and approves. The package's BV
-//      (price x PKG_BV_PERCENT) is added to the LEFT/RIGHT leg of every
+//   1. A member requests a package (Starter = fixed points, or a custom
+//      amount >= the minimum) and picks the product they'll receive. No
+//      payment is taken in the app. Status PENDING.
+//   2. An admin verifies the request and approves. The package's BV
+//      (points x PKG_BV_PERCENT) is added to the LEFT/RIGHT leg of every
 //      ancestor on the 1000-pt tree (User.referrerId / slot), as FIFO lots in
 //      PackageBvEntry. The placement parent, if active, gets a one-time DIRECT
 //      bonus of PKG_DIRECT_PERCENT of the BV.
@@ -15,13 +15,13 @@
 //        - daily cap: income <= PKG_DAILY_CAP_MULTIPLIER x member's package total
 //          (matched BV above the cap is flushed, not carried);
 //        - payout ceiling: total DIRECT + BINARY over a rolling 30 days stays
-//          within PKG_PAYOUT_CEILING_PERCENT of package revenue approved in the
+//          within PKG_PAYOUT_CEILING_PERCENT of package points approved in the
 //          same window — if the night's income would exceed it, everyone's
 //          payout is scaled down proportionally;
 //        - carry-forward lots older than PKG_CARRY_EXPIRY_DAYS lapse.
 //
-// There is no fixed/guaranteed return on the package price. Every point paid
-// out comes from BV that real package sales created.
+// There is no fixed/guaranteed return on the package points. Every point paid
+// out comes from BV that approved packages created.
 //
 // Units: amounts are paise (see lib/money.ts). BV is whole units, 1 BV = 1
 // point of income base, so income paise = BV x percent.
@@ -238,7 +238,7 @@ export async function approvePackagePurchase(purchaseId: string, reviewerId: str
   );
 }
 
-/** Reject a PENDING package; refunds an e-wallet payment. */
+/** Reject a PENDING package. */
 export async function rejectPackagePurchase(purchaseId: string, reviewerId: string, note: string | null) {
   return prisma.$transaction(async (tx) => {
     const purchase = await tx.packagePurchase.findUnique({ where: { id: purchaseId } });
@@ -249,21 +249,13 @@ export async function rejectPackagePurchase(purchaseId: string, reviewerId: stri
     });
     if (flipped.count === 0) throw new PackageError("This request has already been reviewed.");
 
-    const refunded = purchase.paymentMethod === "E_WALLET";
-    if (refunded) {
-      await tx.wallet.upsert({
-        where: { userId: purchase.userId },
-        create: { userId: purchase.userId, balanceAvailable: purchase.amount },
-        update: { balanceAvailable: { increment: purchase.amount } },
-      });
-    }
     await tx.notification.create({
       data: {
         userId: purchase.userId,
         title: "Package request declined",
-        body:
-          (note ? `Your package request was declined. Reason: ${note}` : "Your package request was declined. Please contact support for details.") +
-          (refunded ? ` ${purchase.amount / PAISE_PER_POINT} pts were returned to your e-wallet.` : ""),
+        body: note
+          ? `Your package request was declined. Reason: ${note}`
+          : "Your package request was declined. Please contact support for details.",
       },
     });
     await tx.auditLog.create({
@@ -271,7 +263,7 @@ export async function rejectPackagePurchase(purchaseId: string, reviewerId: stri
         actorId: reviewerId,
         action: "PACKAGE_REJECTED",
         target: purchase.id,
-        metadata: JSON.stringify({ userId: purchase.userId, amount: purchase.amount, refunded, note }),
+        metadata: JSON.stringify({ userId: purchase.userId, amount: purchase.amount, note }),
       },
     });
   });

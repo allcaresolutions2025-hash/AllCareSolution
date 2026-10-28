@@ -35,7 +35,7 @@ export default async function PackagePlanPage() {
     getPackageConfig(),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { name: true, phone: true, address: true, wallet: { select: { balanceAvailable: true } } },
+      select: { name: true, phone: true, address: true },
     }),
     prisma.packageAccount.findUnique({ where: { userId } }),
     prisma.packagePurchase.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 50 }),
@@ -70,9 +70,9 @@ export default async function PackagePlanPage() {
           <Package className="h-6 w-6 text-brand-600" /> Package Plan
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Buy a product package to activate binary income. Each package adds Business Volume (BV) to your upline&apos;s
-          legs. Income is paid on <em>matched</em> BV from real package sales. There is no fixed return on the package
-          amount itself.
+          Request a product package. Once the admin verifies and approves it, your package points are activated and
+          you join the binary. Each package adds Business Volume (BV) to your upline&apos;s
+          legs. Income is paid on <em>matched</em> BV. There is no fixed return on the package points themselves.
         </p>
       </div>
 
@@ -87,7 +87,7 @@ export default async function PackagePlanPage() {
         <h2 className="font-semibold">How you earn</h2>
         <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
           <li>
-            A package of <strong>{cfg.starterPoints} pts</strong> gives <strong>{Math.floor((cfg.starterPoints * cfg.bvPercent) / 100)} BV</strong> ({cfg.bvPercent}% of the price). Minimum package is {cfg.minPoints} pts.
+            A package of <strong>{cfg.starterPoints} pts</strong> gives <strong>{Math.floor((cfg.starterPoints * cfg.bvPercent) / 100)} BV</strong> ({cfg.bvPercent}% of the points). Minimum package is {cfg.minPoints} pts.
           </li>
           <li>
             <strong>Direct bonus:</strong> {cfg.directPercent}% of the BV when a member placed directly below you activates a package.
@@ -96,7 +96,7 @@ export default async function PackagePlanPage() {
             <strong>Binary matching:</strong> every night you earn {cfg.binaryPercent}% of the BV matched between your left and right legs. The unmatched part carries forward for {cfg.carryExpiryDays} days.
           </li>
           <li>
-            Daily binary income is capped at {cfg.dailyCapMultiplier}× your own package total, and all payouts are limited to a share of real package sales.
+            Daily binary income is capped at {cfg.dailyCapMultiplier}× your own package total, and all payouts are limited to a share of approved package points.
           </li>
           <li>You need an active package of your own to earn.</li>
         </ul>
@@ -108,7 +108,6 @@ export default async function PackagePlanPage() {
           minPoints={cfg.minPoints}
           bvPercent={cfg.bvPercent}
           products={products}
-          eWalletBalance={me.wallet?.balanceAvailable ?? 0}
           defaults={defaults}
           hasPending={hasPending}
         />
@@ -135,7 +134,7 @@ export default async function PackagePlanPage() {
                   <td className="px-4 py-3">
                     <div className="font-medium">{formatPoints(p.amount)}</div>
                     <div className="text-xs text-muted-foreground">
-                      {p.bv} BV · {p.paymentMethod === "E_WALLET" ? "E-wallet" : `UTR ${p.paymentRef ?? "—"}`}
+                      {p.bv} BV
                     </div>
                   </td>
                   <td className="px-4 py-3">{p.productName}</td>

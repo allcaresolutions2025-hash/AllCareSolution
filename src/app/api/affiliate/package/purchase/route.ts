@@ -9,24 +9,18 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z
-  .object({
-    plan: z.enum(["STARTER", "CUSTOM"]),
-    points: z.number().int().positive().max(1_000_000).optional(),
-    productId: z.string().min(1, "Choose the product you want delivered"),
-    paymentMethod: z.enum(["OFFLINE", "E_WALLET"]),
-    paymentRef: z.string().trim().max(100).optional(),
-    shipName: z.string().trim().min(2, "Enter the receiver's name").max(100),
-    shipPhone: z.string().trim().regex(/^[0-9+ ]{10,15}$/, "Enter a valid mobile number"),
-    shipAddress: z.string().trim().min(10, "Enter the full delivery address").max(500),
-  })
-  .refine((d) => d.paymentMethod !== "OFFLINE" || (d.paymentRef && d.paymentRef.length >= 4), {
-    message: "Enter the UTR / UPI reference of your payment",
-    path: ["paymentRef"],
-  });
+const bodySchema = z.object({
+  plan: z.enum(["STARTER", "CUSTOM"]),
+  points: z.number().int().positive().max(1_000_000).optional(),
+  productId: z.string().min(1, "Choose the product you want delivered"),
+  shipName: z.string().trim().min(2, "Enter the receiver's name").max(100),
+  shipPhone: z.string().trim().regex(/^[0-9+ ]{10,15}$/, "Enter a valid mobile number"),
+  shipAddress: z.string().trim().min(10, "Enter the full delivery address").max(500),
+});
 
-// Member requests a product package. One open (PENDING) request at a time.
-// E-wallet payments are debited now and refunded if the admin rejects.
+// Member requests a product package. Nothing is charged here — the request
+// goes to the admin, who verifies and approves it. One open (PENDING) request
+// at a time.
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
@@ -52,7 +46,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "That product is not available." }, { status: 400 });
   }
   if (product.price > amount) {
-    return NextResponse.json({ error: "Choose a product priced within your package amount." }, { status: 400 });
+    return NextResponse.json({ error: "Choose a product priced within your package points." }, { status: 400 });
   }
   if (product.stock <= 0) {
     return NextResponse.json({ error: `${product.name} is out of stock. Please choose another product.` }, { status: 400 });
@@ -72,42 +66,26 @@ export async function POST(req: Request) {
   });
   if (!me) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  try {
-    await prisma.$transaction(async (tx) => {
-      if (d.paymentMethod === "E_WALLET") {
-        const dec = await tx.wallet.updateMany({
-          where: { userId: session.user.id, balanceAvailable: { gte: amount } },
-          data: { balanceAvailable: { decrement: amount } },
-        });
-        if (dec.count === 0) throw new Error("INSUFFICIENT");
-      }
-      await tx.packagePurchase.create({
-        data: {
-          userId: session.user.id,
-          plan: d.plan,
-          amount,
-          bv: bvForAmount(amount, cfg.bvPercent),
-          productId: product.id,
-          productName: product.name,
-          paymentMethod: d.paymentMethod,
-          paymentRef: d.paymentMethod === "OFFLINE" ? d.paymentRef : null,
-          shipName: d.shipName,
-          shipPhone: d.shipPhone,
-          shipAddress: d.shipAddress,
-        },
-      });
-      await notifyAdmins(
-        tx,
-        "New package request",
-        `${me.name} (${me.referralCode}) requested a ${points}-pt package (${d.paymentMethod === "E_WALLET" ? "paid from e-wallet" : `UTR ${d.paymentRef}`}).`,
-      );
+  await prisma.$transaction(async (tx) => {
+    await tx.packagePurchase.create({
+      data: {
+        userId: session.user.id,
+        plan: d.plan,
+        amount,
+        bv: bvForAmount(amount, cfg.bvPercent),
+        productId: product.id,
+        productName: product.name,
+        shipName: d.shipName,
+        shipPhone: d.shipPhone,
+        shipAddress: d.shipAddress,
+      },
     });
-  } catch (e) {
-    if (e instanceof Error && e.message === "INSUFFICIENT") {
-      return NextResponse.json({ error: "Not enough points in your e-wallet." }, { status: 400 });
-    }
-    throw e;
-  }
+    await notifyAdmins(
+      tx,
+      "New package request",
+      `${me.name} (${me.referralCode}) requested a ${points}-pt package with ${product.name}.`,
+    );
+  });
 
   return NextResponse.json({ ok: true });
 }

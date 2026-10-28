@@ -21,8 +21,6 @@ export type PackageRowData = {
   amountLabel: string;
   bv: number;
   productName: string;
-  paymentMethod: "OFFLINE" | "E_WALLET";
-  paymentRef: string | null;
   shipName: string;
   shipPhone: string;
   shipAddress: string;
@@ -63,8 +61,7 @@ export function PackageRow({ row }: { row: PackageRowData }) {
   }
 
   function approve() {
-    const payment = row.paymentMethod === "E_WALLET" ? "paid from e-wallet" : `UTR ${row.paymentRef}`;
-    if (!confirm(`Approve ${row.amountLabel} package for ${row.user.name} (${payment})? Make sure the payment is received.`)) return;
+    if (!confirm(`Approve ${row.amountLabel} package for ${row.user.name}? This activates their points and adds ${row.bv} BV to the binary.`)) return;
     act("approve");
   }
   function reject() {
@@ -94,16 +91,6 @@ export function PackageRow({ row }: { row: PackageRowData }) {
       <td className="px-4 py-3">
         <div className="font-medium whitespace-nowrap">{row.amountLabel}</div>
         <div className="text-xs text-muted-foreground">{row.bv} BV</div>
-      </td>
-      <td className="px-4 py-3 text-xs">
-        {row.paymentMethod === "E_WALLET" ? (
-          <span className="badge-blue">E-wallet</span>
-        ) : (
-          <>
-            <div className="text-muted-foreground">UTR</div>
-            <div className="font-mono">{row.paymentRef}</div>
-          </>
-        )}
       </td>
       <td className="px-4 py-3 text-xs max-w-[240px]">
         <div className="font-medium text-sm">{row.productName}</div>

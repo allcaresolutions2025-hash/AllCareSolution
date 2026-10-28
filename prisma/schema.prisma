@@ -675,9 +675,10 @@ model DailyPayout {
 }
 
 // ---------- PACKAGE PLAN ----------
-// A member buys a product package (Starter = fixed price, or a custom amount
-// above the minimum). Every package ships a real product. On admin approval the
-// package's Business Volume (BV) is added to the LEFT/RIGHT leg of every
+// A member requests a product package (Starter = fixed points, or a custom
+// amount above the minimum). No payment is taken in the app — the admin
+// verifies the request and approves it. Every package ships a real product.
+// On approval the package's Business Volume (BV) is added to the LEFT/RIGHT leg of every
 // ancestor on the 1000-pt tree (User.referrerId / slot). A nightly run pays
 // each active member a % of their matched (weaker-leg) BV, carries the rest
 // forward, and scales payouts down if they'd exceed the payout ceiling.
@@ -685,13 +686,8 @@ model DailyPayout {
 // 1 BV = 1 point of income base. See src/lib/package-plan.ts.
 
 enum PackagePlan {
-  STARTER // fixed-price starter package (default 250 pts)
+  STARTER // fixed-points starter package (default 250 pts)
   CUSTOM // member-chosen amount, >= the minimum
-}
-
-enum PackagePaymentMethod {
-  OFFLINE // paid outside the app (UPI/bank); member enters the reference, admin verifies
-  E_WALLET // debited from Wallet.balanceAvailable at request time, refunded on rejection
 }
 
 enum PackageStatus {
@@ -711,13 +707,11 @@ model PackagePurchase {
   userId         String
   user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan           PackagePlan
-  amount         Int // package price in paise
+  amount         Int // package points, in paise
   bv             Int // BV credited up the tree on approval (whole BV)
   productId      String?
   product        Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
   productName    String // snapshot
-  paymentMethod  PackagePaymentMethod
-  paymentRef     String? // UTR / UPI reference for OFFLINE
   shipName       String
   shipPhone      String
   shipAddress    String                @db.Text

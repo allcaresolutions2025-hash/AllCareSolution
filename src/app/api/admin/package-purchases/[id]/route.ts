@@ -13,8 +13,8 @@ const schema = z.object({
 });
 
 // Admin review of a package request.
-//  - approve → verify payment; activates the package and pushes BV up the tree
-//  - reject  → declines; e-wallet payments are refunded
+//  - approve → activates the package points and pushes BV up the tree
+//  - reject  → declines the request
 //  - ship / deliver → product fulfilment on an APPROVED package
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const auth = await requireAdmin();

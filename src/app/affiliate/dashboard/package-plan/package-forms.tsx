@@ -13,7 +13,6 @@ export function PackagePurchaseForm({
   minPoints,
   bvPercent,
   products,
-  eWalletBalance,
   defaults,
   hasPending,
 }: {
@@ -21,7 +20,6 @@ export function PackagePurchaseForm({
   minPoints: number;
   bvPercent: number;
   products: PackageProductOption[]; // price in paise, sorted ascending
-  eWalletBalance: number; // paise
   defaults: { shipName: string; shipPhone: string; shipAddress: string };
   hasPending: boolean;
 }) {
@@ -30,8 +28,6 @@ export function PackagePurchaseForm({
   // Raw string so the field can be cleared and retyped freely.
   const [customPts, setCustomPts] = useState(String(minPoints));
   const [productId, setProductId] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"OFFLINE" | "E_WALLET">("OFFLINE");
-  const [paymentRef, setPaymentRef] = useState("");
   const [shipName, setShipName] = useState(defaults.shipName);
   const [shipPhone, setShipPhone] = useState(defaults.shipPhone);
   const [shipAddress, setShipAddress] = useState(defaults.shipAddress);
@@ -43,11 +39,10 @@ export function PackagePurchaseForm({
   const belowMin = points < minPoints;
   const eligible = useMemo(() => products.filter((p) => p.price <= amountPaise), [products, amountPaise]);
   const productValid = eligible.some((p) => p.id === productId);
-  const walletShort = paymentMethod === "E_WALLET" && amountPaise > eWalletBalance;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (belowMin || !productValid || walletShort) return;
+    if (belowMin || !productValid) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/affiliate/package/purchase", {
@@ -57,8 +52,6 @@ export function PackagePurchaseForm({
           plan,
           points: plan === "CUSTOM" ? points : undefined,
           productId,
-          paymentMethod,
-          paymentRef: paymentMethod === "OFFLINE" ? paymentRef : undefined,
           shipName,
           shipPhone,
           shipAddress,
@@ -66,8 +59,7 @@ export function PackagePurchaseForm({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Request failed");
-      toast.success("Package request sent. An admin will verify your payment.");
-      setPaymentRef("");
+      toast.success("Package request sent. An admin will verify and approve it.");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Request failed");
@@ -91,7 +83,7 @@ export function PackagePurchaseForm({
           <PackagePlus className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="font-semibold">Buy a package</h2>
+          <h2 className="font-semibold">Request a package</h2>
           <p className="text-xs text-muted-foreground">Every package includes a product delivered to your address</p>
         </div>
       </div>
@@ -101,12 +93,12 @@ export function PackagePurchaseForm({
           <label className="label">Package</label>
           <select className="input" value={plan} onChange={(e) => setPlan(e.target.value as "STARTER" | "CUSTOM")}>
             <option value="STARTER">Starter package — {starterPoints} pts + product</option>
-            <option value="CUSTOM">Custom amount (min {minPoints} pts) + product</option>
+            <option value="CUSTOM">Custom points (min {minPoints} pts) + product</option>
           </select>
         </div>
         {plan === "CUSTOM" && (
           <div>
-            <label className="label">Amount (points)</label>
+            <label className="label">Points</label>
             <input
               type="text"
               inputMode="numeric"
@@ -129,28 +121,7 @@ export function PackagePurchaseForm({
             </option>
           ))}
         </select>
-        <p className="mt-1 text-xs text-muted-foreground">Products priced up to your package amount.</p>
-      </div>
-
-      <div className="grid sm:grid-cols-2 gap-3">
-        <div>
-          <label className="label">Payment</label>
-          <select
-            className="input"
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value as "OFFLINE" | "E_WALLET")}
-          >
-            <option value="OFFLINE">Deposit (UPI / bank transfer)</option>
-            <option value="E_WALLET">From my e-wallet ({formatPoints(eWalletBalance)})</option>
-          </select>
-          {walletShort && <p className="mt-1 text-xs text-red-600">Not enough points in your e-wallet.</p>}
-        </div>
-        {paymentMethod === "OFFLINE" && (
-          <div>
-            <label className="label">UTR / UPI reference</label>
-            <input className="input" value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} placeholder="e.g. 412345678901" />
-          </div>
-        )}
+        <p className="mt-1 text-xs text-muted-foreground">Products priced up to your package points.</p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-3">
@@ -170,7 +141,7 @@ export function PackagePurchaseForm({
 
       <div className="rounded-lg bg-brand-50 border border-brand-200 px-4 py-3 text-sm flex flex-wrap justify-between gap-2">
         <span>
-          You pay <strong>{formatPoints(amountPaise)}</strong>
+          Package: <strong>{formatPoints(amountPaise)}</strong>
         </span>
         <span>
           Business Volume: <strong>{bv} BV</strong>
@@ -179,7 +150,7 @@ export function PackagePurchaseForm({
 
       <button
         type="submit"
-        disabled={submitting || belowMin || !productValid || walletShort}
+        disabled={submitting || belowMin || !productValid}
         className="btn-primary w-full sm:w-auto"
       >
         {submitting ? "Sending…" : "Send for admin approval"}

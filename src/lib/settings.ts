@@ -44,7 +44,7 @@ const ENV_DEFAULTS: Record<SettingKey, string> = {
   // ---- Package Plan (see lib/package-plan.ts)
   PKG_STARTER_POINTS: process.env.PKG_STARTER_POINTS ?? "250",
   PKG_MIN_POINTS: process.env.PKG_MIN_POINTS ?? "250",
-  // BV credited per package, as % of its price (250 pts -> 100 BV at 40%).
+  // BV credited per package, as % of its points (250 pts -> 100 BV at 40%).
   PKG_BV_PERCENT: process.env.PKG_BV_PERCENT ?? "40",
   // Placement parent's one-time bonus, % of the package BV.
   PKG_DIRECT_PERCENT: process.env.PKG_DIRECT_PERCENT ?? "8",
@@ -55,7 +55,7 @@ const ENV_DEFAULTS: Record<SettingKey, string> = {
   // Unmatched carry-forward BV lapses after this many days.
   PKG_CARRY_EXPIRY_DAYS: process.env.PKG_CARRY_EXPIRY_DAYS ?? "90",
   // Total package payouts (direct + binary) over a rolling 30 days never exceed
-  // this % of package revenue approved in the same window.
+  // this % of package points approved in the same window.
   PKG_PAYOUT_CEILING_PERCENT: process.env.PKG_PAYOUT_CEILING_PERCENT ?? "40",
 };
 
