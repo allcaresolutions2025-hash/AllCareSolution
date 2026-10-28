@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db";
 import { PinRequestRow } from "./pin-request-row";
 import { GeneratePinsCard } from "./generate-pins-card";
 import { formatINR, formatPoints } from "@/lib/money";
-import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { KeyRound, Clock, CheckCircle2, CreditCard, Wallet } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 
@@ -23,7 +22,7 @@ export default async function AdminPinsPage({
     prisma.pinRequest.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
-      include: { user: { select: { name: true, email: true, referralCode: true, isProMax: true } } },
+      include: { user: { select: { name: true, email: true, referralCode: true } } },
     }),
     prisma.pinRequest.findMany({
       where: { status: { in: ["APPROVED", "REJECTED"] } },
@@ -79,28 +78,7 @@ export default async function AdminPinsPage({
         <Kpi icon={<CheckCircle2 className="h-5 w-5" />} label="Total pins issued" value={totalPinsIssued} tone="brand" />
       </div>
 
-      {/* Pending requests, split by kind:
-          - standard pin requests
-          - Pro Max UPGRADE requests (requester not yet Pro Max)
-          - Pro Max PIN requests (requester already Pro Max, wants pins) */}
-      <PendingSection
-        title={PRO_MAX_ENABLED ? "Standard pin requests" : "Pending requests"}
-        rows={pending.filter((r) => !r.proMax)}
-      />
-      {PRO_MAX_ENABLED && (
-        <>
-          <PendingSection
-            title="Pro Max upgrade requests"
-            subtitle="Members requesting to become Pro Max — approving flips them to Pro Max (no pins)."
-            rows={pending.filter((r) => r.proMax && !r.user.isProMax)}
-          />
-          <PendingSection
-            title="Pro Max pin requests"
-            subtitle="Pro Max members requesting pins to upgrade their downline — approving issues the pins."
-            rows={pending.filter((r) => r.proMax && r.user.isProMax)}
-          />
-        </>
-      )}
+      <PendingSection title="Pending requests" rows={pending} />
 
       <div className="card overflow-hidden">
         <div className="p-5 border-b flex items-center gap-2">
@@ -264,14 +242,7 @@ export default async function AdminPinsPage({
                       {r.reviewedAt?.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }) ?? "—"}
                     </td>
                     <td className="px-4 py-2">
-                      <div className="font-medium flex items-center gap-2">
-                        {r.user.name}
-                        {r.proMax && (
-                          <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                            PRO MAX
-                          </span>
-                        )}
-                      </div>
+                      <div className="font-medium">{r.user.name}</div>
                       <div className="text-xs font-mono text-muted-foreground">{r.user.referralCode}</div>
                     </td>
                     <td className="px-4 py-2 text-xs font-mono">{r.mobileNumber}</td>
@@ -332,7 +303,6 @@ function PendingSection({
     mobileNumber: string;
     quantity: number;
     pointsValue: number;
-    proMax: boolean;
     user: { name: string; email: string; referralCode: string };
   }[];
 }) {
@@ -369,7 +339,6 @@ function PendingSection({
                   mobile={r.mobileNumber}
                   quantity={r.quantity}
                   pointsValue={r.pointsValue}
-                  proMax={r.proMax}
                 />
               ))}
             </tbody>

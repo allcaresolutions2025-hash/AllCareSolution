@@ -16,13 +16,13 @@ export default async function RequestPinPage() {
 
   const [requests, activePinCount, user, pinPriceInr, purchases] = await Promise.all([
     prisma.pinRequest.findMany({
-      where: { userId: session.user.id, proMax: false },
+      where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
       take: 20,
       include: { _count: { select: { pins: true } } },
     }),
     prisma.pin.count({
-      where: { ownerId: session.user.id, status: "ACTIVE", proMax: false },
+      where: { ownerId: session.user.id, status: "ACTIVE" },
     }),
     prisma.user.findUnique({
       where: { id: session.user.id },

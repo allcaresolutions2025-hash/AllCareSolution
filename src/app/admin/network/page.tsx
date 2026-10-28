@@ -70,7 +70,7 @@ export default async function AdminNetworkPage() {
     prisma.$queryRaw<Array<{ max_depth: number | null; sponsors: bigint; unreferred: bigint }>>`
       WITH RECURSIVE depths AS (
         SELECT id, "referrerId", 0 AS depth
-        FROM "User" WHERE "referrerId" IS NULL
+        FROM "User" WHERE "referrerId" IS NULL AND NOT "isAf"
         UNION ALL
         SELECT u.id, u."referrerId", d.depth + 1
         FROM "User" u
@@ -80,7 +80,7 @@ export default async function AdminNetworkPage() {
       SELECT
         MAX(depth) AS max_depth,
         (SELECT COUNT(DISTINCT "referrerId") FROM "User" WHERE "referrerId" IS NOT NULL) AS sponsors,
-        (SELECT COUNT(*) FROM "User" WHERE "referrerId" IS NULL AND role = 'CUSTOMER') AS unreferred
+        (SELECT COUNT(*) FROM "User" WHERE "referrerId" IS NULL AND role = 'CUSTOMER' AND NOT "isAf") AS unreferred
       FROM depths
     `,
   ]);

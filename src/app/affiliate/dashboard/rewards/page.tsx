@@ -5,14 +5,11 @@ import {
   REWARD_LEVELS,
   rewardThresholdMet,
   WELCOME_KIT_LEVEL,
-  PROMAX_COMBO_LEVEL,
   FORTY_COMBO_LEVEL,
 } from "@/lib/rewards";
 import { getLegFillDepths } from "@/lib/network";
-import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { RewardCard } from "./reward-card";
 import { WelcomeKitCard } from "./welcome-kit-card";
-import { ProMaxComboCard } from "./pro-max-combo-card";
 import { FortyComboCard } from "./forty-combo-card";
 import { PIN_REWARD_PIN_VALUE } from "@/lib/pin-reward";
 import { Trophy, Users } from "lucide-react";
@@ -27,7 +24,7 @@ export default async function RewardsPage() {
   const [me, fillDepths] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { leftLegCount: true, rightLegCount: true, isProMax: true },
+      select: { leftLegCount: true, rightLegCount: true },
     }),
     getLegFillDepths(session.user.id),
   ]);
@@ -48,7 +45,6 @@ export default async function RewardsPage() {
     enrollmentPin && enrollmentPin.pointsValue >= PIN_REWARD_PIN_VALUE ? enrollmentPin.pointsValue : 0;
   const claimByLevel = new Map(claims.map((c) => [c.level, c]));
   const welcomeKitClaim = claimByLevel.get(WELCOME_KIT_LEVEL) ?? null;
-  const proMaxComboClaim = claimByLevel.get(PROMAX_COMBO_LEVEL) ?? null;
   const fortyComboClaim = claimByLevel.get(FORTY_COMBO_LEVEL) ?? null;
 
   const ctx = {
@@ -112,9 +108,6 @@ export default async function RewardsPage() {
       ) : (
         <WelcomeKitCard claim={welcomeKitClaim} />
       )}
-
-      {/* Pin Pro Max welcome reward — only for Pro Max members */}
-      {PRO_MAX_ENABLED && me.isProMax && <ProMaxComboCard claim={proMaxComboClaim} />}
 
       {/* Progress banner */}
       <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">

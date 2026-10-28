@@ -39,11 +39,9 @@ export async function POST(req: Request) {
     bankAccountName, bankAccountNumber, bankIfsc, bankName, referId, side,
   } = parsed.data;
 
-  // 1. Pin must belong to caller, be ACTIVE, and be a standard (non-Pro Max)
-  //    pin. Pro Max pins are an in-place upgrade (handled at admin approval),
-  //    never used to add a member here.
+  // 1. Pin must belong to caller and be ACTIVE.
   const pin = await prisma.pin.findUnique({ where: { code: pinCode } });
-  if (!pin || pin.ownerId !== session.user.id || pin.status !== "ACTIVE" || pin.proMax) {
+  if (!pin || pin.ownerId !== session.user.id || pin.status !== "ACTIVE") {
     return NextResponse.json({ error: "Pin not found or already used" }, { status: 400 });
   }
 

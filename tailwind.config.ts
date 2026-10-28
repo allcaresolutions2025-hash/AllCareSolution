@@ -28,9 +28,9 @@ const config: Config = {
           900: "#194329",
           950: "#0d2716",
         },
-        // Pro Max (10,000-pt programme) palette — gold, used to make the Pro Max
-        // member + admin portals visually distinct from the green base app.
-        promax: {
+        // AF Solution palette — gold, used to make the AF portal visually
+        // distinct from the green base app.
+        af: {
           50: "#fffbeb",
           100: "#fef3c7",
           200: "#fde68a",
@@ -44,7 +44,7 @@ const config: Config = {
           950: "#451a03",
         },
         // Franchise portal palette — indigo/violet, deliberately distinct from
-        // the green base app and the gold Pro Max portals so a franchise leader
+        // the green base app and the gold AF portal so a franchise leader
         // can tell at a glance which hat they're wearing.
         franchise: {
           50: "#eef2ff",
@@ -108,15 +108,15 @@ const config: Config = {
         "card-hover": "0 16px 48px -16px rgba(15,23,42,0.18)",
         brand: "0 16px 40px -12px rgba(41,129,67,0.40)",
         "brand-sm": "0 8px 20px -8px rgba(41,129,67,0.35)",
-        promax: "0 16px 40px -12px rgba(202,138,4,0.40)",
-        "promax-sm": "0 8px 20px -8px rgba(202,138,4,0.35)",
+        af: "0 16px 40px -12px rgba(202,138,4,0.40)",
+        "af-sm": "0 8px 20px -8px rgba(202,138,4,0.35)",
         franchise: "0 16px 40px -12px rgba(79,70,229,0.40)",
         "franchise-sm": "0 8px 20px -8px rgba(79,70,229,0.35)",
       },
       backgroundImage: {
         "brand-gradient": "linear-gradient(135deg, #298143 0%, #0d9488 100%)",
-        "promax-gradient": "linear-gradient(135deg, #ca8a04 0%, #854d0e 100%)",
-        "promax-soft": "linear-gradient(135deg, #fffbeb 0%, #fefce8 100%)",
+        "af-gradient": "linear-gradient(135deg, #ca8a04 0%, #854d0e 100%)",
+        "af-soft": "linear-gradient(135deg, #fffbeb 0%, #fefce8 100%)",
         "franchise-gradient": "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
         "franchise-soft": "linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)",
         "brand-gradient-dark": "linear-gradient(135deg, #1d5230 0%, #115e59 100%)",

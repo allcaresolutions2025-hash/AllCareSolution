@@ -1,4 +1,4 @@
-import { withAuth } from "next-auth/middleware";
+import { withAuth, type NextRequestWithAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest, NextFetchEvent } from "next/server";
 
@@ -19,14 +19,17 @@ const PROTECTED_PREFIXES = [
   "/affiliate/payouts",
   "/admin",
   "/checkout",
-  "/promax/dashboard",
-  "/promax-admin",
+  "/af/dashboard",
   "/franchise",
 ];
 
 // Login pages that live UNDER a protected prefix but must stay public so people
 // can actually sign in (otherwise the auth gate redirect-loops).
-const PUBLIC_AUTH_PATHS = ["/promax/login", "/promax-admin/login"];
+const PUBLIC_AUTH_PATHS = ["/af/login"];
+
+// Member-area prefixes an AF account may not use — AF accounts live entirely
+// inside /af/dashboard.
+const NON_AF_PREFIXES = ["/affiliate", "/account", "/checkout", "/franchise"];
 
 const MAINTENANCE_HTML = `<!doctype html>
 <html lang="en">
@@ -83,50 +86,38 @@ function maintenanceResponse(): NextResponse {
   });
 }
 
-const authMiddleware = withAuth(
-  function middleware(req) {
-    const role = req.nextauth.token?.role;
-    const isProMax = req.nextauth.token?.isProMax as boolean | undefined;
-    const mustOnboard = req.nextauth.token?.mustOnboard as boolean | undefined;
-    const path = req.nextUrl.pathname;
+function portalGate(req: NextRequestWithAuth) {
+  const role = req.nextauth.token?.role;
+  const isAf = req.nextauth.token?.isAf as boolean | undefined;
+  const mustOnboard = req.nextauth.token?.mustOnboard as boolean | undefined;
+  const path = req.nextUrl.pathname;
 
-    // ── Pro Max admin portal — PROMAX_ADMIN only.
-    if (path.startsWith("/promax-admin")) {
-      if (role !== "PROMAX_ADMIN") {
-        return NextResponse.redirect(new URL("/promax-admin/login", req.url));
-      }
-      return NextResponse.next();
-    }
-    // ── Pro Max member portal — Pro Max members only.
-    if (path.startsWith("/promax/")) {
-      if (role === "PROMAX_ADMIN") {
-        return NextResponse.redirect(new URL("/promax-admin", req.url));
-      }
-      if (!isProMax) {
-        return NextResponse.redirect(new URL("/", req.url));
-      }
-      return NextResponse.next();
-    }
-    // ── Base admin portal — ADMIN only.
-    if (path.startsWith("/admin") && role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/", req.url));
-    }
-    // ── Base affiliate area — Pro Max accounts belong in their own portal.
-    if (path.startsWith("/affiliate") && isProMax) {
-      return NextResponse.redirect(new URL("/promax/dashboard", req.url));
-    }
-    // Fresher accounts must complete the Add Member form before using the app.
-    if (mustOnboard && role !== "ADMIN" && !path.startsWith("/affiliate/dashboard/add-member")) {
-      return NextResponse.redirect(new URL("/affiliate/dashboard/add-member", req.url));
+  // ── AF portal — AF accounts only.
+  if (path.startsWith("/af/")) {
+    if (!isAf) {
+      return NextResponse.redirect(new URL(role === "ADMIN" ? "/admin" : "/", req.url));
     }
     return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: ({ token }) => !!token,
-    },
-  },
-);
+  }
+  // ── Base admin portal — ADMIN only.
+  if (path.startsWith("/admin") && role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+  // ── Base member area — AF accounts belong in their own portal.
+  if (isAf && NON_AF_PREFIXES.some((p) => path === p || path.startsWith(p + "/"))) {
+    return NextResponse.redirect(new URL("/af/dashboard", req.url));
+  }
+  // Fresher accounts must complete the Add Member form before using the app.
+  if (mustOnboard && role !== "ADMIN" && !path.startsWith("/affiliate/dashboard/add-member")) {
+    return NextResponse.redirect(new URL("/affiliate/dashboard/add-member", req.url));
+  }
+  return NextResponse.next();
+}
+
+const authCallbacks = { authorized: ({ token }: { token: unknown }) => !!token };
+const authMiddleware = withAuth(portalGate, { callbacks: authCallbacks });
+// Same gate, but a signed-out visitor to the AF portal lands on AF Login.
+const afAuthMiddleware = withAuth(portalGate, { callbacks: authCallbacks, pages: { signIn: "/af/login" } });
 
 export default function middleware(req: NextRequest, event: NextFetchEvent) {
   // Maintenance gate runs first, for every route — pages, login and API alike.
@@ -143,7 +134,8 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
     PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(p + "/"));
   if (isProtected) {
     // Delegate to next-auth's withAuth wrapper for the protected routes only.
-    return (authMiddleware as unknown as (
+    const gate = path.startsWith("/af/") ? afAuthMiddleware : authMiddleware;
+    return (gate as unknown as (
       req: NextRequest,
       event: NextFetchEvent,
     ) => ReturnType<typeof authMiddleware>)(req, event);

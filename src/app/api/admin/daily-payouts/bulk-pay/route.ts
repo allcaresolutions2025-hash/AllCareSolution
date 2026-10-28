@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   // so the UI can re-fire safely without errors on a stale selection.
   const pendings = await prisma.dailyPayout.findMany({
     where: { id: { in: parsed.data.ids }, status: "PENDING" },
-    select: { id: true, userId: true, paidAmount: true, proMax: true },
+    select: { id: true, userId: true, paidAmount: true },
   });
 
   if (pendings.length === 0) {
@@ -28,13 +28,10 @@ export async function POST(req: Request) {
   const now = new Date();
   const totalPaid = pendings.reduce((sum, p) => sum + p.paidAmount, 0);
 
-  // Aggregate per-user increments, split by program so each lifetime-paid
-  // total (standard vs Pro Max) gets the right amount.
-  const perUserStd = new Map<string, number>();
-  const perUserProMax = new Map<string, number>();
+  // Aggregate per-user increments to the lifetime-paid total.
+  const perUser = new Map<string, number>();
   for (const p of pendings) {
-    const bucket = p.proMax ? perUserProMax : perUserStd;
-    bucket.set(p.userId, (bucket.get(p.userId) ?? 0) + p.paidAmount);
+    perUser.set(p.userId, (perUser.get(p.userId) ?? 0) + p.paidAmount);
   }
 
   await prisma.$transaction(async (tx) => {
@@ -42,16 +39,10 @@ export async function POST(req: Request) {
       where: { id: { in: pendings.map((p) => p.id) } },
       data: { status: "PAID", paidAt: now },
     });
-    for (const [userId, delta] of Array.from(perUserStd.entries())) {
+    for (const [userId, delta] of Array.from(perUser.entries())) {
       await tx.wallet.update({
         where: { userId },
         data: { balancePaidLifetime: { increment: delta } },
-      });
-    }
-    for (const [userId, delta] of Array.from(perUserProMax.entries())) {
-      await tx.wallet.update({
-        where: { userId },
-        data: { proMaxBalancePaidLifetime: { increment: delta } },
       });
     }
   });

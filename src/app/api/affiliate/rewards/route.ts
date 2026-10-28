@@ -8,8 +8,6 @@ import {
   rewardMembersPerSide,
   WELCOME_KIT_LEVEL,
   WELCOME_KIT_REWARD,
-  PROMAX_COMBO_LEVEL,
-  PROMAX_COMBO_REWARD,
   FORTY_COMBO_LEVEL,
   FORTY_COMBO_REWARD,
 } from "@/lib/rewards";
@@ -22,12 +20,10 @@ import { z } from "zod";
 // level 1-15 = the reward ladder; each level is INDEPENDENTLY claimable once
 //              the per-leg threshold is met
 // level 40   = 40 Combo Reward (members enrolled with a 2000-pt pin only)
-// level 100  = Pin Pro Max "Acht Mart Combo" (Pro Max members only)
 const schema = z.object({
   level: z.union([
     z.number().int().min(0).max(15),
     z.literal(FORTY_COMBO_LEVEL),
-    z.literal(PROMAX_COMBO_LEVEL),
   ]),
 });
 
@@ -57,25 +53,6 @@ export async function POST(req: Request) {
   });
   if (existing) {
     return NextResponse.json({ error: "You have already submitted a claim for this level" }, { status: 409 });
-  }
-
-  // Pin Pro Max combo — claimable once by Pro Max members; no leg-count gate.
-  if (level === PROMAX_COMBO_LEVEL) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { isProMax: true },
-    });
-    if (!user?.isProMax) {
-      return NextResponse.json({ error: "Only Pro Max members can claim this reward" }, { status: 403 });
-    }
-    const claim = await prisma.rewardClaim.create({
-      data: {
-        userId: session.user.id,
-        level: PROMAX_COMBO_LEVEL,
-        rewardName: PROMAX_COMBO_REWARD.gift,
-      },
-    });
-    return NextResponse.json({ ok: true, claimId: claim.id });
   }
 
   // 40 Combo Reward — only for members enrolled with a 2000-pt pin. Physical

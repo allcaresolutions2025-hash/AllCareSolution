@@ -93,7 +93,7 @@ export function SettingsForm({ initial }: { initial: Record<string, number> }) {
           onChange={(v) => setForm({ ...form, PIN_WALLET_PRICE_INR: v })}
         />
       </Section>
-      <Section title="Package Plan" caption="Applies to new approvals and the next nightly matching run. The payout ceiling keeps total package payouts within a share of approved package points.">
+      <Section title="AF Solution" caption="Applies to new approvals and the next nightly matching run. The payout ceiling keeps total package payouts within a share of approved package points.">
         <Field
           label="Starter package (pts)"
           value={form.PKG_STARTER_POINTS}

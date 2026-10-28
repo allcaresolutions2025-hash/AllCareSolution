@@ -59,13 +59,12 @@ export default async function PinWalletPage({ searchParams }: { searchParams: { 
       take: TXN_PAGE_SIZE,
     }),
     prisma.pinWalletTxn.count({ where: { userId: session.user.id } }),
-    prisma.pin.count({ where: { ownerId: session.user.id, status: "ACTIVE", proMax: false } }),
+    prisma.pin.count({ where: { ownerId: session.user.id, status: "ACTIVE" } }),
     getSetting("PIN_WALLET_PRICE_INR"),
     // Members who took a loan of Rs. 5,000+ must transfer at least 6,000 pts.
     prisma.loan.findFirst({
       where: {
         userId: session.user.id,
-        proMax: false,
         status: { in: ["APPROVED", "CLOSED"] },
         amount: { gte: BIG_LOAN_THRESHOLD_PAISE },
       },

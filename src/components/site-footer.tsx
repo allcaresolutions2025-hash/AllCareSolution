@@ -9,10 +9,10 @@ import type { SiteBrand } from "@/lib/brand";
 export function SiteFooter({ brand }: { brand: SiteBrand }) {
   const year = new Date().getFullYear();
   const pathname = usePathname();
-  // Pro Max portals get the violet theme; the rest of the site stays green.
-  const pm = pathname?.startsWith("/promax");
-  const t = pm
-    ? { bg: "bg-promax-950", body: "text-promax-100", muted: "text-promax-200", border: "border-promax-800" }
+  // The AF portal gets the gold theme; the rest of the site stays green.
+  const af = pathname?.startsWith("/af");
+  const t = af
+    ? { bg: "bg-af-950", body: "text-af-100", muted: "text-af-200", border: "border-af-800" }
     : { bg: "bg-brand-950", body: "text-brand-100", muted: "text-brand-300", border: "border-brand-800" };
 
   return (

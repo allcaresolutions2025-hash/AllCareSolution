@@ -17,8 +17,6 @@ type SettingKey =
   | "SHIPPING_COST_INR"
   | "PIN_PRICE_INR"
   | "PIN_WALLET_PRICE_INR"
-  | "PIN_PRO_MAX_PRICE_INR"
-  | "PIN_PRO_MAX_WALLET_PRICE_INR"
   | "PKG_STARTER_POINTS"
   | "PKG_MIN_POINTS"
   | "PKG_BV_PERCENT"
@@ -38,9 +36,6 @@ const ENV_DEFAULTS: Record<SettingKey, string> = {
   SHIPPING_COST_INR: process.env.SHIPPING_COST_INR ?? "0",
   PIN_PRICE_INR: process.env.PIN_PRICE_INR ?? "1000",
   PIN_WALLET_PRICE_INR: process.env.PIN_WALLET_PRICE_INR ?? "1070",
-  PIN_PRO_MAX_PRICE_INR: process.env.PIN_PRO_MAX_PRICE_INR ?? "10000",
-  // Pro Max pin bought with Pin Wallet points (offline/base price is 10,000).
-  PIN_PRO_MAX_WALLET_PRICE_INR: process.env.PIN_PRO_MAX_WALLET_PRICE_INR ?? "10800",
   // ---- Package Plan (see lib/package-plan.ts)
   PKG_STARTER_POINTS: process.env.PKG_STARTER_POINTS ?? "250",
   PKG_MIN_POINTS: process.env.PKG_MIN_POINTS ?? "250",
@@ -70,8 +65,6 @@ async function readAllSettings(): Promise<Record<SettingKey, number>> {
     "SHIPPING_COST_INR",
     "PIN_PRICE_INR",
     "PIN_WALLET_PRICE_INR",
-    "PIN_PRO_MAX_PRICE_INR",
-    "PIN_PRO_MAX_WALLET_PRICE_INR",
     "PKG_STARTER_POINTS",
     "PKG_MIN_POINTS",
     "PKG_BV_PERCENT",

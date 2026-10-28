@@ -9,7 +9,7 @@ type Props = {
   allowNodeClick?: boolean;
   maxVisibleDepth?: number;
   drilldownHrefBuilder?: (id: string) => string;
-  addMemberPath?: string;
+  addMemberPath?: string | null;
 };
 
 const MIN_ZOOM = 0.4;

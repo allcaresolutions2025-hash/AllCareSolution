@@ -10,7 +10,6 @@ export type DashboardNavItem = {
   href: string;
   label: string;
   icon: React.ReactNode;
-  proMax?: boolean; // Pro Max-only item; filtered out when the feature is off
 };
 
 export function DashboardShell({
@@ -24,16 +23,16 @@ export function DashboardShell({
   description?: string;
   nav: DashboardNavItem[];
   children: React.ReactNode;
-  variant?: "brand" | "promax" | "franchise";
+  variant?: "brand" | "af" | "franchise";
 }) {
   const pathname = usePathname();
-  // Theme tokens swap between the green base app, the gold Pro Max portals and
-  // the indigo franchise portal.
-  const theme = variant === "promax"
+  // Theme tokens swap between the green base app, the gold AF portal and the
+  // indigo franchise portal.
+  const theme = variant === "af"
     ? {
-        activeLink: "bg-promax-gradient text-white font-semibold shadow-promax-sm",
-        activeIcon: "text-promax-700",
-        menuBtn: "border-promax-200 bg-promax-50 text-promax-700 hover:bg-promax-100",
+        activeLink: "bg-af-gradient text-white font-semibold shadow-af-sm",
+        activeIcon: "text-af-700",
+        menuBtn: "border-af-200 bg-af-50 text-af-700 hover:bg-af-100",
       }
     : variant === "franchise"
     ? {

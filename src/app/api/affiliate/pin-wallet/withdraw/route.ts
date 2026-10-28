@@ -36,7 +36,6 @@ export async function POST(req: Request) {
   const bigLoan = await prisma.loan.findFirst({
     where: {
       userId: session.user.id,
-      proMax: false,
       status: { in: ["APPROVED", "CLOSED"] },
       amount: { gte: BIG_LOAN_THRESHOLD_PAISE },
     },

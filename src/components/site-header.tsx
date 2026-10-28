@@ -16,10 +16,10 @@ export function SiteHeader({ brand }: { brand: SiteBrand }) {
   const [navOpen, setNavOpen] = useState(false);
 
   const isAdmin = session?.user?.role === "ADMIN";
-  const isProMaxAdmin = session?.user?.role === "PROMAX_ADMIN";
+  const isAf = Boolean(session?.user?.isAf);
   const pathname = usePathname();
-  // Violet accent on the Pro Max portals to match the rest of the theme.
-  const pm = pathname?.startsWith("/promax");
+  // Gold accent on the AF portal to match the rest of its theme.
+  const af = pathname?.startsWith("/af");
 
   const closeNav = () => setNavOpen(false);
 
@@ -68,23 +68,26 @@ export function SiteHeader({ brand }: { brand: SiteBrand }) {
                     onClick={() => setOpen(false)}
                   />
                   <div className="absolute right-0 top-12 z-40 w-56 rounded-lg border bg-white shadow-lg p-1.5 animate-fade-in">
-                    <MenuItem href="/account" icon={<LayoutDashboard className="h-4 w-4" />} onClick={() => setOpen(false)}>
-                      My Account
-                    </MenuItem>
-                    <MenuItem href="/account/orders" icon={<ShoppingCart className="h-4 w-4" />} onClick={() => setOpen(false)}>
-                      My Orders
-                    </MenuItem>
-                    <MenuItem href="/affiliate/dashboard" icon={<Users className="h-4 w-4" />} onClick={() => setOpen(false)}>
-                      Affiliate Dashboard
-                    </MenuItem>
+                    {isAf ? (
+                      <MenuItem href="/af/dashboard" icon={<LayoutDashboard className="h-4 w-4" />} onClick={() => setOpen(false)}>
+                        AF Dashboard
+                      </MenuItem>
+                    ) : (
+                      <>
+                        <MenuItem href="/account" icon={<LayoutDashboard className="h-4 w-4" />} onClick={() => setOpen(false)}>
+                          My Account
+                        </MenuItem>
+                        <MenuItem href="/account/orders" icon={<ShoppingCart className="h-4 w-4" />} onClick={() => setOpen(false)}>
+                          My Orders
+                        </MenuItem>
+                        <MenuItem href="/affiliate/dashboard" icon={<Users className="h-4 w-4" />} onClick={() => setOpen(false)}>
+                          Affiliate Dashboard
+                        </MenuItem>
+                      </>
+                    )}
                     {isAdmin && (
                       <MenuItem href="/admin" icon={<ShieldCheck className="h-4 w-4" />} onClick={() => setOpen(false)}>
                         Admin Panel
-                      </MenuItem>
-                    )}
-                    {isProMaxAdmin && (
-                      <MenuItem href="/promax-admin" icon={<ShieldCheck className="h-4 w-4" />} onClick={() => setOpen(false)}>
-                        Pro Max Admin Panel
                       </MenuItem>
                     )}
                     <div className="my-1 border-t" />
@@ -100,14 +103,14 @@ export function SiteHeader({ brand }: { brand: SiteBrand }) {
             </div>
           ) : (
             <Link
-              href={pm ? "/promax/login" : "/login"}
+              href={af ? "/af/login" : "/login"}
               className={
-                pm
-                  ? "inline-flex items-center justify-center rounded-full bg-promax-gradient text-white font-semibold text-xs sm:text-sm px-3 sm:px-4 py-2 shadow-promax-sm hover:opacity-95 transition"
+                af
+                  ? "inline-flex items-center justify-center rounded-full bg-af-gradient text-white font-semibold text-xs sm:text-sm px-3 sm:px-4 py-2 shadow-af-sm hover:opacity-95 transition"
                   : "btn-primary text-xs sm:text-sm px-3 sm:px-4"
               }
             >
-              <span className="hidden xs:inline sm:inline">Member </span>Login
+              <span className="hidden xs:inline sm:inline">{af ? "AF " : "Member "}</span>Login
             </Link>
           )}
 

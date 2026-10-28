@@ -2,7 +2,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getNetworkSnapshot, type DownlineNode } from "@/lib/network";
-import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { formatPoints } from "@/lib/money";
 import { NotificationBanners } from "@/components/notification-banners";
 import Link from "next/link";
@@ -17,7 +16,6 @@ import {
   Star,
   KeyRound,
   Crown,
-  Package,
   ChevronRight,
 } from "lucide-react";
 
@@ -92,33 +90,6 @@ export default async function AffiliateDashboardPage() {
 
   const personalPts = me.wallet?.balanceAvailable ?? 0;
 
-  // Pin Pro Max counts (only when the feature is enabled):
-  //  - A Pro Max member sees their own Pro Max-tree leg counts.
-  //  - A non-member sees how many of their main-tree LEFT/RIGHT team are Pro Max.
-  const proMaxBalance = me.wallet?.proMaxBalanceAvailable ?? 0;
-  const isProMaxMember =
-    me.isProMax || me.proMaxLeftLegCount > 0 || me.proMaxRightLegCount > 0 || proMaxBalance > 0;
-  let proMaxLeft = 0;
-  let proMaxRight = 0;
-  if (PRO_MAX_ENABLED) {
-    if (isProMaxMember) {
-      proMaxLeft = me.proMaxLeftLegCount;
-      proMaxRight = me.proMaxRightLegCount;
-    } else {
-      const proMaxMembers = downlineIds.length
-        ? await prisma.user.findMany({
-            where: { id: { in: downlineIds }, isProMax: true },
-            select: { id: true },
-          })
-        : [];
-      for (const m of proMaxMembers) {
-        if (leftIds.has(m.id)) proMaxLeft += 1;
-        else if (rightIds.has(m.id)) proMaxRight += 1;
-      }
-    }
-  }
-  const showProMaxWallet = PRO_MAX_ENABLED && isProMaxMember;
-
   // Note: public self-signup is disabled. New members are placed by their
   // upline via /affiliate/dashboard/add-member using this Refer ID and a pin.
   const addLeft = `/affiliate/dashboard/add-member?referId=${me.referralCode}&side=LEFT`;
@@ -182,15 +153,15 @@ export default async function AffiliateDashboardPage() {
       <h1 className="text-2xl font-bold">Dashboard</h1>
 
       <Link
-        href="/affiliate/dashboard/package-plan"
-        className="card-brand card-interactive flex items-center gap-4 px-5 py-4"
+        href="/affiliate/dashboard/af-solution"
+        className="flex items-center gap-4 rounded-3xl px-5 py-4 text-white bg-af-gradient shadow-af-sm hover:opacity-95 transition"
       >
         <div className="h-11 w-11 rounded-xl bg-white/20 grid place-items-center shrink-0">
-          <Package className="h-6 w-6" />
+          <Crown className="h-6 w-6" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-lg leading-tight">Package Plan</div>
-          <div className="text-xs text-white/85">Buy a product package from 250 pts and earn binary income on matched BV</div>
+          <div className="font-bold text-lg leading-tight">AF Solution</div>
+          <div className="text-xs text-white/85">Request a new AF ID, then sign in at AF Login to request packages from 250 pts</div>
         </div>
         <ChevronRight className="h-5 w-5 shrink-0" />
       </Link>
@@ -315,46 +286,17 @@ export default async function AffiliateDashboardPage() {
               </div>
             </div>
           </div>
-
-          {/* Pin Pro Max — team counts (hidden when Pro Max is disabled) */}
-          {PRO_MAX_ENABLED && (
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3">
-              <div className="text-center">
-                <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500 text-white">
-                  <Crown className="h-3 w-3" /> Pin Pro Max Team
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-                <div>
-                  <div className="text-2xl font-bold tabular-nums text-amber-700">{proMaxLeft}</div>
-                  <div className="text-xs text-muted-foreground">Pro Max L</div>
-                </div>
-                <div className="border-l border-amber-200">
-                  <div className="text-2xl font-bold tabular-nums text-amber-700">{proMaxRight}</div>
-                  <div className="text-xs text-muted-foreground">Pro Max R</div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* Wallet stats */}
-      <div className={`grid gap-4 ${showProMaxWallet ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
+      <div className="grid gap-4">
         <BigStat
           color="emerald"
           icon={<Wallet className="h-5 w-5" />}
           label="E-WALLET BALANCE"
           value={formatPoints(personalPts)}
         />
-        {showProMaxWallet && (
-          <BigStat
-            color="orange"
-            icon={<Crown className="h-5 w-5" />}
-            label="PRO MAX WALLET"
-            value={formatPoints(proMaxBalance)}
-          />
-        )}
       </div>
 
       {/* Team counters */}
@@ -363,14 +305,6 @@ export default async function AffiliateDashboardPage() {
         <TeamCounter color="pink" icon={<UserSquare2 className="h-5 w-5" />} label="TEAM L" value={teamLCount} />
         <TeamCounter color="blue" icon={<UserSquare2 className="h-5 w-5" />} label="TEAM R" value={teamRCount} />
       </div>
-
-      {/* Pro Max team counters (hidden when Pro Max is disabled) */}
-      {PRO_MAX_ENABLED && (
-        <div className="grid grid-cols-2 gap-2 sm:gap-4">
-          <TeamCounter color="amber" icon={<Crown className="h-5 w-5" />} label="PRO MAX L" value={proMaxLeft} />
-          <TeamCounter color="violet" icon={<Crown className="h-5 w-5" />} label="PRO MAX R" value={proMaxRight} />
-        </div>
-      )}
     </div>
   );
 }

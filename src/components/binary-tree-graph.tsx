@@ -13,7 +13,6 @@ export type TreePerson = {
   gender?: "MALE" | "FEMALE" | null;
   createdAt?: Date;
   isRoot?: boolean;
-  isProMax?: boolean;
 };
 
 type LaidOutNode = {
@@ -29,7 +28,6 @@ type LaidOutNode = {
   pointsPaise: number;
   gender?: "MALE" | "FEMALE" | null;
   isRoot?: boolean;
-  isProMax?: boolean;
   isPlaceholder?: boolean;
   placeholderSide?: "LEFT" | "RIGHT";
   placeholderParentCode?: string;
@@ -333,9 +331,9 @@ export function BinaryTreeGraph({
   people: TreePerson[];
   allowNodeClick?: boolean;
   // Base path the "Add member" placeholder slots link to. Defaults to the
-  // 1000-pt registration; the Pro Max tree passes its own registration path so
-  // open slots lead to the Pro Max form (with referId + side prefilled).
-  addMemberPath?: string;
+  // 1000-pt registration (with referId + side prefilled). null renders open
+  // slots without a link (the AF tree, where only the admin places accounts).
+  addMemberPath?: string | null;
   // When true, render only the raw SVG (no card, header, or inner
   // overflow-x-auto). Used by BinaryTreeZoomable, which supplies its own
   // scroll/zoom container — the inner wrapper would otherwise cap the SVG
@@ -488,13 +486,6 @@ function RealNode({
         className={isClickable ? "transition-opacity hover:opacity-90" : undefined}
         style={!isClickable ? { cursor: "default" } : undefined}
       />
-      {n.isProMax && (
-        <foreignObject x={x + NODE_W - 30} y={y - 9} width={28} height={18}>
-          <div className="text-[9px] font-bold leading-none px-1.5 py-1 rounded-full bg-amber-500 text-white text-center shadow-sm">
-            👑
-          </div>
-        </foreignObject>
-      )}
       <foreignObject x={x} y={y} width={NODE_W} height={NODE_H}>
         <div
           className={`h-full px-3 py-2 flex items-center gap-2 ${isRoot ? "text-white" : "text-slate-900"}`}
@@ -535,14 +526,16 @@ function RealNode({
   return <a href={href!} style={{ filter: "url(#treeShadow)" }}>{inner}</a>;
 }
 
-function PlaceholderNode({ x, y, node: n, addMemberPath }: { x: number; y: number; node: LaidOutNode; addMemberPath: string }) {
+function PlaceholderNode({ x, y, node: n, addMemberPath }: { x: number; y: number; node: LaidOutNode; addMemberPath: string | null }) {
   const isLeft = n.placeholderSide === "LEFT";
   const tone = isLeft
     ? { stroke: "#10b981", fill: "#ecfdf5", chip: "bg-emerald-500 text-white", text: "text-emerald-800" }
     : { stroke: "#0ea5e9", fill: "#f0f9ff", chip: "bg-sky-500 text-white", text: "text-sky-800" };
-  const href = `${addMemberPath}?referId=${n.placeholderParentCode}&side=${n.placeholderSide}`;
+  const href = addMemberPath
+    ? `${addMemberPath}?referId=${n.placeholderParentCode}&side=${n.placeholderSide}`
+    : undefined;
   return (
-    <a href={href} style={{ filter: "url(#treeShadow)" }}>
+    <a href={href} style={{ filter: "url(#treeShadow)", cursor: href ? undefined : "default" }}>
       <rect
         x={x}
         y={y}
@@ -564,10 +557,10 @@ function PlaceholderNode({ x, y, node: n, addMemberPath }: { x: number; y: numbe
               <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${tone.chip}`}>{n.badge}</span>
             </div>
             <div className={`mt-0.5 text-sm font-semibold leading-tight ${tone.text}`}>
-              Add member
+              {href ? "Add member" : "Open slot"}
             </div>
             <div className="text-[10px] text-muted-foreground">
-              {n.placeholderSide} slot · click to register
+              {n.placeholderSide} slot{href ? " · click to register" : ""}
             </div>
           </div>
         </div>

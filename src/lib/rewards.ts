@@ -22,22 +22,11 @@ export const WELCOME_KIT_REWARD = {
   icon: "🎁",
 } as const;
 
-// Pin Pro Max welcome reward — the "Acht Mart Combo". Claimable once by any
-// Pro Max member, independent of the L1-L15 ladder. Stored at a distinct level
-// (100) so it never collides with Welcome Kit (0) or L1-15 on the
-// RewardClaim @@unique([userId, level]) constraint.
-export const PROMAX_COMBO_LEVEL = 100;
-export const PROMAX_COMBO_REWARD = {
-  level: PROMAX_COMBO_LEVEL,
-  gift: "Acht Mart Combo",
-  icon: "👑",
-} as const;
-
 // 40 Combo Reward — the joining reward for members enrolled with a 2000-pt pin.
 // It REPLACES the Welcome Kit for those members (they can't claim both) and is a
 // physical product combo fulfilled through the same admin delivery queue
 // (approve → dispatch → deliver). Stored at a distinct level so it never
-// collides with Welcome Kit (0), L1-15, or the Pro Max combo (100). It credits
+// collides with Welcome Kit (0) or L1-15. It credits
 // no points — the 2000-pt payout-wallet credit happens separately at enrollment.
 export const FORTY_COMBO_LEVEL = 40;
 export const FORTY_COMBO_REWARD = {

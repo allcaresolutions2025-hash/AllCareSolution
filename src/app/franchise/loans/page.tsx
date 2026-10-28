@@ -60,10 +60,8 @@ export default async function FranchiseLoansPage({
     status: "REQUESTED",
     ...searchWhere,
   };
-  // Pro Max loans belong to the Pro Max admin, not to a franchise.
   const teamWhere: Prisma.LoanWhereInput = {
     userId: { in: scopedIds },
-    proMax: false,
     status: { in: ["APPROVED", "CLOSED", "REJECTED"] },
     ...searchWhere,
   };

@@ -14,7 +14,7 @@ export async function GET() {
   const pendingLoans = await prisma.loan.findMany({
     // Same rule as the admin loans page: anything still with a franchise leader
     // is not yet the admin's to action.
-    where: { status: "REQUESTED", proMax: false, franchiseStatus: { in: ["NONE", "APPROVED"] } },
+    where: { status: "REQUESTED", franchiseStatus: { in: ["NONE", "APPROVED"] } },
     orderBy: { requestedAt: "asc" },
     include: {
       user: {

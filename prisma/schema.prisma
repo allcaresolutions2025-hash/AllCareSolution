@@ -21,7 +21,6 @@ datasource db {
 enum Role {
   CUSTOMER
   ADMIN
-  PROMAX_ADMIN
 }
 
 // Member-selectable display language for product names. EN is the default and
@@ -89,18 +88,17 @@ model User {
   rightLegCount     Int      @default(0)     // descendants in RIGHT leg (cached for points engine)
   gatedPointsEarned Int      @default(0)     // running total of gated +1 credits, used to compute deltas
 
-  // ---- Pin Pro Max — a fully PARALLEL binary program (10,000-pt pin). These
-  // fields mirror the 1000-pt placement above but form an entirely separate
-  // tree (see src/lib/points-promax.ts / network-promax.ts). The 1000-pt
-  // engine never reads or writes them, and vice-versa.
-  isProMax               Boolean @default(false) // member is part of the Pro Max program
-  proMaxReferrerId       String?                 // placement parent in the Pro Max tree
-  proMaxReferrer         User?   @relation("ProMaxReferrals", fields: [proMaxReferrerId], references: [id])
-  proMaxReferrals        User[]  @relation("ProMaxReferrals")
-  proMaxSlot             Slot?                   // L or R under proMaxReferrer
-  proMaxPairBonusAwarded Boolean @default(false) // one-time +5,000 first-pair bonus
-  proMaxLeftLegCount     Int     @default(0)     // descendants in Pro Max LEFT leg
-  proMaxRightLegCount    Int     @default(0)     // descendants in Pro Max RIGHT leg
+  // ---- AF Solution — a separate account type with its own login (/af/login)
+  // and its own binary tree. AF accounts are created by the admin (usually
+  // from an AfIdRequest raised by a main member) and never sit in the 1000-pt
+  // tree above. See src/lib/af.ts and src/lib/package-plan.ts.
+  isAf              Boolean   @default(false)
+  afReferrerId      String?   // placement parent in the AF tree
+  afReferrer        User?     @relation("AfReferrals", fields: [afReferrerId], references: [id])
+  afReferrals       User[]    @relation("AfReferrals")
+  afSlot            Slot?     // L or R under afReferrer
+  afTermsAcceptedAt DateTime? // AF Terms & Conditions accepted (required before a package request)
+  afIdRequests      AfIdRequest[] @relation("AfIdRequester")
 
   // Registration profile (captured at signup; some are admin-edit-only)
   nominee           String?
@@ -164,9 +162,6 @@ model User {
   // Reward claims
   rewardClaims  RewardClaim[]
 
-  // Pro Max rewards (combo box requests + admin-granted level rewards)
-  proMaxRewards ProMaxReward[]
-
   // In-app notifications (e.g. admin credited the pin wallet)
   notifications Notification[]
 
@@ -186,7 +181,7 @@ model User {
   @@index([referrerId])
   @@index([isFranchise])
   @@index([referrerId, slot])
-  @@index([proMaxReferrerId, proMaxSlot])
+  @@unique([afReferrerId, afSlot]) // one AF account per slot; NULLs (non-AF / AF roots) never collide
   @@index([panNumber])
   @@index([email])
   @@index([phone])
@@ -241,10 +236,6 @@ model Wallet {
   balanceAvailable    Int      @default(0) // eligible for payout (paise)
   balancePaidLifetime Int      @default(0) // total paid out historically (paise)
   pinWalletBalance    Int      @default(0) // points usable only to buy pins (paise); funded by the Rs.2,000 loan or a payout transfer
-  // ---- Pin Pro Max wallet — earnings from the separate Pro Max tree. Paid out
-  // by the same nightly 90/10 cycle as balanceAvailable, but tracked apart.
-  proMaxBalanceAvailable    Int @default(0) // Pro Max points eligible for payout (paise)
-  proMaxBalancePaidLifetime Int @default(0) // total Pro Max paid out historically (paise)
   updatedAt           DateTime @updatedAt
 }
 
@@ -569,7 +560,6 @@ model PinRequest {
   // The 2000-pt tier additionally entitles the member to a 2000-pt reward
   // (see PinReward) they can claim once per 2000-pt pin obtained.
   pointsValue   Int              @default(1000)
-  proMax        Boolean          @default(false) // true = Pro Max (10,000-pt) pins
   status        PinRequestStatus @default(PENDING)
   reviewerNotes String?
   createdAt     DateTime         @default(now())
@@ -589,7 +579,6 @@ model Pin {
   request       PinRequest? @relation(fields: [requestId], references: [id])
   purchaseId    String?
   purchase      PinPurchase? @relation(fields: [purchaseId], references: [id])
-  proMax        Boolean     @default(false) // true = Pro Max (10,000-pt) pin, used to build the Pro Max tree
   // Denomination carried over from the request/purchase (1000 or 2000). Used to
   // count how many 2000-pt pins a member obtained, which gates the PinReward.
   pointsValue   Int         @default(1000)
@@ -659,7 +648,6 @@ model DailyPayout {
   userId        String
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   runDate       String            // YYYY-MM-DD in Asia/Kolkata
-  proMax        Boolean           @default(false) // true = payout of the Pro Max wallet (proMaxBalanceAvailable)
   startBalance  Int               // balance at the moment of the run (paise)
   paidAmount    Int               // 90% (floor)
   forfeitAmount Int               // remainder = startBalance - paidAmount
@@ -669,7 +657,7 @@ model DailyPayout {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  @@unique([userId, runDate, proMax])
+  @@unique([userId, runDate])
   @@index([status])
   @@index([runDate])
 }
@@ -679,7 +667,7 @@ model DailyPayout {
 // amount above the minimum). No payment is taken in the app — the admin
 // verifies the request and approves it. Every package ships a real product.
 // On approval the package's Business Volume (BV) is added to the LEFT/RIGHT leg of every
-// ancestor on the 1000-pt tree (User.referrerId / slot). A nightly run pays
+// ancestor on the AF tree (User.afReferrerId / afSlot). A nightly run pays
 // each active member a % of their matched (weaker-leg) BV, carries the rest
 // forward, and scales payouts down if they'd exceed the payout ceiling.
 // There is no fixed/guaranteed return on the package amount itself.
@@ -791,6 +779,39 @@ model PackageEarning {
   @@index([type, createdAt])
 }
 
+// ---------- AF SOLUTION: ID REQUESTS ----------
+// A main member asks for a new AF account. The admin reviews it, picks the
+// placement (sponsor AF ID + side) and creates the account; the AF ID and
+// default password (the mobile number) are sent back to the requester.
+
+enum AfIdRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model AfIdRequest {
+  id            String            @id @default(cuid())
+  requesterId   String
+  requester     User              @relation("AfIdRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  name          String
+  mobile        String
+  email         String
+  sponsorAfId   String?           // AF ID to place under, as requested
+  side          Slot?             // preferred side under the sponsor
+  note          String?           @db.Text
+  status        AfIdRequestStatus @default(PENDING)
+  adminNote     String?           @db.Text
+  reviewerId    String?
+  createdUserId String?           // the AF account created on approval
+  createdAfId   String?           // its AF ID (referralCode), snapshot
+  createdAt     DateTime          @default(now())
+  reviewedAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([requesterId, createdAt])
+}
+
 // ---------- FRANCHISE ----------
 
 enum FranchiseRequestStatus {
@@ -895,7 +916,6 @@ model Loan {
   tierKey       String        // e.g. "DIRECTS_1_1", "LEG_7", "LEG_31"
   amount        Int           // total loan principal, paise
   totalWeeks    Int           // repayment period
-  proMax        Boolean       @default(false) // true = Pro Max (10,000-pt) loan, separate ladder + admin
   status        LoanStatus    @default(REQUESTED)
 
   // ---- Franchise pre-approval. When the borrower sits under a franchise
@@ -1007,26 +1027,6 @@ model RewardClaim {
   @@unique([userId, level])
   @@index([status, requestedAt])
   @@index([franchiseId, franchiseStatus])
-}
-
-// Pro Max programme reward ladder — separate from the 1,000-pt RewardClaim.
-// level 0 = Welcome Kit; levels 1-15 = the PLAN 2 prize ladder (see
-// lib/rewards-promax.ts). A level unlocks when both Pro Max legs are filled to
-// that depth; the member claims, the admin approves/dispatches/delivers, and
-// levels 1-6 credit Pin Wallet points on approval. One claim per member+level.
-model ProMaxReward {
-  id          String            @id @default(cuid())
-  userId      String
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  level       Int               // 0 = Welcome Kit, 1-15 = ladder
-  rewardName  String
-  status      RewardClaimStatus @default(PENDING)
-  adminNote   String?           @db.Text
-  requestedAt DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  @@unique([userId, level])
-  @@index([status, requestedAt])
 }
 
 // ---------- NEWS ----------

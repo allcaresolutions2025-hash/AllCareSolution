@@ -36,7 +36,7 @@ export default async function AdminOverviewPage() {
     }),
     // Lifetime daily-payout points actually disbursed (1,000-pt program).
     prisma.dailyPayout.aggregate({
-      where: { status: "PAID", proMax: false },
+      where: { status: "PAID" },
       _sum: { paidAmount: true },
     }),
   ]);

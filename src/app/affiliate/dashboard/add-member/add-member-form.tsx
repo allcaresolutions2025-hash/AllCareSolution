@@ -21,7 +21,7 @@ export function AddMemberForm({
   pins: string[];
   // Optional map of pin code → denomination (1000 / 2000). When supplied, each
   // pin's value is shown in the selector so the member knows a 2000-pt pin will
-  // credit 2000 pts to the person they enroll. Omitted by the Pro Max forms.
+  // credit 2000 pts to the person they enroll.
   pinValues?: Record<string, number>;
   defaultReferId: string;
   defaultSide: "LEFT" | "RIGHT" | "";

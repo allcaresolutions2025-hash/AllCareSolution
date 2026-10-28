@@ -1,4 +1,6 @@
-// Package Plan engine — product packages that earn binary income from BV.
+// AF Solution package engine — product packages that earn binary income from
+// BV on the AF tree (User.afReferrerId / afSlot). AF accounts are separate
+// logins created by the admin; see src/lib/af.ts.
 //
 // Flow:
 //   1. A member requests a package (Starter = fixed points, or a custom
@@ -6,7 +8,7 @@
 //      payment is taken in the app. Status PENDING.
 //   2. An admin verifies the request and approves. The package's BV
 //      (points x PKG_BV_PERCENT) is added to the LEFT/RIGHT leg of every
-//      ancestor on the 1000-pt tree (User.referrerId / slot), as FIFO lots in
+//      ancestor on the AF tree (User.afReferrerId / afSlot), as FIFO lots in
 //      PackageBvEntry. The placement parent, if active, gets a one-time DIRECT
 //      bonus of PKG_DIRECT_PERCENT of the BV.
 //   3. Each night runPackageMatching() pays every ACTIVE member
@@ -72,30 +74,29 @@ function incomeForBv(bv: number, percent: number): number {
   return Math.floor((bv * PAISE_PER_POINT * percent) / 100);
 }
 
-type ChainRow = { id: string; referrerId: string | null; slot: Slot | null; depth: number };
+type ChainRow = { id: string; afReferrerId: string | null; afSlot: Slot | null; depth: number };
 
 /**
- * Ancestors of `userId` on the 1000-pt tree, nearest first, each tagged with
- * the side of that ancestor the user's branch sits on.
+ * Ancestors of `userId` on the AF tree, nearest first, each tagged with the
+ * side of that ancestor the user's branch sits on.
  */
 async function getAncestorSides(tx: Tx, userId: string): Promise<{ userId: string; side: Slot }[]> {
   const rows = await tx.$queryRaw<ChainRow[]>`
     WITH RECURSIVE up AS (
-      SELECT id, "referrerId", slot, 0 AS depth FROM "User" WHERE id = ${userId}
+      SELECT id, "afReferrerId", "afSlot", 0 AS depth FROM "User" WHERE id = ${userId}
       UNION ALL
-      SELECT p.id, p."referrerId", p.slot, up.depth + 1
-      FROM "User" p JOIN up ON p.id = up."referrerId"
+      SELECT p.id, p."afReferrerId", p."afSlot", up.depth + 1
+      FROM "User" p JOIN up ON p.id = up."afReferrerId"
       WHERE up.depth < ${MAX_TREE_DEPTH}
     )
-    SELECT id, "referrerId", slot, depth FROM up ORDER BY depth ASC
+    SELECT id, "afReferrerId", "afSlot", depth FROM up ORDER BY depth ASC
   `;
   const out: { userId: string; side: Slot }[] = [];
   for (let i = 1; i < rows.length; i++) {
-    // The side is decided by the node directly below; a legacy node with no
-    // slot breaks the chain the same way the points engine does.
+    // The side is decided by the node directly below.
     const below = rows[i - 1];
-    if (!below.slot) break;
-    out.push({ userId: rows[i].id, side: below.slot });
+    if (!below.afSlot) break;
+    out.push({ userId: rows[i].id, side: below.afSlot });
   }
   return out;
 }
@@ -202,7 +203,7 @@ export async function approvePackagePurchase(purchaseId: string, reviewerId: str
             data: {
               userId: parentId,
               title: "Package direct bonus",
-              body: `You earned ${bonus / PAISE_PER_POINT} pts because a member directly below you activated a package.`,
+              body: `You earned ${bonus / PAISE_PER_POINT} pts because an AF account directly below you activated a package.`,
             },
           });
           directPaid = bonus;

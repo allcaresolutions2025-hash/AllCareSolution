@@ -113,7 +113,7 @@ export async function hasTakenLevel2Loan(
   userId: string,
 ): Promise<boolean> {
   const existing = await prisma.loan.findFirst({
-    where: { userId, proMax: false, tierKey: LEVEL2_LOAN_KEY, status: { not: "REJECTED" } },
+    where: { userId, tierKey: LEVEL2_LOAN_KEY, status: { not: "REJECTED" } },
     select: { id: true },
   });
   return !!existing;
@@ -306,7 +306,6 @@ export function loanWalletChargePaise(installmentPaise: number, penaltyPaise = 0
 export async function countActivePanLoanConflicts(
   prisma: import("@prisma/client").PrismaClient | import("@prisma/client").Prisma.TransactionClient,
   userId: string,
-  proMax = false,
 ): Promise<{ pan: string | null; conflictCount: number }> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
@@ -317,7 +316,6 @@ export async function countActivePanLoanConflicts(
   if (!me?.panNumber) return { pan: null, conflictCount: 0 };
   const conflictCount = await prisma.loan.count({
     where: {
-      proMax,
       status: { in: ["REQUESTED", "APPROVED"] },
       user: { panNumber: me.panNumber, id: { not: userId } },
     },
@@ -336,7 +334,6 @@ export const PAN_CONFLICT_MESSAGE =
 export async function countIdentityLoanConflicts(
   prisma: import("@prisma/client").PrismaClient | import("@prisma/client").Prisma.TransactionClient,
   userId: string,
-  proMax = false,
 ): Promise<{ conflictCount: number }> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
@@ -354,7 +351,6 @@ export async function countIdentityLoanConflicts(
 
   const conflictCount = await prisma.loan.count({
     where: {
-      proMax, // scope to the same programme (1,000-pt vs Pro Max)
       status: { not: "REJECTED" }, // requested / approved / closed all count as "got a loan"
       user: { id: { not: userId }, OR: orConds },
     },

@@ -18,11 +18,13 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        // Accept either email address or AM-prefixed member ID (referral code)
+        // Accept either email address or member ID (referral code). AF
+        // accounts sign in by AF ID only — they share the requester's email,
+        // so an email login always resolves to the main account.
         const user = await prisma.user.findFirst({
           where: {
             OR: [
-              { email: credentials.email.toLowerCase().trim() },
+              { email: credentials.email.toLowerCase().trim(), isAf: false },
               { referralCode: credentials.email.toUpperCase().trim() },
             ],
           },
@@ -37,7 +39,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           referralCode: user.referralCode,
           mustOnboard: user.mustOnboard,
-          isProMax: user.isProMax,
+          isAf: user.isAf,
         } as never;
       },
     }),
@@ -62,11 +64,9 @@ export const authOptions: NextAuthOptions = {
         // implicit return-to-admin call uses a token where targetUserId is
         // the admin themselves, which is also fine.
         if (!admin || !target) return null;
-        // Both the main admin and the Pro Max admin may impersonate. The token
-        // is only ever issued by a guarded admin route (which also restricts the
-        // Pro Max admin to Pro Max members), so reaching here means the pairing
-        // was already authorised.
-        if (admin.role !== "ADMIN" && admin.role !== "PROMAX_ADMIN") return null;
+        // The token is only ever issued by a guarded admin route, so reaching
+        // here means the pairing was already authorised.
+        if (admin.role !== "ADMIN") return null;
         if (!target.isActive && target.id !== admin.id) return null;
         // impersonatedBy is set only when admin is logging in AS someone else.
         // When the admin returns to themselves (target === admin), clear it.
@@ -78,7 +78,7 @@ export const authOptions: NextAuthOptions = {
           role: target.role,
           referralCode: target.referralCode,
           mustOnboard: false,
-          isProMax: target.isProMax,
+          isAf: target.isAf,
           impersonatedBy: impersonating ? admin.id : null,
           impersonatedByName: impersonating ? admin.name : null,
         } as never;
@@ -93,7 +93,7 @@ export const authOptions: NextAuthOptions = {
           role: string;
           referralCode: string;
           mustOnboard: boolean;
-          isProMax?: boolean;
+          isAf?: boolean;
           impersonatedBy?: string | null;
           impersonatedByName?: string | null;
         };
@@ -101,7 +101,7 @@ export const authOptions: NextAuthOptions = {
         token.role = u.role;
         token.referralCode = u.referralCode;
         token.mustOnboard = u.mustOnboard;
-        token.isProMax = u.isProMax ?? false;
+        token.isAf = u.isAf ?? false;
         token.impersonatedBy = u.impersonatedBy ?? null;
         token.impersonatedByName = u.impersonatedByName ?? null;
       }
@@ -123,7 +123,7 @@ export const authOptions: NextAuthOptions = {
           role?: string;
           referralCode?: string;
           mustOnboard?: boolean;
-          isProMax?: boolean;
+          isAf?: boolean;
           impersonatedBy?: string | null;
           impersonatedByName?: string | null;
         };
@@ -131,7 +131,7 @@ export const authOptions: NextAuthOptions = {
         u.role = token.role as string;
         u.referralCode = token.referralCode as string;
         u.mustOnboard = (token.mustOnboard as boolean) ?? false;
-        u.isProMax = (token.isProMax as boolean) ?? false;
+        u.isAf = (token.isAf as boolean) ?? false;
         u.impersonatedBy = (token.impersonatedBy as string | null) ?? null;
         u.impersonatedByName = (token.impersonatedByName as string | null) ?? null;
       }
@@ -147,10 +147,10 @@ declare module "next-auth" {
       id: string;
       email: string;
       name: string;
-      role: "CUSTOMER" | "ADMIN" | "PROMAX_ADMIN";
+      role: "CUSTOMER" | "ADMIN";
       referralCode: string;
       mustOnboard: boolean;
-      isProMax: boolean;
+      isAf: boolean;
       impersonatedBy: string | null;
       impersonatedByName: string | null;
     };
@@ -163,7 +163,7 @@ declare module "next-auth/jwt" {
     role?: string;
     referralCode?: string;
     mustOnboard?: boolean;
-    isProMax?: boolean;
+    isAf?: boolean;
     impersonatedBy?: string | null;
     impersonatedByName?: string | null;
   }

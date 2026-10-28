@@ -11,7 +11,6 @@ type RunResult = {
   skipped: boolean;
   date: string;
   forced: boolean;
-  scope?: "standard" | "proMax" | "all";
   payoutsCreated?: number;
   walletsReset?: number;
   gatedCacheCleared?: number;
@@ -20,12 +19,10 @@ type RunResult = {
 };
 
 export function SimulateMidnightButton({
-  scope = "standard",
   title = "Simulate midnight payout (Standard)",
   description = "Runs the 1000-pt payout: pays 90% of each user's balance, resets balances to 0, and clears the gated-points cache. Demo only.",
   tone = "amber",
 }: {
-  scope?: "standard" | "proMax" | "all";
   title?: string;
   description?: string;
   tone?: "amber" | "violet";
@@ -41,17 +38,14 @@ export function SimulateMidnightButton({
 
   async function run() {
     if (busy) return;
-    const label = scope === "proMax" ? "Pro Max" : scope === "standard" ? "1000-pt (Standard)" : "all";
     if (
       !confirm(
-        `Simulate the ${label} midnight payout NOW?\n\nThis pays 90% of each eligible ${label} balance and resets it to 0. Intended for demo only.`
+        "Simulate the midnight payout NOW?\n\nThis pays 90% of each eligible balance and resets it to 0. Intended for demo only."
       )
     ) return;
     setBusy(true);
     const res = await fetch("/api/admin/daily-payouts/run-now", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scope }),
     });
     const json: RunResult = await res.json();
     setBusy(false);

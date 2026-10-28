@@ -24,23 +24,20 @@ export default async function FranchiseOverviewPage() {
     prisma.rewardClaim.count({
       where: { franchiseId: leaderId, franchiseStatus: "PENDING", level: 0 },
     }),
-    // Pro Max runs on its own rails with its own admin — a franchise only ever
-    // sees the main 1,000-pt programme.
     prisma.loan.count({
-      where: { userId: { in: memberIds.length ? memberIds : ["-"] }, status: "APPROVED", proMax: false },
+      where: { userId: { in: memberIds.length ? memberIds : ["-"] }, status: "APPROVED" },
     }),
     prisma.loanInstallment.count({
       where: {
         status: "PENDING",
         dueDate: { lt: new Date() },
-        loan: { status: "APPROVED", proMax: false, userId: { in: memberIds.length ? memberIds : ["-"] } },
+        loan: { status: "APPROVED", userId: { in: memberIds.length ? memberIds : ["-"] } },
       },
     }),
     prisma.loan.aggregate({
       where: {
         userId: { in: memberIds.length ? memberIds : ["-"] },
         status: { in: ["APPROVED", "CLOSED"] },
-        proMax: false,
       },
       _sum: { amount: true },
     }),

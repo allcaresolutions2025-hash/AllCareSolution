@@ -1,0 +1,302 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { getPackageConfig } from "@/lib/package-plan";
+import { getSiteBrand } from "@/lib/brand";
+import { formatDateTime } from "@/lib/date";
+import { AcceptTermsButton } from "./accept-terms-button";
+import { ScrollText, BadgeCheck } from "lucide-react";
+
+export const dynamic = "force-dynamic";
+export const metadata = { title: "AF Terms & Conditions" };
+
+// Effective date of this version of the terms. Bump it whenever the wording
+// changes so participants can see which version they accepted.
+const EFFECTIVE_DATE = "28 October 2026";
+
+export default async function AfTermsPage() {
+  const session = await getServerSession(authOptions);
+  if (!session) return null;
+
+  const [cfg, brand, me] = await Promise.all([
+    getPackageConfig(),
+    getSiteBrand(),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { afTermsAcceptedAt: true } }),
+  ]);
+  const company = brand.siteName;
+  const starterBv = Math.floor((cfg.starterPoints * cfg.bvPercent) / 100);
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <ScrollText className="h-6 w-6 text-af-600" /> AF Solution — Terms &amp; Conditions
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">Effective {EFFECTIVE_DATE}</p>
+      </div>
+
+      <div className="card p-6 text-sm leading-relaxed space-y-6">
+        <p>
+          These Terms &amp; Conditions (&ldquo;Terms&rdquo;) govern participation in the AF Solution programme operated by{" "}
+          {company} (the &ldquo;Company&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;). By clicking &ldquo;I accept&rdquo;
+          below, you (the &ldquo;Participant&rdquo;) agree to be bound by these Terms, the Company&apos;s general{" "}
+          <a href="/legal/terms" className="underline">Terms of Use</a>,{" "}
+          <a href="/legal/privacy" className="underline">Privacy Policy</a> and{" "}
+          <a href="/legal/buyback" className="underline">Buyback &amp; Returns Policy</a>, each as amended from time to
+          time. If you do not agree, do not accept these Terms and do not request a Package.
+        </p>
+
+        <Section n={1} title="Definitions">
+          <Clause>
+            <strong>&ldquo;AF Account&rdquo;</strong> means an account in the AF Solution programme, identified by an
+            AF-prefixed ID, created by the Company on request.
+          </Clause>
+          <Clause>
+            <strong>&ldquo;Points&rdquo;</strong> means the internal loyalty unit used in the Company&apos;s platform.
+            Points are not legal tender, currency, a deposit, a security or an investment product.
+          </Clause>
+          <Clause>
+            <strong>&ldquo;Package&rdquo;</strong> means a product package requested by a Participant and approved by the
+            Company, comprising a quantity of Points and one physical product.
+          </Clause>
+          <Clause>
+            <strong>&ldquo;Business Volume&rdquo; or &ldquo;BV&rdquo;</strong> means the volume assigned to an approved
+            Package for the purpose of calculating income under these Terms.
+          </Clause>
+          <Clause>
+            <strong>&ldquo;AF Tree&rdquo;</strong> means the binary structure in which each AF Account has at most one
+            AF Account placed directly on its left and one on its right. <strong>&ldquo;Left Leg&rdquo;</strong> and{" "}
+            <strong>&ldquo;Right Leg&rdquo;</strong> mean all AF Accounts below those positions.
+          </Clause>
+          <Clause>
+            <strong>&ldquo;Sponsor&rdquo;</strong> means the AF Account directly above a Participant&apos;s AF Account in
+            the AF Tree.
+          </Clause>
+        </Section>
+
+        <Section n={2} title="Eligibility and acceptance">
+          <Clause>
+            The Participant must be at least 18 years of age, competent to contract under the Indian Contract Act, 1872,
+            a resident of India, and an existing member of the Company in good standing.
+          </Clause>
+          <Clause>
+            The Participant must hold a valid PAN and a bank account in their own name, and must provide accurate KYC
+            information on request. The Company may withhold approvals or payouts until KYC is complete.
+          </Clause>
+          <Clause>
+            Acceptance of these Terms is recorded electronically with the date and time, and constitutes a binding
+            agreement between the Participant and the Company.
+          </Clause>
+        </Section>
+
+        <Section n={3} title="Nature of the programme">
+          <Clause>
+            AF Solution is a product-based programme. Every Package includes a physical product, and all income under
+            these Terms is calculated only on BV generated by approved Packages.
+          </Clause>
+          <Clause>
+            <strong>
+              No income, bonus or reward of any kind is paid merely for enrolling, introducing or recruiting any person.
+            </strong>{" "}
+            The Company does not operate, and the Participant shall not promote the programme as, a pyramid scheme, a
+            money circulation scheme or a deposit scheme.
+          </Clause>
+          <Clause>
+            <strong>There is no fixed, assured or guaranteed return</strong> on the Points of any Package. Income, if
+            any, depends entirely on BV matched in the Participant&apos;s AF Tree and on the limits in Section 7. Many
+            Participants may earn little or nothing.
+          </Clause>
+          <Clause>
+            Participation does not create any employment, agency, partnership or franchise relationship between the
+            Participant and the Company.
+          </Clause>
+        </Section>
+
+        <Section n={4} title="AF Account creation">
+          <Clause>
+            An AF Account may be requested only through the AF Solution section of the Participant&apos;s member
+            dashboard. The Company may approve or reject any request at its sole discretion, without assigning reasons.
+          </Clause>
+          <Clause>
+            Placement in the AF Tree (Sponsor and Left or Right position) is decided by the Company at the time of
+            creation and is final. Placements are not changed afterwards except to correct an error made by the Company.
+          </Clause>
+          <Clause>
+            The first-login password is the registered mobile number and must be changed at first login. The
+            Participant is responsible for keeping their credentials confidential and for all activity under their AF
+            Account. AF Accounts are personal and may not be sold, transferred or shared.
+          </Clause>
+        </Section>
+
+        <Section n={5} title="Packages">
+          <Clause>
+            The Starter Package is {cfg.starterPoints} Points. A Participant may instead request any number of Points
+            not less than {cfg.minPoints} Points. Each Package includes one product chosen by the Participant from the
+            products offered, priced within the Points of the Package.
+          </Clause>
+          <Clause>
+            Every Package request is subject to verification and approval by the Company. Only one request may be
+            pending at a time. The Company may reject any request, including where the selected product is unavailable.
+          </Clause>
+          <Clause>
+            On approval, the Package&apos;s Points are activated on the Participant&apos;s AF Account and its BV is
+            credited to the corresponding leg of every AF Account above it in the AF Tree. BV is {cfg.bvPercent}% of the
+            Package Points; for example, a {cfg.starterPoints}-Point Package carries {starterBv} BV.
+          </Clause>
+        </Section>
+
+        <Section n={6} title="Product delivery and returns">
+          <Clause>
+            The product is shipped to the delivery address given in the Package request. The Participant is responsible
+            for the accuracy of that address. Delivery timelines are estimates only.
+          </Clause>
+          <Clause>
+            Damaged, defective or wrong products must be reported within 7 days of delivery. Returns and buyback are
+            governed by the Company&apos;s Buyback &amp; Returns Policy. Where a Package is cancelled or reversed, the
+            related BV and any income derived from it may be reversed.
+          </Clause>
+        </Section>
+
+        <Section n={7} title="Income">
+          <Clause>
+            <strong>Direct bonus:</strong> when an AF Account placed directly below the Participant has a Package
+            approved, the Participant receives {cfg.directPercent}% of that Package&apos;s BV, provided the Participant
+            holds an approved Package of their own at that time.
+          </Clause>
+          <Clause>
+            <strong>Binary matching:</strong> once each day (Indian Standard Time), a Participant holding an approved
+            Package receives {cfg.binaryPercent}% of the BV matched between their Left Leg and Right Leg, where matched
+            BV is the lower of the two legs&apos; unmatched BV. Matched BV is then deducted from both legs.
+          </Clause>
+          <Clause>
+            <strong>Carry forward:</strong> unmatched BV carries forward and lapses {cfg.carryExpiryDays} days after it
+            was credited if not matched by then.
+          </Clause>
+          <Clause>
+            <strong>Daily cap:</strong> binary matching income on any day shall not exceed {cfg.dailyCapMultiplier} times
+            the total Points of the Participant&apos;s approved Packages. Matched BV in excess of the cap lapses.
+          </Clause>
+          <Clause>
+            <strong>Payout ceiling:</strong> total direct and binary income paid to all Participants over any rolling
+            30-day period shall not exceed {cfg.payoutCeilingPercent}% of the Points of Packages approved in that
+            period. Where calculated income would exceed this ceiling, all Participants&apos; income for that day is
+            reduced proportionally.
+          </Clause>
+          <Clause>
+            Income is credited to the Participant&apos;s AF wallet in Points. No income is payable other than as set out
+            in this Section.
+          </Clause>
+        </Section>
+
+        <Section n={8} title="Moving and withdrawing Points">
+          <Clause>
+            The Participant may move AF wallet Points to their e-wallet and request a withdrawal through the
+            Withdraw section, subject to the minimum amount, service deduction and processing rules shown there, which
+            the Company may revise from time to time.
+          </Clause>
+          <Clause>
+            Withdrawals are paid only to a bank account in the Participant&apos;s own name, after deduction of tax at
+            source (TDS) and any other levies required by law. The Participant is solely responsible for their own
+            income-tax and GST obligations.
+          </Clause>
+        </Section>
+
+        <Section n={9} title="Participant obligations">
+          <Clause>
+            The Participant shall not: (a) make any false, exaggerated or misleading statement about the programme,
+            the products or potential earnings; (b) represent or promise any fixed, assured or guaranteed return to any
+            person; (c) collect any money or fee from any person in connection with the programme; (d) create or use
+            multiple or fictitious accounts, or manipulate placement or BV; (e) use the Company&apos;s name, marks or
+            materials except as permitted in writing; or (f) act in breach of any applicable law, including the Consumer
+            Protection Act, 2019 and the Consumer Protection (Direct Selling) Rules, 2021.
+          </Clause>
+        </Section>
+
+        <Section n={10} title="Suspension and termination">
+          <Clause>
+            The Company may suspend or terminate an AF Account, withhold or reverse BV and income, and refuse further
+            Packages where it reasonably believes the Participant has breached these Terms, provided false information,
+            or engaged in fraud or misuse. Income obtained through fraud or error is recoverable.
+          </Clause>
+          <Clause>
+            The Participant may close their AF Account at any time by written request through the Company&apos;s
+            contact channels. Income validly credited before closure remains payable subject to these Terms.
+          </Clause>
+        </Section>
+
+        <Section n={11} title="Changes to the programme">
+          <Clause>
+            The Company may amend these Terms, including any percentage, cap, minimum or period above, by publishing the
+            revised version in the AF portal. Changes apply from the date of publication and do not reduce income already
+            credited to an AF wallet. Continued use of the AF Account after a change constitutes acceptance of it.
+          </Clause>
+        </Section>
+
+        <Section n={12} title="Limitation of liability and indemnity">
+          <Clause>
+            To the maximum extent permitted by law, the Company shall not be liable for any indirect, incidental or
+            consequential loss, or for any loss of expected income. The Company&apos;s total liability in connection with
+            the programme shall not exceed the Points of the Packages approved for the Participant in the preceding three
+            months.
+          </Clause>
+          <Clause>
+            The Participant shall indemnify the Company against any claim, loss or penalty arising from the
+            Participant&apos;s breach of these Terms or of applicable law.
+          </Clause>
+        </Section>
+
+        <Section n={13} title="Privacy">
+          <Clause>
+            Personal, KYC and bank information is collected and processed in accordance with the Company&apos;s Privacy
+            Policy and the Digital Personal Data Protection Act, 2023, for the purposes of operating the programme,
+            delivering products, making payouts and meeting legal obligations.
+          </Clause>
+        </Section>
+
+        <Section n={14} title="Grievance redressal">
+          <Clause>
+            Complaints may be raised through the <a href="/contact" className="underline">Contact</a> page. The Company
+            will acknowledge a complaint within 48 hours and endeavour to resolve it within one month of receipt.
+          </Clause>
+        </Section>
+
+        <Section n={15} title="Governing law and general">
+          <Clause>
+            These Terms are governed by the laws of India. Subject to any applicable consumer forum, the courts having
+            jurisdiction over the Company&apos;s registered office shall have exclusive jurisdiction.
+          </Clause>
+          <Clause>
+            If any provision of these Terms is held invalid, the remaining provisions continue in full force. These Terms,
+            together with the documents referred to above, form the entire agreement on the AF Solution programme.
+          </Clause>
+        </Section>
+      </div>
+
+      {me?.afTermsAcceptedAt ? (
+        <div className="card p-4 flex items-center gap-3 border-emerald-200 bg-emerald-50/60">
+          <BadgeCheck className="h-5 w-5 text-emerald-600 shrink-0" />
+          <div className="text-sm">
+            You accepted these Terms on <strong>{formatDateTime(me.afTermsAcceptedAt)}</strong>.
+          </div>
+        </div>
+      ) : (
+        <AcceptTermsButton />
+      )}
+    </div>
+  );
+}
+
+function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="font-semibold text-base mb-2">
+        {n}. {title}
+      </h2>
+      <ol className="list-decimal pl-5 space-y-2 text-muted-foreground marker:text-foreground/60">{children}</ol>
+    </section>
+  );
+}
+
+function Clause({ children }: { children: React.ReactNode }) {
+  return <li>{children}</li>;
+}

@@ -10,9 +10,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminGenealogyPage() {
   // Find every root in the customer tree (referrerId is null and role = CUSTOMER).
-  // Normally there is exactly one — the system leader (e.g., Priya).
+  // Normally there is exactly one — the system leader (e.g., Priya). AF accounts
+  // live in their own tree and are excluded.
   const roots = await prisma.user.findMany({
-    where: { role: "CUSTOMER", referrerId: null },
+    where: { role: "CUSTOMER", referrerId: null, isAf: false },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,

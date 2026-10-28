@@ -18,7 +18,6 @@
     "db:seed-20": "tsx scripts/seed-20-users.ts",
     "db:studio": "prisma studio",
     "db:release-commissions": "tsx scripts/release-commissions.ts",
-    "db:backfill-promax": "tsx scripts/backfill-promax-counts.ts",
     "db:reverse-pin-reward-credits": "tsx scripts/reverse-old-pin-reward-credits.ts",
     "db:diagnose-2000": "tsx scripts/diagnose-2000-credits.ts",
     "db:reverse-2000pt-credits": "tsx scripts/reverse-2000pt-join-credits.ts",

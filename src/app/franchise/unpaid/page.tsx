@@ -42,7 +42,6 @@ export default async function FranchiseUnpaidPage({
   const userSearch = memberSearchWhere(q);
   const loanWhere: Prisma.LoanWhereInput = {
     status: "APPROVED",
-    proMax: false,
     userId: { in: scopedIds },
     ...(userSearch ? { user: userSearch } : {}),
   };

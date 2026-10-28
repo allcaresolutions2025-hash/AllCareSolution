@@ -35,7 +35,7 @@ export default async function FranchiseMembersPage({
   const loanTotals = ids.length
     ? await prisma.loan.groupBy({
         by: ["userId"],
-        where: { userId: { in: ids }, status: "APPROVED", proMax: false },
+        where: { userId: { in: ids }, status: "APPROVED" },
         _sum: { amount: true },
         _count: { _all: true },
       })
