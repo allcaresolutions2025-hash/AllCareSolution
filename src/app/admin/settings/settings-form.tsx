@@ -13,6 +13,14 @@ export function SettingsForm({ initial }: { initial: Record<string, number> }) {
     GST_DEFAULT_PERCENT: initial.GST_DEFAULT_PERCENT,
     SHIPPING_COST_INR: initial.SHIPPING_COST_INR,
     PIN_WALLET_PRICE_INR: initial.PIN_WALLET_PRICE_INR,
+    PKG_STARTER_POINTS: initial.PKG_STARTER_POINTS,
+    PKG_MIN_POINTS: initial.PKG_MIN_POINTS,
+    PKG_BV_PERCENT: initial.PKG_BV_PERCENT,
+    PKG_DIRECT_PERCENT: initial.PKG_DIRECT_PERCENT,
+    PKG_BINARY_PERCENT: initial.PKG_BINARY_PERCENT,
+    PKG_DAILY_CAP_MULTIPLIER: initial.PKG_DAILY_CAP_MULTIPLIER,
+    PKG_CARRY_EXPIRY_DAYS: initial.PKG_CARRY_EXPIRY_DAYS,
+    PKG_PAYOUT_CEILING_PERCENT: initial.PKG_PAYOUT_CEILING_PERCENT,
   });
   const [loading, setLoading] = useState(false);
 
@@ -83,6 +91,48 @@ export function SettingsForm({ initial }: { initial: Record<string, number> }) {
           label="Pin Wallet price per pin (₹)"
           value={form.PIN_WALLET_PRICE_INR}
           onChange={(v) => setForm({ ...form, PIN_WALLET_PRICE_INR: v })}
+        />
+      </Section>
+      <Section title="Package Plan" caption="Applies to new approvals and the next nightly matching run. The payout ceiling keeps total package payouts within a share of real package sales — keep it below your product margin.">
+        <Field
+          label="Starter package (pts)"
+          value={form.PKG_STARTER_POINTS}
+          onChange={(v) => setForm({ ...form, PKG_STARTER_POINTS: v })}
+        />
+        <Field
+          label="Minimum custom package (pts)"
+          value={form.PKG_MIN_POINTS}
+          onChange={(v) => setForm({ ...form, PKG_MIN_POINTS: v })}
+        />
+        <Field
+          label="BV % of package price"
+          value={form.PKG_BV_PERCENT}
+          onChange={(v) => setForm({ ...form, PKG_BV_PERCENT: v })}
+        />
+        <Field
+          label="Direct bonus % of BV"
+          value={form.PKG_DIRECT_PERCENT}
+          onChange={(v) => setForm({ ...form, PKG_DIRECT_PERCENT: v })}
+        />
+        <Field
+          label="Binary % of matched BV"
+          value={form.PKG_BINARY_PERCENT}
+          onChange={(v) => setForm({ ...form, PKG_BINARY_PERCENT: v })}
+        />
+        <Field
+          label="Daily cap (× own package)"
+          value={form.PKG_DAILY_CAP_MULTIPLIER}
+          onChange={(v) => setForm({ ...form, PKG_DAILY_CAP_MULTIPLIER: v })}
+        />
+        <Field
+          label="Carry-forward expiry (days)"
+          value={form.PKG_CARRY_EXPIRY_DAYS}
+          onChange={(v) => setForm({ ...form, PKG_CARRY_EXPIRY_DAYS: v })}
+        />
+        <Field
+          label="Payout ceiling % of 30-day sales"
+          value={form.PKG_PAYOUT_CEILING_PERCENT}
+          onChange={(v) => setForm({ ...form, PKG_PAYOUT_CEILING_PERCENT: v })}
         />
       </Section>
       <button type="submit" disabled={loading} className="btn-primary">

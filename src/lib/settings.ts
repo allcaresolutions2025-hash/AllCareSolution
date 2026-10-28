@@ -18,7 +18,15 @@ type SettingKey =
   | "PIN_PRICE_INR"
   | "PIN_WALLET_PRICE_INR"
   | "PIN_PRO_MAX_PRICE_INR"
-  | "PIN_PRO_MAX_WALLET_PRICE_INR";
+  | "PIN_PRO_MAX_WALLET_PRICE_INR"
+  | "PKG_STARTER_POINTS"
+  | "PKG_MIN_POINTS"
+  | "PKG_BV_PERCENT"
+  | "PKG_DIRECT_PERCENT"
+  | "PKG_BINARY_PERCENT"
+  | "PKG_DAILY_CAP_MULTIPLIER"
+  | "PKG_CARRY_EXPIRY_DAYS"
+  | "PKG_PAYOUT_CEILING_PERCENT";
 
 const ENV_DEFAULTS: Record<SettingKey, string> = {
   COMMISSION_L1_PERCENT: process.env.COMMISSION_L1_PERCENT ?? "20",
@@ -33,6 +41,22 @@ const ENV_DEFAULTS: Record<SettingKey, string> = {
   PIN_PRO_MAX_PRICE_INR: process.env.PIN_PRO_MAX_PRICE_INR ?? "10000",
   // Pro Max pin bought with Pin Wallet points (offline/base price is 10,000).
   PIN_PRO_MAX_WALLET_PRICE_INR: process.env.PIN_PRO_MAX_WALLET_PRICE_INR ?? "10800",
+  // ---- Package Plan (see lib/package-plan.ts)
+  PKG_STARTER_POINTS: process.env.PKG_STARTER_POINTS ?? "250",
+  PKG_MIN_POINTS: process.env.PKG_MIN_POINTS ?? "250",
+  // BV credited per package, as % of its price (250 pts -> 100 BV at 40%).
+  PKG_BV_PERCENT: process.env.PKG_BV_PERCENT ?? "40",
+  // Placement parent's one-time bonus, % of the package BV.
+  PKG_DIRECT_PERCENT: process.env.PKG_DIRECT_PERCENT ?? "8",
+  // Nightly matching income, % of matched (weaker-leg) BV.
+  PKG_BINARY_PERCENT: process.env.PKG_BINARY_PERCENT ?? "10",
+  // Max binary income per member per day = multiplier x their own package total.
+  PKG_DAILY_CAP_MULTIPLIER: process.env.PKG_DAILY_CAP_MULTIPLIER ?? "2",
+  // Unmatched carry-forward BV lapses after this many days.
+  PKG_CARRY_EXPIRY_DAYS: process.env.PKG_CARRY_EXPIRY_DAYS ?? "90",
+  // Total package payouts (direct + binary) over a rolling 30 days never exceed
+  // this % of package revenue approved in the same window.
+  PKG_PAYOUT_CEILING_PERCENT: process.env.PKG_PAYOUT_CEILING_PERCENT ?? "40",
 };
 
 async function readAllSettings(): Promise<Record<SettingKey, number>> {
@@ -48,6 +72,14 @@ async function readAllSettings(): Promise<Record<SettingKey, number>> {
     "PIN_WALLET_PRICE_INR",
     "PIN_PRO_MAX_PRICE_INR",
     "PIN_PRO_MAX_WALLET_PRICE_INR",
+    "PKG_STARTER_POINTS",
+    "PKG_MIN_POINTS",
+    "PKG_BV_PERCENT",
+    "PKG_DIRECT_PERCENT",
+    "PKG_BINARY_PERCENT",
+    "PKG_DAILY_CAP_MULTIPLIER",
+    "PKG_CARRY_EXPIRY_DAYS",
+    "PKG_PAYOUT_CEILING_PERCENT",
   ];
   const rows = await prisma.setting.findMany({ where: { key: { in: keys } } });
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));

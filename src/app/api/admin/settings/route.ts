@@ -19,6 +19,14 @@ export async function POST(req: Request) {
       setSetting("GST_DEFAULT_PERCENT", data.GST_DEFAULT_PERCENT),
       setSetting("SHIPPING_COST_INR", data.SHIPPING_COST_INR),
       setSetting("PIN_WALLET_PRICE_INR", data.PIN_WALLET_PRICE_INR),
+      setSetting("PKG_STARTER_POINTS", data.PKG_STARTER_POINTS),
+      setSetting("PKG_MIN_POINTS", data.PKG_MIN_POINTS),
+      setSetting("PKG_BV_PERCENT", data.PKG_BV_PERCENT),
+      setSetting("PKG_DIRECT_PERCENT", data.PKG_DIRECT_PERCENT),
+      setSetting("PKG_BINARY_PERCENT", data.PKG_BINARY_PERCENT),
+      setSetting("PKG_DAILY_CAP_MULTIPLIER", data.PKG_DAILY_CAP_MULTIPLIER),
+      setSetting("PKG_CARRY_EXPIRY_DAYS", data.PKG_CARRY_EXPIRY_DAYS),
+      setSetting("PKG_PAYOUT_CEILING_PERCENT", data.PKG_PAYOUT_CEILING_PERCENT),
     ]);
     return NextResponse.json({ ok: true });
   } catch (err) {

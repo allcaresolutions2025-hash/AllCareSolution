@@ -173,6 +173,13 @@ model User {
   // Transaction-password reset requests (member asks admin to reset)
   txnPwResetRequests TxnPasswordResetRequest[]
 
+  // Package Plan — product packages that generate BV on the 1000-pt tree
+  // (see lib/package-plan.ts).
+  packagePurchases  PackagePurchase[]
+  packageAccount    PackageAccount?
+  packageEarnings   PackageEarning[]
+  packageBvEntries  PackageBvEntry[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -329,6 +336,7 @@ model Product {
 
   orderItems OrderItem[]
   cartItems  CartItem[]
+  packagePurchases PackagePurchase[]
 }
 
 model CartItem {
@@ -664,6 +672,129 @@ model DailyPayout {
   @@unique([userId, runDate, proMax])
   @@index([status])
   @@index([runDate])
+}
+
+// ---------- PACKAGE PLAN ----------
+// A member buys a product package (Starter = fixed price, or a custom amount
+// above the minimum). Every package ships a real product. On admin approval the
+// package's Business Volume (BV) is added to the LEFT/RIGHT leg of every
+// ancestor on the 1000-pt tree (User.referrerId / slot). A nightly run pays
+// each active member a % of their matched (weaker-leg) BV, carries the rest
+// forward, and scales payouts down if they'd exceed the payout ceiling.
+// There is no fixed/guaranteed return on the package amount itself.
+// 1 BV = 1 point of income base. See src/lib/package-plan.ts.
+
+enum PackagePlan {
+  STARTER // fixed-price starter package (default 250 pts)
+  CUSTOM // member-chosen amount, >= the minimum
+}
+
+enum PackagePaymentMethod {
+  OFFLINE // paid outside the app (UPI/bank); member enters the reference, admin verifies
+  E_WALLET // debited from Wallet.balanceAvailable at request time, refunded on rejection
+}
+
+enum PackageStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PackageDeliveryStatus {
+  PENDING
+  SHIPPED
+  DELIVERED
+}
+
+model PackagePurchase {
+  id             String                @id @default(cuid())
+  userId         String
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan           PackagePlan
+  amount         Int // package price in paise
+  bv             Int // BV credited up the tree on approval (whole BV)
+  productId      String?
+  product        Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName    String // snapshot
+  paymentMethod  PackagePaymentMethod
+  paymentRef     String? // UTR / UPI reference for OFFLINE
+  shipName       String
+  shipPhone      String
+  shipAddress    String                @db.Text
+  status         PackageStatus         @default(PENDING)
+  adminNote      String?               @db.Text
+  reviewerId     String?
+  deliveryStatus PackageDeliveryStatus @default(PENDING)
+  trackingNumber String?
+  createdAt      DateTime              @default(now())
+  reviewedAt     DateTime?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([status, reviewedAt])
+}
+
+// One row per member who has ever held a package OR sits above one. BV keeps
+// accruing on inactive members' legs, but matching income is only paid while
+// `active` (they own at least one approved package).
+model PackageAccount {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  active         Boolean  @default(false)
+  packageTotal   Int      @default(0) // sum of approved package amounts (paise) — basis of the daily cap
+  personalBv     Int      @default(0) // BV of the member's own approved packages
+  leftBv         Int      @default(0) // unmatched carry-forward BV, LEFT leg
+  rightBv        Int      @default(0) // unmatched carry-forward BV, RIGHT leg
+  leftBvTotal    Int      @default(0) // lifetime BV received on LEFT
+  rightBvTotal   Int      @default(0) // lifetime BV received on RIGHT
+  walletBalance  Int      @default(0) // package earnings not yet moved to the e-wallet (paise)
+  earnedLifetime Int      @default(0) // all package income ever credited (paise)
+  updatedAt      DateTime @updatedAt
+
+  @@index([leftBv, rightBv])
+}
+
+// FIFO lots of leg BV. Matching consumes the oldest lots first; any lot still
+// holding BV after the carry-forward expiry window lapses.
+model PackageBvEntry {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  side       Slot
+  bv         Int
+  remaining  Int
+  purchaseId String
+  createdAt  DateTime @default(now())
+
+  @@index([userId, side, remaining, createdAt])
+  @@index([remaining, createdAt])
+}
+
+enum PackageEarningType {
+  DIRECT // % of a direct (placement child's) package BV, paid on approval
+  BINARY // nightly matched-BV income
+  TRANSFER_OUT // moved to the e-wallet (debit)
+}
+
+// Append-only ledger behind PackageAccount.walletBalance.
+model PackageEarning {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        PackageEarningType
+  amount      Int // signed paise actually credited (after cap + ceiling)
+  grossAmount Int                @default(0) // before daily cap / ceiling scaling (paise)
+  bvMatched   Int? // BINARY: BV consumed from each leg
+  purchaseId  String? // DIRECT: the package that triggered it
+  runDate     String? // BINARY: IST date of the matching run
+  note        String?
+  createdAt   DateTime           @default(now())
+
+  @@unique([userId, runDate, type])
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
 }
 
 // ---------- FRANCHISE ----------

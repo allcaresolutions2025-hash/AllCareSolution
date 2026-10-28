@@ -5,12 +5,13 @@ import { PRO_MAX_ENABLED } from "@/lib/pro-max";
 import { DashboardShell, type DashboardNavItem } from "@/components/dashboard-shell";
 import { BreakingNewsTicker } from "@/components/breaking-news-ticker";
 import { canRequestFranchise } from "@/lib/franchise";
-import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy, Smartphone, WalletCards, Crown, GitFork, HandCoins, Store, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, FileCheck2, Wallet, Network, Share2, Award, KeyRound, UserPlus, ListChecks, Settings as SettingsIcon, BadgeIndianRupee, Coins, Megaphone, Trophy, Smartphone, WalletCards, Crown, GitFork, HandCoins, Store, ShoppingBag, Package } from "lucide-react";
 
 const baseNav: DashboardNavItem[] = [
   { href: "/affiliate/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/news", label: "News", icon: <Megaphone className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/store", label: "Shop", icon: <ShoppingBag className="h-4 w-4" /> },
+  { href: "/affiliate/dashboard/package-plan", label: "Package Plan", icon: <Package className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/rewards", label: "My Rewards", icon: <Trophy className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/referrals", label: "Genealogy", icon: <Network className="h-4 w-4" /> },
   { href: "/affiliate/dashboard/request-pin", label: "Request Pin", icon: <KeyRound className="h-4 w-4" /> },

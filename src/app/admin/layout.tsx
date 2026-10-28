@@ -1,6 +1,6 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { PRO_MAX_ENABLED } from "@/lib/pro-max";
-import { LayoutDashboard, Package, ShoppingBag, Users, FileCheck2, Wallet, Settings, Network, KeyRound, BadgeIndianRupee, Coins, Megaphone, Trophy, GitBranch, LogIn, BookOpen, Smartphone, ShieldQuestion, Crown, Store, ArrowRightLeft } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, FileCheck2, Wallet, Settings, Network, KeyRound, BadgeIndianRupee, Coins, Megaphone, Trophy, GitBranch, LogIn, BookOpen, Smartphone, ShieldQuestion, Crown, Store, ArrowRightLeft, PackageCheck } from "lucide-react";
 
 const nav = [
   { href: "/admin", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -21,6 +21,7 @@ const nav = [
   { href: "/admin/pin-wallet-requests", label: "Pin Wallet Top-Up", icon: <ArrowRightLeft className="h-4 w-4" /> },
   { href: "/admin/loans", label: "Loan Approvals", icon: <BadgeIndianRupee className="h-4 w-4" /> },
   { href: "/admin/franchise", label: "Franchise", icon: <Store className="h-4 w-4" /> },
+  { href: "/admin/package-plan", label: "Package Plan", icon: <PackageCheck className="h-4 w-4" /> },
   { href: "/admin/daily-payouts", label: "Daily Payouts", icon: <Coins className="h-4 w-4" /> },
   { href: "/admin/payouts", label: "Withdrawals", icon: <Wallet className="h-4 w-4" /> },
   { href: "/admin/download", label: "Mobile App", icon: <Smartphone className="h-4 w-4" /> },

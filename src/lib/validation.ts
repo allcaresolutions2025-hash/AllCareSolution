@@ -81,4 +81,12 @@ export const settingsSchema = z.object({
   GST_DEFAULT_PERCENT: z.number().min(0).max(28),
   SHIPPING_COST_INR: z.number().min(0),
   PIN_WALLET_PRICE_INR: z.number().min(1),
+  PKG_STARTER_POINTS: z.number().int().min(1),
+  PKG_MIN_POINTS: z.number().int().min(1),
+  PKG_BV_PERCENT: z.number().min(0).max(100),
+  PKG_DIRECT_PERCENT: z.number().min(0).max(50),
+  PKG_BINARY_PERCENT: z.number().min(0).max(50),
+  PKG_DAILY_CAP_MULTIPLIER: z.number().min(0).max(20),
+  PKG_CARRY_EXPIRY_DAYS: z.number().int().min(1).max(3650),
+  PKG_PAYOUT_CEILING_PERCENT: z.number().min(0).max(100),
 });

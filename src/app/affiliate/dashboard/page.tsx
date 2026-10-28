@@ -17,6 +17,8 @@ import {
   Star,
   KeyRound,
   Crown,
+  Package,
+  ChevronRight,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -178,6 +180,20 @@ export default async function AffiliateDashboardPage() {
       )}
 
       <h1 className="text-2xl font-bold">Dashboard</h1>
+
+      <Link
+        href="/affiliate/dashboard/package-plan"
+        className="card-brand card-interactive flex items-center gap-4 px-5 py-4"
+      >
+        <div className="h-11 w-11 rounded-xl bg-white/20 grid place-items-center shrink-0">
+          <Package className="h-6 w-6" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-lg leading-tight">Package Plan</div>
+          <div className="text-xs text-white/85">Buy a product package from 250 pts and earn binary income on matched BV</div>
+        </div>
+        <ChevronRight className="h-5 w-5 shrink-0" />
+      </Link>
 
       {/* Top: Profile / Earnings / Business Volume */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
