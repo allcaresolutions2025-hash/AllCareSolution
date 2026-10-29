@@ -7,10 +7,11 @@
 //      amount >= the minimum) and picks the product they'll receive. No
 //      payment is taken in the app. Status PENDING.
 //   2. An admin verifies the request and approves. The package's BV
-//      (points x PKG_BV_PERCENT) is added to the LEFT/RIGHT leg of every
-//      ancestor on the AF tree (User.afReferrerId / afSlot), as FIFO lots in
-//      PackageBvEntry. The placement parent, if active, gets a one-time DIRECT
-//      bonus of PKG_DIRECT_PERCENT of the BV.
+//      (points x PKG_BV_PERCENT, at the rate in force on approval) is added
+//      to the LEFT/RIGHT leg of every ancestor on the AF tree
+//      (User.afReferrerId / afSlot), as FIFO lots in PackageBvEntry. The
+//      placement parent, if active, gets a one-time DIRECT bonus of
+//      PKG_DIRECT_PERCENT of the BV.
 //   3. In the same transaction, settleMatching() pays the buyer and every
 //      ancestor that is ACTIVE PKG_BINARY_PERCENT of min(leftBv, rightBv),
 //      consumes that BV from both legs, and carries the rest forward. Limits:
@@ -116,10 +117,13 @@ export async function approvePackagePurchase(purchaseId: string, reviewerId: str
       const purchase = await tx.packagePurchase.findUnique({ where: { id: purchaseId } });
       if (!purchase) throw new PackageError("Package request not found.");
 
+      // BV is fixed at approval, so a rate change applies to requests still pending.
+      const bv = bvForAmount(purchase.amount, cfg.bvPercent);
+
       // Conditional status flip guards against a double approve.
       const flipped = await tx.packagePurchase.updateMany({
         where: { id: purchaseId, status: "PENDING" },
-        data: { status: "APPROVED", reviewerId, reviewedAt: new Date(), adminNote: note },
+        data: { status: "APPROVED", bv, reviewerId, reviewedAt: new Date(), adminNote: note },
       });
       if (flipped.count === 0) throw new PackageError("This request has already been reviewed.");
 
@@ -139,17 +143,17 @@ export async function approvePackagePurchase(purchaseId: string, reviewerId: str
           userId: purchase.userId,
           active: true,
           packageTotal: purchase.amount,
-          personalBv: purchase.bv,
+          personalBv: bv,
         },
         update: {
           active: true,
           packageTotal: { increment: purchase.amount },
-          personalBv: { increment: purchase.bv },
+          personalBv: { increment: bv },
         },
       });
 
       const ancestors = await getAncestorSides(tx, purchase.userId);
-      if (ancestors.length > 0 && purchase.bv > 0) {
+      if (ancestors.length > 0 && bv > 0) {
         await tx.packageAccount.createMany({
           data: ancestors.map((a) => ({ userId: a.userId })),
           skipDuplicates: true,
@@ -159,21 +163,21 @@ export async function approvePackagePurchase(purchaseId: string, reviewerId: str
         if (leftIds.length > 0) {
           await tx.packageAccount.updateMany({
             where: { userId: { in: leftIds } },
-            data: { leftBv: { increment: purchase.bv }, leftBvTotal: { increment: purchase.bv } },
+            data: { leftBv: { increment: bv }, leftBvTotal: { increment: bv } },
           });
         }
         if (rightIds.length > 0) {
           await tx.packageAccount.updateMany({
             where: { userId: { in: rightIds } },
-            data: { rightBv: { increment: purchase.bv }, rightBvTotal: { increment: purchase.bv } },
+            data: { rightBv: { increment: bv }, rightBvTotal: { increment: bv } },
           });
         }
         await tx.packageBvEntry.createMany({
           data: ancestors.map((a) => ({
             userId: a.userId,
             side: a.side,
-            bv: purchase.bv,
-            remaining: purchase.bv,
+            bv,
+            remaining: bv,
             purchaseId: purchase.id,
           })),
         });
@@ -187,7 +191,7 @@ export async function approvePackagePurchase(purchaseId: string, reviewerId: str
           where: { userId: parentId },
           select: { active: true },
         });
-        const bonus = incomeForBv(purchase.bv, cfg.directPercent);
+        const bonus = incomeForBv(bv, cfg.directPercent);
         if (parent?.active && bonus > 0) {
           await tx.packageAccount.update({
             where: { userId: parentId },
@@ -200,7 +204,7 @@ export async function approvePackagePurchase(purchaseId: string, reviewerId: str
               amount: bonus,
               grossAmount: bonus,
               purchaseId: purchase.id,
-              note: `${cfg.directPercent}% of ${purchase.bv} BV from a direct member's package`,
+              note: `${cfg.directPercent}% of ${bv} BV from a direct member's package`,
             },
           });
           await tx.notification.create({
@@ -222,7 +226,7 @@ export async function approvePackagePurchase(purchaseId: string, reviewerId: str
         data: {
           userId: purchase.userId,
           title: "Package approved",
-          body: `Your ${purchase.amount / PAISE_PER_POINT}-pt package is active (${purchase.bv} BV). ${purchase.productName} will be shipped to you soon.`,
+          body: `Your ${purchase.amount / PAISE_PER_POINT}-pt package is active (${bv} BV). ${purchase.productName} will be shipped to you soon.`,
         },
       });
       await tx.auditLog.create({
@@ -233,7 +237,7 @@ export async function approvePackagePurchase(purchaseId: string, reviewerId: str
           metadata: JSON.stringify({
             userId: purchase.userId,
             amount: purchase.amount,
-            bv: purchase.bv,
+            bv,
             ancestors: ancestors.length,
             directPaid,
             matchingPaid: matching.totalPaid,
@@ -244,7 +248,7 @@ export async function approvePackagePurchase(purchaseId: string, reviewerId: str
       });
 
       return {
-        bv: purchase.bv,
+        bv,
         ancestors: ancestors.length,
         directPaid,
         matchingPaid: matching.totalPaid,

@@ -40,8 +40,8 @@ const ENV_DEFAULTS: Record<SettingKey, string> = {
   // ---- Package Plan (see lib/package-plan.ts)
   PKG_STARTER_POINTS: process.env.PKG_STARTER_POINTS ?? "250",
   PKG_MIN_POINTS: process.env.PKG_MIN_POINTS ?? "250",
-  // BV credited per package, as % of its points (250 pts -> 100 BV at 40%).
-  PKG_BV_PERCENT: process.env.PKG_BV_PERCENT ?? "40",
+  // BV credited per package, as % of its points (1000 pts -> 1000 BV at 100%).
+  PKG_BV_PERCENT: process.env.PKG_BV_PERCENT ?? "100",
   // Placement parent's one-time bonus, % of the package BV.
   PKG_DIRECT_PERCENT: process.env.PKG_DIRECT_PERCENT ?? "8",
   // Pair matching income, % of matched (weaker-leg) BV, paid on package approval.
