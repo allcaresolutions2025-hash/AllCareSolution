@@ -20,6 +20,7 @@ const nav = [
   { href: "/admin/franchise", label: "Franchise", icon: <Store className="h-4 w-4" /> },
   { href: "/admin/af-solution", label: "AF Solution", icon: <Crown className="h-4 w-4" /> },
   { href: "/admin/af-id-requests", label: "AF ID Requests", icon: <UserPlus className="h-4 w-4" /> },
+  { href: "/admin/af-accounts", label: "AF Accounts", icon: <Users className="h-4 w-4" /> },
   { href: "/admin/daily-payouts", label: "Daily Payouts", icon: <Coins className="h-4 w-4" /> },
   { href: "/admin/payouts", label: "Withdrawals", icon: <Wallet className="h-4 w-4" /> },
   { href: "/admin/download", label: "Mobile App", icon: <Smartphone className="h-4 w-4" /> },

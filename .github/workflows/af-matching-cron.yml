@@ -1,6 +1,7 @@
 name: Nightly AF Solution matching
 
-# Pays AF Solution binary income (src/lib/package-plan.ts).
+# AF Solution nightly housekeeping (src/lib/package-plan.ts): lapses expired
+# carry-forward BV and settles any pair matching not already paid on approval.
 # Fires 18:00 UTC = 23:30 IST, before the 00:00 IST points-decay run.
 #
 # Uses the same repo secrets as points-decay-cron.yml: APP_URL, CRON_SECRET.

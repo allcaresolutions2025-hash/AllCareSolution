@@ -99,12 +99,12 @@ export default async function AdminAfSolutionPage({
         <Stat label="Active AF accounts" value={activeCount.toLocaleString("en-IN")} />
         <Stat label="Approved packages (30d)" value={formatPoints(revenue30)} />
         <Stat label="Paid out (30d)" value={formatPoints(paid30)} sub={`Ceiling ${formatPoints(ceiling30)} · ${ceilingUse}% used`} />
-        <Stat label="Last matching run" value={lastRun ?? "Never"} sub="Nightly at 23:30 IST" />
+        <Stat label="Last catch-up run" value={lastRun ?? "Never"} sub="Matching pays on approval · catch-up 23:30 IST" />
       </div>
 
       <div className="card p-4 mb-4 text-xs text-muted-foreground">
-        Current rules: BV {cfg.bvPercent}% of price · direct {cfg.directPercent}% of BV · binary {cfg.binaryPercent}% of
-        matched BV · daily cap {cfg.dailyCapMultiplier}× package · carry-forward {cfg.carryExpiryDays} days · payout
+        Current rules: BV {cfg.bvPercent}% of price · direct {cfg.directPercent}% of BV · pair matching {cfg.binaryPercent}% of
+        matched BV, paid on approval · daily cap {cfg.dailyCapMultiplier}× package · carry-forward {cfg.carryExpiryDays} days · payout
         ceiling {cfg.payoutCeilingPercent}% of 30-day approved package points.{" "}
         <Link href="/admin/settings" className="underline">
           Change in Settings

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { AfBankFields, emptyAfBank, type AfBankValue } from "@/components/af-bank-fields";
 
 const BADGE: Record<string, string> = {
   PENDING: "badge-amber",
@@ -18,6 +19,7 @@ export type AfIdRequestRowData = {
   email: string;
   sponsorAfId: string | null;
   side: "LEFT" | "RIGHT" | null;
+  bank: Partial<Record<keyof AfBankValue, string | null>>;
   note: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
   adminNote: string | null;
@@ -34,6 +36,7 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
   const [email, setEmail] = useState(row.email);
   const [sponsorAfId, setSponsorAfId] = useState(row.sponsorAfId ?? "");
   const [side, setSide] = useState<"LEFT" | "RIGHT">(row.side ?? "LEFT");
+  const [bank, setBank] = useState<AfBankValue>(() => emptyAfBank(row.bank));
 
   async function send(body: Record<string, unknown>) {
     setLoading(true);
@@ -56,7 +59,7 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
     const sponsor = sponsorAfId.trim();
     const where = sponsor ? `${side.toLowerCase()} of ${sponsor}` : "as a top-level account (no sponsor)";
     if (!confirm(`Create an AF account for ${name}, placed ${where}?`)) return;
-    const data = await send({ action: "approve", name, mobile, email, sponsorAfId: sponsor, side: sponsor ? side : null });
+    const data = await send({ action: "approve", name, mobile, email, sponsorAfId: sponsor, side: sponsor ? side : null, ...bank });
     if (data) {
       toast.success(`AF ID ${data.afId} created.`);
       setOpen(false);
@@ -88,6 +91,11 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
           <div className="text-xs text-muted-foreground">
             {row.mobile} · {row.email}
           </div>
+          {row.bank.bankAccountNumber && (
+            <div className="text-xs text-muted-foreground mt-1 font-mono">
+              {row.bank.bankName} · {row.bank.bankAccountNumber} · {row.bank.bankIfsc}
+            </div>
+          )}
           {row.note && <div className="text-xs text-muted-foreground mt-1 max-w-[240px]">“{row.note}”</div>}
         </td>
         <td className="px-4 py-3 text-xs">
@@ -162,12 +170,15 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
                   <option value="RIGHT">Right</option>
                 </select>
               </div>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <AfBankFields value={bank} onChange={setBank} />
+              </div>
               <button type="submit" disabled={loading} className="btn-primary">
                 {loading ? "Creating…" : "Create AF account"}
               </button>
               <p className="sm:col-span-2 lg:col-span-3 text-xs text-muted-foreground">
-                Leave the sponsor blank only for the first (top) AF account. Profile and bank details are copied from the
-                requesting member. The first password is the mobile number.
+                Leave the sponsor blank only for the first (top) AF account. Bank details are as requested; other profile
+                details are copied from the requesting member. The first password is the mobile number.
               </p>
             </form>
           </td>

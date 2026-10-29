@@ -4,12 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { UserPlus } from "lucide-react";
+import { AfBankFields, emptyAfBank, type AfBankValue } from "@/components/af-bank-fields";
 
 export function AfIdRequestForm({
   defaults,
+  defaultBank,
   hasPending,
 }: {
   defaults: { name: string; mobile: string; email: string };
+  defaultBank: Partial<Record<keyof AfBankValue, string | null>>;
   hasPending: boolean;
 }) {
   const router = useRouter();
@@ -19,6 +22,7 @@ export function AfIdRequestForm({
   const [sponsorAfId, setSponsorAfId] = useState("");
   const [side, setSide] = useState<"" | "LEFT" | "RIGHT">("");
   const [note, setNote] = useState("");
+  const [bank, setBank] = useState<AfBankValue>(() => emptyAfBank(defaultBank));
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -35,6 +39,7 @@ export function AfIdRequestForm({
           sponsorAfId: sponsorAfId.trim() || undefined,
           side: side || undefined,
           note: note.trim() || undefined,
+          ...bank,
         }),
       });
       const json = await res.json();
@@ -90,6 +95,14 @@ export function AfIdRequestForm({
       <div>
         <label className="label">Email</label>
         <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </div>
+
+      <div className="space-y-2">
+        <div>
+          <h3 className="text-sm font-semibold">Bank details for the AF account</h3>
+          <p className="text-xs text-muted-foreground">Prefilled with yours. Change them if the account holder banks elsewhere.</p>
+        </div>
+        <AfBankFields value={bank} onChange={setBank} />
       </div>
 
       <div className="grid sm:grid-cols-2 gap-3">

@@ -5,8 +5,9 @@ import { runPackageMatching } from "@/lib/package-plan";
 
 export const dynamic = "force-dynamic";
 
-// Runs tonight's matching early. Same idempotent run as the cron — once it has
-// run for today's IST date, both this button and the cron are no-ops.
+// Runs today's housekeeping early (expire old BV, settle outstanding matching).
+// Same idempotent run as the cron — once it has run for today's IST date, both
+// this button and the cron are no-ops.
 export async function POST() {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;

@@ -50,7 +50,7 @@ export function PackageRow({ row }: { row: PackageRowData }) {
     }
     toast.success(
       action === "approve"
-        ? `Approved — ${data.bv} BV sent to ${data.ancestors} upline AF account${data.ancestors === 1 ? "" : "s"}.`
+        ? `Approved — ${data.bv} BV sent to ${data.ancestors} upline AF account${data.ancestors === 1 ? "" : "s"}. Pair matching paid ${(data.matchingPaid / 100).toLocaleString("en-IN")} pts to ${data.membersMatched} account${data.membersMatched === 1 ? "" : "s"}.`
         : action === "reject"
           ? "Request rejected."
           : action === "ship"
@@ -141,7 +141,7 @@ export function RunMatchingButton({ ranToday }: { ranToday: boolean }) {
   const [loading, setLoading] = useState(false);
 
   async function run() {
-    if (!confirm("Run tonight's binary matching now? The nightly cron will then skip today.")) return;
+    if (!confirm("Run today's housekeeping now (expire old BV, settle any outstanding matching)? The nightly cron will then skip today.")) return;
     setLoading(true);
     const res = await fetch("/api/admin/af/run-matching", { method: "POST" });
     const data = await res.json().catch(() => ({}));
@@ -157,7 +157,7 @@ export function RunMatchingButton({ ranToday }: { ranToday: boolean }) {
 
   return (
     <button onClick={run} disabled={loading || ranToday} className="btn-outline">
-      {loading ? "Running…" : ranToday ? "Matching done today" : "Run matching now"}
+      {loading ? "Running…" : ranToday ? "Catch-up done today" : "Run catch-up now"}
     </button>
   );
 }

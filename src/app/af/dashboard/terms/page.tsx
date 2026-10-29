@@ -164,23 +164,24 @@ export default async function AfTermsPage() {
             holds an approved Package of their own at that time.
           </Clause>
           <Clause>
-            <strong>Binary matching:</strong> once each day (Indian Standard Time), a Participant holding an approved
-            Package receives {cfg.binaryPercent}% of the BV matched between their Left Leg and Right Leg, where matched
-            BV is the lower of the two legs&apos; unmatched BV. Matched BV is then deducted from both legs.
+            <strong>Pair matching:</strong> when a Package is approved, each Participant holding an approved Package
+            whose Left Leg and Right Leg both then hold unmatched BV receives {cfg.binaryPercent}% of the BV matched
+            between them, where matched BV is the lower of the two legs&apos; unmatched BV. Matched BV is then deducted
+            from both legs. Any matching not settled at approval is settled once each day (Indian Standard Time).
           </Clause>
           <Clause>
             <strong>Carry forward:</strong> unmatched BV carries forward and lapses {cfg.carryExpiryDays} days after it
             was credited if not matched by then.
           </Clause>
           <Clause>
-            <strong>Daily cap:</strong> binary matching income on any day shall not exceed {cfg.dailyCapMultiplier} times
+            <strong>Daily cap:</strong> pair matching income on any day (Indian Standard Time) shall not exceed {cfg.dailyCapMultiplier} times
             the total Points of the Participant&apos;s approved Packages. Matched BV in excess of the cap lapses.
           </Clause>
           <Clause>
             <strong>Payout ceiling:</strong> total direct and binary income paid to all Participants over any rolling
             30-day period shall not exceed {cfg.payoutCeilingPercent}% of the Points of Packages approved in that
-            period. Where calculated income would exceed this ceiling, all Participants&apos; income for that day is
-            reduced proportionally.
+            period. Where income calculated at a settlement would exceed this ceiling, the income of all Participants
+            in that settlement is reduced proportionally.
           </Clause>
           <Clause>
             Income is credited to the Participant&apos;s AF wallet in Points. No income is payable other than as set out

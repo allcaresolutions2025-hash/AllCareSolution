@@ -26,6 +26,7 @@ const EARNING_LABEL: Record<string, string> = {
   DIRECT: "Direct bonus",
   BINARY: "Binary matching",
   TRANSFER_OUT: "Moved to e-wallet",
+  ADMIN_CREDIT: "Added by admin",
 };
 
 export default async function AfDashboardPage() {
@@ -130,7 +131,7 @@ export default async function AfDashboardPage() {
               <strong>Direct bonus:</strong> {cfg.directPercent}% of the BV when an AF account placed directly below you activates a package.
             </li>
             <li>
-              <strong>Binary matching:</strong> every night you earn {cfg.binaryPercent}% of the BV matched between your left and right legs. The unmatched part carries forward for {cfg.carryExpiryDays} days.
+              <strong>Pair matching:</strong> as soon as a package below you is approved, you earn {cfg.binaryPercent}% of the BV matched between your left and right legs. The unmatched part carries forward for {cfg.carryExpiryDays} days.
             </li>
             <li>
               Daily binary income is capped at {cfg.dailyCapMultiplier}× your own package total. Total payouts are limited to a share of approved package points.

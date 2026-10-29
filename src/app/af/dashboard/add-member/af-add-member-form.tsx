@@ -5,13 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { UserPlus, CheckCircle2 } from "lucide-react";
+import { AfBankFields, emptyAfBank, type AfBankValue } from "@/components/af-bank-fields";
 
 export function AfAddMemberForm({
   defaultSponsor,
   defaultSide,
+  defaultBank,
 }: {
   defaultSponsor: string;
   defaultSide: "" | "LEFT" | "RIGHT";
+  defaultBank: Partial<Record<keyof AfBankValue, string | null>>;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -19,6 +22,7 @@ export function AfAddMemberForm({
   const [email, setEmail] = useState("");
   const [sponsorAfId, setSponsorAfId] = useState(defaultSponsor);
   const [side, setSide] = useState<"" | "LEFT" | "RIGHT">(defaultSide);
+  const [bank, setBank] = useState<AfBankValue>(() => emptyAfBank(defaultBank));
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<{ afId: string; name: string; mobile: string } | null>(null);
 
@@ -33,7 +37,7 @@ export function AfAddMemberForm({
       const res = await fetch("/api/af/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, mobile, email, sponsorAfId: sponsorAfId.trim(), side }),
+        body: JSON.stringify({ name, mobile, email, sponsorAfId: sponsorAfId.trim(), side, ...bank }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not create the AF account");
@@ -80,6 +84,7 @@ export function AfAddMemberForm({
               setMobile("");
               setEmail("");
               setSide("");
+              setBank(emptyAfBank(defaultBank));
             }}
           >
             Add another
@@ -146,6 +151,14 @@ export function AfAddMemberForm({
       <div>
         <label className="label">Email</label>
         <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </div>
+
+      <div className="border-t pt-4 space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold">Bank details</h3>
+          <p className="text-xs text-muted-foreground">Withdrawals from the new AF account are paid to this account.</p>
+        </div>
+        <AfBankFields value={bank} onChange={setBank} />
       </div>
 
       <button type="submit" disabled={busy} className="btn-primary">

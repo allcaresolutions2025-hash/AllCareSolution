@@ -756,8 +756,9 @@ model PackageBvEntry {
 
 enum PackageEarningType {
   DIRECT // % of a direct (placement child's) package BV, paid on approval
-  BINARY // nightly matched-BV income
+  BINARY // matched-BV income, paid on package approval (nightly catch-up)
   TRANSFER_OUT // moved to the e-wallet (debit)
+  ADMIN_CREDIT // points added by an admin (not income; outside the payout ceiling)
 }
 
 // Append-only ledger behind PackageAccount.walletBalance.
@@ -770,11 +771,11 @@ model PackageEarning {
   grossAmount Int                @default(0) // before daily cap / ceiling scaling (paise)
   bvMatched   Int? // BINARY: BV consumed from each leg
   purchaseId  String? // DIRECT: the package that triggered it
-  runDate     String? // BINARY: IST date of the matching run
+  runDate     String? // BINARY: IST date it was paid (daily cap)
   note        String?
   createdAt   DateTime           @default(now())
 
-  @@unique([userId, runDate, type])
+  @@index([userId, runDate, type]) // BINARY can pay several times a day (on each approval)
   @@index([userId, createdAt])
   @@index([type, createdAt])
 }
@@ -799,6 +800,12 @@ model AfIdRequest {
   email         String
   sponsorAfId   String?           // AF ID to place under, as requested
   side          Slot?             // preferred side under the sponsor
+  // Bank details for the new account (null on requests made before these
+  // were collected — the requester's own details are used then).
+  bankAccountName   String?
+  bankAccountNumber String?
+  bankIfsc          String?
+  bankName          String?
   note          String?           @db.Text
   status        AfIdRequestStatus @default(PENDING)
   adminNote     String?           @db.Text

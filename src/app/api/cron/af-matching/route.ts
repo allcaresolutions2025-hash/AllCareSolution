@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { runPackageMatching } from "@/lib/package-plan";
 
-// Nightly AF Solution binary matching — see src/lib/package-plan.ts.
+// Nightly AF Solution housekeeping: lapse expired BV and settle any matching
+// not already paid on approval — see src/lib/package-plan.ts.
 // Auth: header `x-cron-secret: <CRON_SECRET>` OR `authorization: Bearer <CRON_SECRET>`.
 
 export const dynamic = "force-dynamic";

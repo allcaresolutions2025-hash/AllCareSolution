@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { AF_ID_PATTERN, AfPlacementError, createAfAccount, requireAfAccount } from "@/lib/af";
+import { AF_ID_PATTERN, AfPlacementError, afBankSchema, createAfAccount, requireAfAccount } from "@/lib/af";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({
+const bodySchema = afBankSchema.extend({
   name: z.string().trim().min(2, "Enter the account holder's name").max(80),
   mobile: z.string().trim().regex(/^[0-9]{10}$/, "Mobile must be 10 digits"),
   email: z.string().trim().email("Enter a valid email"),
@@ -19,8 +19,8 @@ const bodySchema = z.object({
 });
 
 // A signed-in AF account adds a new AF account into an open slot of its own
-// AF downline. No admin review: the account is created immediately, with the
-// creator's profile and bank details copied over (as on admin approval).
+// AF downline. No admin review: the account is created immediately with the
+// bank details entered here; other profile fields are copied from the creator.
 export async function POST(req: Request) {
   const auth = await requireAfAccount();
   if (!auth.ok) return auth.response;
@@ -41,6 +41,12 @@ export async function POST(req: Request) {
         sponsorAfId: d.sponsorAfId,
         side: d.side,
         profileFromUserId: session.user.id,
+        bank: {
+          bankAccountName: d.bankAccountName,
+          bankAccountNumber: d.bankAccountNumber,
+          bankIfsc: d.bankIfsc,
+          bankName: d.bankName,
+        },
         withinDownlineOf: session.user.id,
       });
       await tx.notification.create({

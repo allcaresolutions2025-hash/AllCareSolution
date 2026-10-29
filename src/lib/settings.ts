@@ -43,8 +43,8 @@ const ENV_DEFAULTS: Record<SettingKey, string> = {
   PKG_BV_PERCENT: process.env.PKG_BV_PERCENT ?? "40",
   // Placement parent's one-time bonus, % of the package BV.
   PKG_DIRECT_PERCENT: process.env.PKG_DIRECT_PERCENT ?? "8",
-  // Nightly matching income, % of matched (weaker-leg) BV.
-  PKG_BINARY_PERCENT: process.env.PKG_BINARY_PERCENT ?? "10",
+  // Pair matching income, % of matched (weaker-leg) BV, paid on package approval.
+  PKG_BINARY_PERCENT: process.env.PKG_BINARY_PERCENT ?? "5",
   // Max binary income per member per day = multiplier x their own package total.
   PKG_DAILY_CAP_MULTIPLIER: process.env.PKG_DAILY_CAP_MULTIPLIER ?? "2",
   // Unmatched carry-forward BV lapses after this many days.

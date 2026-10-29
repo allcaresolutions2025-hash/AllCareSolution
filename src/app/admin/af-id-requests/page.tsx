@@ -42,7 +42,11 @@ export default async function AdminAfIdRequestsPage({
     prisma.afIdRequest.findMany({
       where,
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-      include: { requester: { select: { name: true, referralCode: true } } },
+      include: {
+        requester: {
+          select: { name: true, referralCode: true, bankAccountName: true, bankAccountNumber: true, bankIfsc: true, bankName: true },
+        },
+      },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -112,12 +116,26 @@ export default async function AdminAfIdRequestsPage({
                   key={r.id}
                   row={{
                     id: r.id,
-                    requester: r.requester,
+                    requester: { name: r.requester.name, referralCode: r.requester.referralCode },
                     name: r.name,
                     mobile: r.mobile,
                     email: r.email,
                     sponsorAfId: r.sponsorAfId,
                     side: r.side,
+                    // Requests from before bank details were collected fall back to the requester's.
+                    bank: r.bankAccountNumber
+                      ? {
+                          bankAccountName: r.bankAccountName,
+                          bankAccountNumber: r.bankAccountNumber,
+                          bankIfsc: r.bankIfsc,
+                          bankName: r.bankName,
+                        }
+                      : {
+                          bankAccountName: r.requester.bankAccountName,
+                          bankAccountNumber: r.requester.bankAccountNumber,
+                          bankIfsc: r.requester.bankIfsc,
+                          bankName: r.requester.bankName,
+                        },
                     note: r.note,
                     status: r.status,
                     adminNote: r.adminNote,

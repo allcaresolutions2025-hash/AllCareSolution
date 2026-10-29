@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
-import { AF_ID_PATTERN, AfPlacementError, createAfAccount } from "@/lib/af";
+import { AF_ID_PATTERN, AfPlacementError, afBankSchema, createAfAccount } from "@/lib/af";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 const schema = z.discriminatedUnion("action", [
-  z.object({
+  afBankSchema.extend({
     action: z.literal("approve"),
     name: z.string().trim().min(2).max(80),
     mobile: z.string().trim().regex(/^[0-9]{10}$/, "Mobile must be 10 digits"),
@@ -84,6 +84,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         sponsorAfId: d.sponsorAfId || null,
         side: d.sponsorAfId ? d.side : null,
         profileFromUserId: request.requesterId,
+        bank: {
+          bankAccountName: d.bankAccountName,
+          bankAccountNumber: d.bankAccountNumber,
+          bankIfsc: d.bankIfsc,
+          bankName: d.bankName,
+        },
       });
       await tx.afIdRequest.update({
         where: { id: request.id },

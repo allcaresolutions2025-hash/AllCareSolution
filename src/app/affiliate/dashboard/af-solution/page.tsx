@@ -22,7 +22,7 @@ export default async function AfSolutionPage() {
   const [me, requests] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, phone: true, email: true },
+      select: { name: true, phone: true, email: true, bankAccountName: true, bankAccountNumber: true, bankIfsc: true, bankName: true },
     }),
     prisma.afIdRequest.findMany({
       where: { requesterId: session.user.id },
@@ -58,6 +58,12 @@ export default async function AfSolutionPage() {
       <div className="grid lg:grid-cols-[1fr_340px] gap-4 items-start">
         <AfIdRequestForm
           defaults={{ name: me.name, mobile: me.phone ?? "", email: me.email }}
+          defaultBank={{
+            bankAccountName: me.bankAccountName,
+            bankAccountNumber: me.bankAccountNumber,
+            bankIfsc: me.bankIfsc,
+            bankName: me.bankName,
+          }}
           hasPending={requests.some((r) => r.status === "PENDING")}
         />
         <div className="card p-5 text-sm space-y-2">

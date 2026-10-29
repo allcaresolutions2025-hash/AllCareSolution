@@ -3,12 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { notifyAdmins } from "@/lib/franchise";
-import { AF_ID_PATTERN } from "@/lib/af";
+import { AF_ID_PATTERN, afBankSchema } from "@/lib/af";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({
+const bodySchema = afBankSchema.extend({
   name: z.string().trim().min(2, "Enter the account holder's name").max(80),
   mobile: z.string().trim().regex(/^[0-9]{10}$/, "Mobile must be 10 digits"),
   email: z.string().trim().email("Enter a valid email"),
@@ -60,6 +60,10 @@ export async function POST(req: Request) {
         email: d.email.toLowerCase(),
         sponsorAfId: d.sponsorAfId || null,
         side: d.sponsorAfId ? d.side ?? null : null,
+        bankAccountName: d.bankAccountName,
+        bankAccountNumber: d.bankAccountNumber,
+        bankIfsc: d.bankIfsc,
+        bankName: d.bankName,
         note: d.note || null,
       },
     });

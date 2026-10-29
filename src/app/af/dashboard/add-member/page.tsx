@@ -14,7 +14,7 @@ export default async function AfAddMemberPage({ searchParams }: { searchParams: 
 
   const me = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { referralCode: true },
+    select: { referralCode: true, bankAccountName: true, bankAccountNumber: true, bankIfsc: true, bankName: true },
   });
   if (!me) return null;
 
@@ -31,11 +31,20 @@ export default async function AfAddMemberPage({ searchParams }: { searchParams: 
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Create a new AF account in an open slot under you or anyone in your AF tree. The account is created
-          immediately, and your profile and bank details are copied to it.
+          immediately. Bank details start as yours. Change them if the new account holder banks elsewhere.
         </p>
       </div>
 
-      <AfAddMemberForm defaultSponsor={defaultSponsor} defaultSide={defaultSide} />
+      <AfAddMemberForm
+        defaultSponsor={defaultSponsor}
+        defaultSide={defaultSide}
+        defaultBank={{
+          bankAccountName: me.bankAccountName,
+          bankAccountNumber: me.bankAccountNumber,
+          bankIfsc: me.bankIfsc,
+          bankName: me.bankName,
+        }}
+      />
     </div>
   );
 }

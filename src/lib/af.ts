@@ -14,6 +14,7 @@ import { customAlphabet } from "nanoid";
 import { getServerSession, type Session } from "next-auth";
 import { NextResponse } from "next/server";
 import { Prisma, Slot } from "@prisma/client";
+import { z } from "zod";
 import { authOptions } from "./auth";
 import { prisma } from "./db";
 import { MAX_DOWNLINE_DEPTH, type DownlineNode } from "./network";
@@ -21,6 +22,19 @@ import { MAX_DOWNLINE_DEPTH, type DownlineNode } from "./network";
 const digits = customAlphabet("0123456789", 8);
 
 export const AF_ID_PATTERN = /^AF[0-9]{8}$/;
+
+/** Bank details collected when an AF account is created (same rules as member registration). */
+export const afBankSchema = z.object({
+  bankAccountName: z.string().trim().min(2, "Enter the account holder name as in the bank").max(80),
+  bankAccountNumber: z.string().trim().regex(/^[0-9]{9,18}$/, "Invalid account number"),
+  bankIfsc: z
+    .string()
+    .trim()
+    .transform((s) => s.toUpperCase())
+    .refine((s) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(s), "Invalid IFSC"),
+  bankName: z.string().trim().min(2, "Enter the bank name").max(80),
+});
+export type AfBankDetails = z.infer<typeof afBankSchema>;
 
 export async function generateUniqueAfId(tx: Prisma.TransactionClient): Promise<string> {
   for (let i = 0; i < 20; i++) {
@@ -49,9 +63,10 @@ export class AfPlacementError extends Error {}
 
 /**
  * Create an AF account under `sponsorAfId` on `side` (or as a top-level
- * account when no sponsor is given). Profile and bank details are copied from
- * the requesting main member so payouts work without re-entry. The first
- * password is the mobile number and must be changed on first login.
+ * account when no sponsor is given). Profile details are copied from
+ * `profileFromUserId`; bank details come from `bank` when given, otherwise
+ * from that same user. The first password is the mobile number and must be
+ * changed on first login.
  */
 export async function createAfAccount(
   tx: Prisma.TransactionClient,
@@ -62,6 +77,7 @@ export async function createAfAccount(
     sponsorAfId: string | null;
     side: Slot | null;
     profileFromUserId: string;
+    bank?: AfBankDetails;
     // When set, the sponsor must be this account or sit in its AF downline
     // (an AF account adding to its own tree).
     withinDownlineOf?: string;
@@ -122,6 +138,7 @@ export async function createAfAccount(
       afReferrerId,
       afSlot,
       ...profile,
+      ...input.bank,
       wallet: { create: {} },
     },
     select: { id: true },
