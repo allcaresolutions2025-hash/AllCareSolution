@@ -14,22 +14,18 @@ export function AfAddMemberForm({
   openSlots,
   defaultSlot,
   feePoints,
-  defaultProfile,
-  defaultBank,
 }: {
   openSlots: OpenSlot[];
   defaultSlot: string; // "AF12345678:LEFT", or "" for none chosen
   feePoints: number;
-  defaultProfile: Parameters<typeof emptyAfProfile>[0];
-  defaultBank: Partial<Record<keyof AfBankValue, string | null>>;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [slot, setSlot] = useState(defaultSlot);
-  const [profile, setProfile] = useState<AfProfileValue>(() => emptyAfProfile(defaultProfile));
-  const [bank, setBank] = useState<AfBankValue>(() => emptyAfBank(defaultBank));
+  const [profile, setProfile] = useState<AfProfileValue>(emptyAfProfile);
+  const [bank, setBank] = useState<AfBankValue>(emptyAfBank);
   const [busy, setBusy] = useState(false);
   const [requested, setRequested] = useState<{ name: string; placement: string } | null>(null);
 
@@ -80,8 +76,8 @@ export function AfAddMemberForm({
             setMobile("");
             setEmail("");
             setSlot("");
-            setProfile(emptyAfProfile(defaultProfile));
-            setBank(emptyAfBank(defaultBank));
+            setProfile(emptyAfProfile());
+            setBank(emptyAfBank());
           }}
         >
           Request another
@@ -144,9 +140,7 @@ export function AfAddMemberForm({
       <div className="border-t pt-4 space-y-3">
         <div>
           <h3 className="text-sm font-semibold">Personal details</h3>
-          <p className="text-xs text-muted-foreground">
-            Prefilled with yours. Change them to the new account holder&apos;s details.
-          </p>
+          <p className="text-xs text-muted-foreground">Enter the new account holder&apos;s own details.</p>
         </div>
         <AfProfileFields value={profile} onChange={setProfile} />
       </div>

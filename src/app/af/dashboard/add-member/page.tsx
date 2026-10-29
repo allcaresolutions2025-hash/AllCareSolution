@@ -23,19 +23,7 @@ export default async function AfAddMemberPage({ searchParams }: { searchParams: 
   const [me, downline, pending, requests, feePoints] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: {
-        id: true,
-        name: true,
-        referralCode: true,
-        nominee: true,
-        gender: true,
-        address: true,
-        panNumber: true,
-        bankAccountName: true,
-        bankAccountNumber: true,
-        bankIfsc: true,
-        bankName: true,
-      },
+      select: { id: true, name: true, referralCode: true },
     }),
     getAfDownline(session.user.id),
     prisma.afIdRequest.findMany({
@@ -84,9 +72,8 @@ export default async function AfAddMemberPage({ searchParams }: { searchParams: 
           Request a new AF account in an open slot under you or anyone in your AF tree. Pick the position: the new
           account is placed directly under that parent. Each new AF ID costs{" "}
           <strong>{feePoints} pts</strong>, paid to the admin. Once the admin confirms the payment and approves, the AF ID
-          appears below and the new member can sign in, build their tree and request packages. PAN, nominee, address
-          and bank details start as yours. Change them to the new account holder&apos;s details. They can only be
-          changed by the admin later.
+          appears below and the new member can sign in, build their tree and request packages. Enter the new account
+          holder&apos;s own PAN, nominee, address and bank details. They can only be changed by the admin later.
         </p>
       </div>
 
@@ -94,13 +81,6 @@ export default async function AfAddMemberPage({ searchParams }: { searchParams: 
         openSlots={openSlots}
         defaultSlot={defaultSlot}
         feePoints={feePoints}
-        defaultProfile={{ nominee: me.nominee, gender: me.gender, address: me.address, panNumber: me.panNumber }}
-        defaultBank={{
-          bankAccountName: me.bankAccountName,
-          bankAccountNumber: me.bankAccountNumber,
-          bankIfsc: me.bankIfsc,
-          bankName: me.bankName,
-        }}
       />
 
       <div className="card">

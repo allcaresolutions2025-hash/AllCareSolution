@@ -8,25 +8,19 @@ import { AfBankFields, emptyAfBank, type AfBankValue } from "@/components/af-ban
 import { AfProfileFields, emptyAfProfile, type AfProfileValue } from "@/components/af-profile-fields";
 
 export function AfIdRequestForm({
-  defaults,
-  defaultProfile,
-  defaultBank,
   hasPending,
 }: {
-  defaults: { name: string; mobile: string; email: string };
-  defaultProfile: Parameters<typeof emptyAfProfile>[0];
-  defaultBank: Partial<Record<keyof AfBankValue, string | null>>;
   hasPending: boolean;
 }) {
   const router = useRouter();
-  const [name, setName] = useState(defaults.name);
-  const [mobile, setMobile] = useState(defaults.mobile);
-  const [email, setEmail] = useState(defaults.email);
+  const [name, setName] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [email, setEmail] = useState("");
   const [sponsorAfId, setSponsorAfId] = useState("");
   const [side, setSide] = useState<"" | "LEFT" | "RIGHT">("");
   const [note, setNote] = useState("");
-  const [profile, setProfile] = useState<AfProfileValue>(() => emptyAfProfile(defaultProfile));
-  const [bank, setBank] = useState<AfBankValue>(() => emptyAfBank(defaultBank));
+  const [profile, setProfile] = useState<AfProfileValue>(emptyAfProfile);
+  const [bank, setBank] = useState<AfBankValue>(emptyAfBank);
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -105,7 +99,7 @@ export function AfIdRequestForm({
       <div className="space-y-2">
         <div>
           <h3 className="text-sm font-semibold">Personal details for the AF account</h3>
-          <p className="text-xs text-muted-foreground">Prefilled with yours. Change them if the account is for someone else.</p>
+          <p className="text-xs text-muted-foreground">Enter the account holder&apos;s own details.</p>
         </div>
         <AfProfileFields value={profile} onChange={setProfile} />
       </div>
@@ -113,7 +107,7 @@ export function AfIdRequestForm({
       <div className="space-y-2">
         <div>
           <h3 className="text-sm font-semibold">Bank details for the AF account</h3>
-          <p className="text-xs text-muted-foreground">Prefilled with yours. Change them if the account holder banks elsewhere.</p>
+          <p className="text-xs text-muted-foreground">Withdrawals from the AF account are paid to this account.</p>
         </div>
         <AfBankFields value={bank} onChange={setBank} />
       </div>

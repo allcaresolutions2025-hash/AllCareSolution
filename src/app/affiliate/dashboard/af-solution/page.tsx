@@ -20,23 +20,7 @@ export default async function AfSolutionPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [me, requests, feePoints] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        name: true,
-        phone: true,
-        email: true,
-        nominee: true,
-        gender: true,
-        address: true,
-        panNumber: true,
-        bankAccountName: true,
-        bankAccountNumber: true,
-        bankIfsc: true,
-        bankName: true,
-      },
-    }),
+  const [requests, feePoints] = await Promise.all([
     prisma.afIdRequest.findMany({
       where: { requesterId: session.user.id },
       orderBy: { createdAt: "desc" },
@@ -44,7 +28,6 @@ export default async function AfSolutionPage() {
     }),
     getSetting("AF_ID_FEE_POINTS"),
   ]);
-  if (!me) return null;
 
   return (
     <div className="space-y-6">
@@ -71,14 +54,6 @@ export default async function AfSolutionPage() {
 
       <div className="grid lg:grid-cols-[1fr_340px] gap-4 items-start">
         <AfIdRequestForm
-          defaults={{ name: me.name, mobile: me.phone ?? "", email: me.email }}
-          defaultProfile={{ nominee: me.nominee, gender: me.gender, address: me.address, panNumber: me.panNumber }}
-          defaultBank={{
-            bankAccountName: me.bankAccountName,
-            bankAccountNumber: me.bankAccountNumber,
-            bankIfsc: me.bankIfsc,
-            bankName: me.bankName,
-          }}
           hasPending={requests.some((r) => r.status === "PENDING")}
         />
         <div className="card p-5 text-sm space-y-2">
