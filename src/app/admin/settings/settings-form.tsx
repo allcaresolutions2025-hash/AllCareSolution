@@ -21,6 +21,7 @@ export function SettingsForm({ initial }: { initial: Record<string, number> }) {
     PKG_DAILY_CAP_MULTIPLIER: initial.PKG_DAILY_CAP_MULTIPLIER,
     PKG_CARRY_EXPIRY_DAYS: initial.PKG_CARRY_EXPIRY_DAYS,
     PKG_PAYOUT_CEILING_PERCENT: initial.PKG_PAYOUT_CEILING_PERCENT,
+    AF_ID_FEE_POINTS: initial.AF_ID_FEE_POINTS,
   });
   const [loading, setLoading] = useState(false);
 
@@ -133,6 +134,11 @@ export function SettingsForm({ initial }: { initial: Record<string, number> }) {
           label="Payout ceiling % of 30-day package points"
           value={form.PKG_PAYOUT_CEILING_PERCENT}
           onChange={(v) => setForm({ ...form, PKG_PAYOUT_CEILING_PERCENT: v })}
+        />
+        <Field
+          label="New AF ID fee (pts, collected offline)"
+          value={form.AF_ID_FEE_POINTS}
+          onChange={(v) => setForm({ ...form, AF_ID_FEE_POINTS: v })}
         />
       </Section>
       <button type="submit" disabled={loading} className="btn-primary">

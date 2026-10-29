@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getSetting } from "@/lib/settings";
 import { formatDateShort } from "@/lib/date";
 import { AfIdRequestForm } from "./af-id-request-form";
 import { Crown, LogIn } from "lucide-react";
@@ -19,7 +20,7 @@ export default async function AfSolutionPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [me, requests] = await Promise.all([
+  const [me, requests, feePoints] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { name: true, phone: true, email: true, bankAccountName: true, bankAccountNumber: true, bankIfsc: true, bankName: true },
@@ -29,6 +30,7 @@ export default async function AfSolutionPage() {
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
+    getSetting("AF_ID_FEE_POINTS"),
   ]);
   if (!me) return null;
 
@@ -69,8 +71,10 @@ export default async function AfSolutionPage() {
         <div className="card p-5 text-sm space-y-2">
           <h2 className="font-semibold">How it works</h2>
           <ol className="list-decimal pl-5 space-y-1 text-muted-foreground">
-            <li>Send a request for a new AF ID.</li>
-            <li>The admin reviews it, places the account in the AF tree and creates it.</li>
+            <li>
+              Send a request for a new AF ID and pay the <strong>{feePoints}-pt</strong> AF ID fee to the admin.
+            </li>
+            <li>The admin confirms the fee, places the account in the AF tree and creates it.</li>
             <li>Your AF ID appears in the list below.</li>
             <li>
               Sign in at <strong>AF Login</strong> with the AF ID. The first password is the mobile number. Change it after

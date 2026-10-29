@@ -4,6 +4,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { AfBankFields, emptyAfBank, type AfBankValue } from "@/components/af-bank-fields";
+import { PAISE_PER_POINT } from "@/lib/money";
 
 const BADGE: Record<string, string> = {
   PENDING: "badge-amber",
@@ -21,6 +22,7 @@ export type AfIdRequestRowData = {
   side: "LEFT" | "RIGHT" | null;
   bank: Partial<Record<keyof AfBankValue, string | null>>;
   note: string | null;
+  fee: number; // paise; 0 on requests from before the fee
   status: "PENDING" | "APPROVED" | "REJECTED";
   adminNote: string | null;
   createdAfId: string | null;
@@ -37,6 +39,8 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
   const [sponsorAfId, setSponsorAfId] = useState(row.sponsorAfId ?? "");
   const [side, setSide] = useState<"LEFT" | "RIGHT">(row.side ?? "LEFT");
   const [bank, setBank] = useState<AfBankValue>(() => emptyAfBank(row.bank));
+  const [feeReceived, setFeeReceived] = useState(false);
+  const feePts = row.fee / PAISE_PER_POINT;
 
   async function send(body: Record<string, unknown>) {
     setLoading(true);
@@ -59,7 +63,16 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
     const sponsor = sponsorAfId.trim();
     const where = sponsor ? `${side.toLowerCase()} of ${sponsor}` : "as a top-level account (no sponsor)";
     if (!confirm(`Create an AF account for ${name}, placed ${where}?`)) return;
-    const data = await send({ action: "approve", name, mobile, email, sponsorAfId: sponsor, side: sponsor ? side : null, ...bank });
+    const data = await send({
+      action: "approve",
+      name,
+      mobile,
+      email,
+      sponsorAfId: sponsor,
+      side: sponsor ? side : null,
+      feeReceived,
+      ...bank,
+    });
     if (data) {
       toast.success(`AF ID ${data.afId} created.`);
       setOpen(false);
@@ -97,6 +110,7 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
             </div>
           )}
           {row.note && <div className="text-xs text-muted-foreground mt-1 max-w-[240px]">“{row.note}”</div>}
+          {row.fee > 0 && <div className="text-xs font-medium mt-1">Fee: {feePts} pts (offline)</div>}
         </td>
         <td className="px-4 py-3 text-xs">
           {row.sponsorAfId ? (
@@ -173,6 +187,17 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
               <div className="sm:col-span-2 lg:col-span-3">
                 <AfBankFields value={bank} onChange={setBank} />
               </div>
+              {row.fee > 0 && (
+                <label className="sm:col-span-2 lg:col-span-3 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={feeReceived}
+                    onChange={(e) => setFeeReceived(e.target.checked)}
+                    required
+                  />
+                  I have received the {feePts}-pt AF ID fee from {row.requester.name} ({row.requester.referralCode}).
+                </label>
+              )}
               <button type="submit" disabled={loading} className="btn-primary">
                 {loading ? "Creating…" : "Create AF account"}
               </button>

@@ -61,8 +61,8 @@ export default async function AdminAfIdRequestsPage({
           AF ID Requests
         </h1>
         <p className="text-sm text-muted-foreground">
-          Members request new AF accounts here. Approve to create the account at the placement you choose. The AF ID is
-          sent back to the member.
+          Members and AF accounts request new AF accounts here. Collect the AF ID fee offline, then approve to create the
+          account at the placement you choose. The AF ID is sent back to whoever requested it.
           {pendingCount > 0 && (
             <>
               {" "}· <strong>{pendingCount} pending</strong>
@@ -137,6 +137,7 @@ export default async function AdminAfIdRequestsPage({
                           bankName: r.requester.bankName,
                         },
                     note: r.note,
+                    fee: r.fee,
                     status: r.status,
                     adminNote: r.adminNote,
                     createdAfId: r.createdAfId,

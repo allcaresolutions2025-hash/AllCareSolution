@@ -1,12 +1,13 @@
 // AF Solution accounts.
 //
 // An AF account is a separate login (AF-prefixed ID, e.g. AF12345678) with its
-// own binary tree (User.afReferrerId / afSlot). Accounts are created two ways:
-//  - a main member raises an AfIdRequest from their dashboard, the admin picks
-//    the placement and creates the account;
-//  - a signed-in AF account adds one directly into an open slot in its own AF
-//    downline (/af/dashboard/add-member).
-// Either way the first password is the mobile number. Inside the AF portal
+// own binary tree (User.afReferrerId / afSlot). Every new account starts as an
+// AfIdRequest, raised either by a main member from their dashboard or by a
+// signed-in AF account for an open slot in its own AF downline
+// (/af/dashboard/add-member). Each request carries the AF_ID_FEE_POINTS fee,
+// paid to the admin offline; the admin confirms the fee, picks the final
+// placement and creates the account, and the AF ID goes back to the requester.
+// The first password is the mobile number. Inside the AF portal
 // (/af/dashboard) the account requests packages — see package-plan.ts.
 
 import bcrypt from "bcryptjs";
@@ -78,38 +79,11 @@ export async function createAfAccount(
     side: Slot | null;
     profileFromUserId: string;
     bank?: AfBankDetails;
-    // When set, the sponsor must be this account or sit in its AF downline
-    // (an AF account adding to its own tree).
-    withinDownlineOf?: string;
   },
 ): Promise<{ id: string; afId: string }> {
-  let afReferrerId: string | null = null;
-  let afSlot: Slot | null = null;
-  if (input.withinDownlineOf && !input.sponsorAfId) {
-    throw new AfPlacementError("Choose the AF ID to place the new account under.");
-  }
-  if (input.sponsorAfId) {
-    const sponsor = await tx.user.findUnique({
-      where: { referralCode: input.sponsorAfId },
-      select: { id: true, isAf: true },
-    });
-    if (!sponsor?.isAf) throw new AfPlacementError(`No AF account found with ID ${input.sponsorAfId}.`);
-    if (input.withinDownlineOf && !(await isInAfDownline(tx, input.withinDownlineOf, sponsor.id))) {
-      throw new AfPlacementError(`${input.sponsorAfId} is not in your AF tree.`);
-    }
-    if (!input.side) throw new AfPlacementError("Choose LEFT or RIGHT under the sponsor.");
-    const taken = await tx.user.findFirst({
-      where: { afReferrerId: sponsor.id, afSlot: input.side },
-      select: { referralCode: true },
-    });
-    if (taken) {
-      throw new AfPlacementError(
-        `The ${input.side} slot under ${input.sponsorAfId} is already taken by ${taken.referralCode}.`,
-      );
-    }
-    afReferrerId = sponsor.id;
-    afSlot = input.side;
-  }
+  const placement = await resolveAfPlacement(tx, input);
+  const afReferrerId = placement?.sponsorId ?? null;
+  const afSlot = placement?.side ?? null;
 
   const profile = await tx.user.findUnique({
     where: { id: input.profileFromUserId },
@@ -144,6 +118,40 @@ export async function createAfAccount(
     select: { id: true },
   });
   return { id: user.id, afId };
+}
+
+/**
+ * Check that the `side` slot under `sponsorAfId` is open (and, with
+ * `withinDownlineOf`, that the sponsor is that account or in its AF downline).
+ * Returns null for a top-level account (no sponsor).
+ */
+export async function resolveAfPlacement(
+  tx: Prisma.TransactionClient,
+  input: { sponsorAfId: string | null; side: Slot | null; withinDownlineOf?: string },
+): Promise<{ sponsorId: string; side: Slot } | null> {
+  if (input.withinDownlineOf && !input.sponsorAfId) {
+    throw new AfPlacementError("Choose the AF ID to place the new account under.");
+  }
+  if (!input.sponsorAfId) return null;
+  const sponsor = await tx.user.findUnique({
+    where: { referralCode: input.sponsorAfId },
+    select: { id: true, isAf: true },
+  });
+  if (!sponsor?.isAf) throw new AfPlacementError(`No AF account found with ID ${input.sponsorAfId}.`);
+  if (input.withinDownlineOf && !(await isInAfDownline(tx, input.withinDownlineOf, sponsor.id))) {
+    throw new AfPlacementError(`${input.sponsorAfId} is not in your AF tree.`);
+  }
+  if (!input.side) throw new AfPlacementError("Choose LEFT or RIGHT under the sponsor.");
+  const taken = await tx.user.findFirst({
+    where: { afReferrerId: sponsor.id, afSlot: input.side },
+    select: { referralCode: true },
+  });
+  if (taken) {
+    throw new AfPlacementError(
+      `The ${input.side} slot under ${input.sponsorAfId} is already taken by ${taken.referralCode}.`,
+    );
+  }
+  return { sponsorId: sponsor.id, side: input.side };
 }
 
 /** True when `userId` is `rootUserId` itself or anywhere below it in the AF tree (no depth cap). */

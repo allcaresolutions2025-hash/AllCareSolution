@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { UserPlus, CheckCircle2 } from "lucide-react";
+import { UserPlus, Clock } from "lucide-react";
 import { AfBankFields, emptyAfBank, type AfBankValue } from "@/components/af-bank-fields";
 
 export function AfAddMemberForm({
   defaultSponsor,
   defaultSide,
+  feePoints,
   defaultBank,
 }: {
   defaultSponsor: string;
   defaultSide: "" | "LEFT" | "RIGHT";
+  feePoints: number;
   defaultBank: Partial<Record<keyof AfBankValue, string | null>>;
 }) {
   const router = useRouter();
@@ -24,7 +25,7 @@ export function AfAddMemberForm({
   const [side, setSide] = useState<"" | "LEFT" | "RIGHT">(defaultSide);
   const [bank, setBank] = useState<AfBankValue>(() => emptyAfBank(defaultBank));
   const [busy, setBusy] = useState(false);
-  const [created, setCreated] = useState<{ afId: string; name: string; mobile: string } | null>(null);
+  const [requested, setRequested] = useState<{ name: string; placement: string } | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,56 +41,43 @@ export function AfAddMemberForm({
         body: JSON.stringify({ name, mobile, email, sponsorAfId: sponsorAfId.trim(), side, ...bank }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Could not create the AF account");
-      toast.success(`AF ID ${json.afId} created`);
-      setCreated({ afId: json.afId, name, mobile });
+      if (!res.ok) throw new Error(json.error || "Could not send the request");
+      toast.success("AF ID request sent to the admin");
+      setRequested({ name, placement: `${side.toLowerCase()} of ${sponsorAfId.trim()}` });
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not create the AF account");
+      toast.error(err instanceof Error ? err.message : "Could not send the request");
     } finally {
       setBusy(false);
     }
   }
 
-  if (created) {
+  if (requested) {
     return (
       <div className="card p-5 space-y-4 bg-af-soft border-af-200">
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-6 w-6 text-af-600" />
-          <h2 className="font-semibold">AF account created for {created.name}</h2>
+          <Clock className="h-6 w-6 text-af-600" />
+          <h2 className="font-semibold">Request sent for {requested.name}</h2>
         </div>
-        <div className="grid sm:grid-cols-2 gap-3 text-sm">
-          <div>
-            <div className="text-xs text-muted-foreground">AF ID</div>
-            <code className="font-mono text-lg font-bold">{created.afId}</code>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">First password (mobile)</div>
-            <code className="font-mono text-lg font-bold">{created.mobile}</code>
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Share these with the new member. They sign in at AF Login and must change the password on first login.
+        <p className="text-sm text-muted-foreground">
+          Pay the <strong>{feePoints}-pt</strong> AF ID fee to the admin. Once they confirm it and approve, the account
+          is created {requested.placement} and its AF ID appears in your requests below. The first password is the
+          mobile number.
         </p>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/af/dashboard/tree" className="btn-primary">
-            View AF tree
-          </Link>
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={() => {
-              setCreated(null);
-              setName("");
-              setMobile("");
-              setEmail("");
-              setSide("");
-              setBank(emptyAfBank(defaultBank));
-            }}
-          >
-            Add another
-          </button>
-        </div>
+        <button
+          type="button"
+          className="btn-outline"
+          onClick={() => {
+            setRequested(null);
+            setName("");
+            setMobile("");
+            setEmail("");
+            setSide("");
+            setBank(emptyAfBank(defaultBank));
+          }}
+        >
+          Request another
+        </button>
       </div>
     );
   }
@@ -101,8 +89,10 @@ export function AfAddMemberForm({
           <UserPlus className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="font-semibold">New AF account</h2>
-          <p className="text-xs text-muted-foreground">The mobile number is the first-login password</p>
+          <h2 className="font-semibold">Request a new AF account</h2>
+          <p className="text-xs text-muted-foreground">
+            Fee {feePoints} pts, paid to the admin · the mobile number is the first-login password
+          </p>
         </div>
       </div>
 
@@ -162,7 +152,7 @@ export function AfAddMemberForm({
       </div>
 
       <button type="submit" disabled={busy} className="btn-primary">
-        {busy ? "Creating…" : "Create AF account"}
+        {busy ? "Sending…" : "Send request to admin"}
       </button>
     </form>
   );

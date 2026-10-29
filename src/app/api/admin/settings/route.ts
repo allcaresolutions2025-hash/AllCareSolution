@@ -27,6 +27,7 @@ export async function POST(req: Request) {
       setSetting("PKG_DAILY_CAP_MULTIPLIER", data.PKG_DAILY_CAP_MULTIPLIER),
       setSetting("PKG_CARRY_EXPIRY_DAYS", data.PKG_CARRY_EXPIRY_DAYS),
       setSetting("PKG_PAYOUT_CEILING_PERCENT", data.PKG_PAYOUT_CEILING_PERCENT),
+      setSetting("AF_ID_FEE_POINTS", data.AF_ID_FEE_POINTS),
     ]);
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { notifyAdmins } from "@/lib/franchise";
+import { getSetting } from "@/lib/settings";
+import { PAISE_PER_POINT, pointsToPaise } from "@/lib/money";
 import { AF_ID_PATTERN, afBankSchema } from "@/lib/af";
 import { z } from "zod";
 
@@ -23,7 +25,8 @@ const bodySchema = afBankSchema.extend({
 });
 
 // A main member asks the admin for a new AF account. One open request at a
-// time; the admin picks the final placement when creating the account.
+// time; the admin collects the AF_ID_FEE_POINTS fee offline and picks the
+// final placement when creating the account.
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
@@ -50,6 +53,7 @@ export async function POST(req: Request) {
     select: { name: true, referralCode: true },
   });
   if (!me) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  const fee = pointsToPaise(await getSetting("AF_ID_FEE_POINTS"));
 
   await prisma.$transaction(async (tx) => {
     await tx.afIdRequest.create({
@@ -65,12 +69,13 @@ export async function POST(req: Request) {
         bankIfsc: d.bankIfsc,
         bankName: d.bankName,
         note: d.note || null,
+        fee,
       },
     });
     await notifyAdmins(
       tx,
       "New AF ID request",
-      `${me.name} (${me.referralCode}) requested an AF ID for ${d.name}${d.sponsorAfId ? ` under ${d.sponsorAfId}${d.side ? ` (${d.side})` : ""}` : ""}.`,
+      `${me.name} (${me.referralCode}) requested an AF ID for ${d.name}${d.sponsorAfId ? ` under ${d.sponsorAfId}${d.side ? ` (${d.side})` : ""}` : ""}. Fee: ${fee / PAISE_PER_POINT} pts, to be collected offline.`,
     );
   });
 

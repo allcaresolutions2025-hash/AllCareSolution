@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
+import { PAISE_PER_POINT } from "@/lib/money";
 import { AF_ID_PATTERN, AfPlacementError, afBankSchema, createAfAccount } from "@/lib/af";
 import { z } from "zod";
 
@@ -19,14 +20,16 @@ const schema = z.discriminatedUnion("action", [
       .transform((s) => s.toUpperCase())
       .refine((s) => s === "" || AF_ID_PATTERN.test(s), "Sponsor must be an AF ID like AF12345678"),
     side: z.enum(["LEFT", "RIGHT"]).nullable(),
+    feeReceived: z.boolean().optional(),
     note: z.string().max(500).optional(),
   }),
   z.object({ action: z.literal("reject"), note: z.string().max(500).optional() }),
 ]);
 
 // Admin review of an AF ID request.
-//  - approve → creates the AF account at the chosen placement and sends the
-//    AF ID back to the requester
+//  - approve → the admin confirms the AF ID fee was received offline, then
+//    the AF account is created at the chosen placement and the AF ID is sent
+//    back to the requester
 //  - reject  → declines with an optional note
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const auth = await requireAdmin();
@@ -68,6 +71,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ ok: true });
   }
 
+  if (request.fee > 0 && !d.feeReceived) {
+    return NextResponse.json(
+      { error: `Confirm the ${request.fee / PAISE_PER_POINT}-pt AF ID fee has been received before approving.` },
+      { status: 400 },
+    );
+  }
+
   try {
     const created = await prisma.$transaction(async (tx) => {
       // Conditional flip guards against a double approve from two tabs.
@@ -107,7 +117,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           actorId: reviewerId,
           action: "AF_ACCOUNT_CREATED",
           target: account.id,
-          metadata: JSON.stringify({ requestId: request.id, afId: account.afId, sponsorAfId: d.sponsorAfId || null, side: d.side }),
+          metadata: JSON.stringify({
+            requestId: request.id,
+            afId: account.afId,
+            sponsorAfId: d.sponsorAfId || null,
+            side: d.side,
+            feeReceived: request.fee,
+          }),
         },
       });
       return account;

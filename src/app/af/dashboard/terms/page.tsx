@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPackageConfig } from "@/lib/package-plan";
+import { getSetting } from "@/lib/settings";
 import { getSiteBrand } from "@/lib/brand";
 import { formatDateTime } from "@/lib/date";
 import { AcceptTermsButton } from "./accept-terms-button";
@@ -18,10 +19,11 @@ export default async function AfTermsPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [cfg, brand, me] = await Promise.all([
+  const [cfg, brand, me, afIdFee] = await Promise.all([
     getPackageConfig(),
     getSiteBrand(),
     prisma.user.findUnique({ where: { id: session.user.id }, select: { afTermsAcceptedAt: true } }),
+    getSetting("AF_ID_FEE_POINTS"),
   ]);
   const company = brand.siteName;
   const starterBv = Math.floor((cfg.starterPoints * cfg.bvPercent) / 100);
@@ -115,7 +117,12 @@ export default async function AfTermsPage() {
         <Section n={4} title="AF Account creation">
           <Clause>
             An AF Account may be requested only through the AF Solution section of the Participant&apos;s member
-            dashboard. The Company may approve or reject any request at its sole discretion, without assigning reasons.
+            dashboard, or by an AF Account for an open position in its own AF Tree. The Company may approve or reject
+            any request at its sole discretion, without assigning reasons.
+          </Clause>
+          <Clause>
+            Each new AF Account carries a fee of {afIdFee} Points, paid to the Company before the request is approved.
+            The fee is for creating the AF Account only. It is not a Package and does not create BV or any income.
           </Clause>
           <Clause>
             Placement in the AF Tree (Sponsor and Left or Right position) is decided by the Company at the time of

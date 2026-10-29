@@ -807,6 +807,9 @@ model AfIdRequest {
   bankIfsc          String?
   bankName          String?
   note          String?           @db.Text
+  // New AF ID fee in paise, snapshot at request time. Paid to the admin
+  // offline; the admin confirms receipt when approving. 0 on older requests.
+  fee           Int               @default(0)
   status        AfIdRequestStatus @default(PENDING)
   adminNote     String?           @db.Text
   reviewerId    String?

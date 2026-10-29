@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { AF_ID_PATTERN, AfPlacementError, afBankSchema, createAfAccount, requireAfAccount } from "@/lib/af";
+import { notifyAdmins } from "@/lib/franchise";
+import { getSetting } from "@/lib/settings";
+import { PAISE_PER_POINT, pointsToPaise } from "@/lib/money";
+import { AF_ID_PATTERN, AfPlacementError, afBankSchema, requireAfAccount, resolveAfPlacement } from "@/lib/af";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +20,10 @@ const bodySchema = afBankSchema.extend({
   side: z.enum(["LEFT", "RIGHT"], { errorMap: () => ({ message: "Choose LEFT or RIGHT" }) }),
 });
 
-// A signed-in AF account adds a new AF account into an open slot of its own
-// AF downline. No admin review: the account is created immediately with the
-// bank details entered here; other profile fields are copied from the creator.
+// A signed-in AF account requests a new AF account for an open slot of its
+// own AF downline. Nothing is created here: the request carries the
+// AF_ID_FEE_POINTS fee (paid to the admin offline), and the admin creates the
+// account on approval — see /api/admin/af/id-requests/[id].
 export async function POST(req: Request) {
   const auth = await requireAfAccount();
   if (!auth.ok) return auth.response;
@@ -31,47 +34,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? "Invalid request" }, { status: 400 });
   }
   const d = parsed.data;
+  const fee = pointsToPaise(await getSetting("AF_ID_FEE_POINTS"));
 
   try {
-    const created = await prisma.$transaction(async (tx) => {
-      const account = await createAfAccount(tx, {
-        name: d.name,
-        mobile: d.mobile,
-        email: d.email,
-        sponsorAfId: d.sponsorAfId,
-        side: d.side,
-        profileFromUserId: session.user.id,
-        bank: {
+    await prisma.$transaction(async (tx) => {
+      await resolveAfPlacement(tx, { sponsorAfId: d.sponsorAfId, side: d.side, withinDownlineOf: session.user.id });
+      const queued = await tx.afIdRequest.findFirst({
+        where: { status: "PENDING", sponsorAfId: d.sponsorAfId, side: d.side },
+        select: { id: true },
+      });
+      if (queued) {
+        throw new AfPlacementError(
+          `A request for the ${d.side} slot under ${d.sponsorAfId} is already awaiting admin review.`,
+        );
+      }
+
+      await tx.afIdRequest.create({
+        data: {
+          requesterId: session.user.id,
+          name: d.name,
+          mobile: d.mobile,
+          email: d.email.toLowerCase(),
+          sponsorAfId: d.sponsorAfId,
+          side: d.side,
           bankAccountName: d.bankAccountName,
           bankAccountNumber: d.bankAccountNumber,
           bankIfsc: d.bankIfsc,
           bankName: d.bankName,
-        },
-        withinDownlineOf: session.user.id,
-      });
-      await tx.notification.create({
-        data: {
-          userId: session.user.id,
-          title: "New AF account created",
-          body: `AF ID ${account.afId} has been created for ${d.name} under ${d.sponsorAfId} (${d.side}). The first password is the mobile number ${d.mobile}.`,
+          fee,
         },
       });
-      await tx.auditLog.create({
-        data: {
-          actorId: session.user.id,
-          action: "AF_ACCOUNT_CREATED_BY_AF",
-          target: account.id,
-          metadata: JSON.stringify({ afId: account.afId, sponsorAfId: d.sponsorAfId, side: d.side }),
-        },
-      });
-      return account;
+      await notifyAdmins(
+        tx,
+        "New AF ID request",
+        `${session.user.name} (${session.user.referralCode}) requested an AF ID for ${d.name} under ${d.sponsorAfId} (${d.side}). Fee: ${fee / PAISE_PER_POINT} pts, to be collected offline.`,
+      );
     });
-    return NextResponse.json({ ok: true, afId: created.afId });
+    return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof AfPlacementError) return NextResponse.json({ error: e.message }, { status: 400 });
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return NextResponse.json({ error: "That slot was just taken. Pick another placement." }, { status: 400 });
-    }
     throw e;
   }
 }

@@ -89,4 +89,5 @@ export const settingsSchema = z.object({
   PKG_DAILY_CAP_MULTIPLIER: z.number().min(0).max(20),
   PKG_CARRY_EXPIRY_DAYS: z.number().int().min(1).max(3650),
   PKG_PAYOUT_CEILING_PERCENT: z.number().min(0).max(100),
+  AF_ID_FEE_POINTS: z.number().int().min(0),
 });

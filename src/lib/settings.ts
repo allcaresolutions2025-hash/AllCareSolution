@@ -24,7 +24,8 @@ type SettingKey =
   | "PKG_BINARY_PERCENT"
   | "PKG_DAILY_CAP_MULTIPLIER"
   | "PKG_CARRY_EXPIRY_DAYS"
-  | "PKG_PAYOUT_CEILING_PERCENT";
+  | "PKG_PAYOUT_CEILING_PERCENT"
+  | "AF_ID_FEE_POINTS";
 
 const ENV_DEFAULTS: Record<SettingKey, string> = {
   COMMISSION_L1_PERCENT: process.env.COMMISSION_L1_PERCENT ?? "20",
@@ -52,6 +53,8 @@ const ENV_DEFAULTS: Record<SettingKey, string> = {
   // Total package payouts (direct + binary) over a rolling 30 days never exceed
   // this % of package points approved in the same window.
   PKG_PAYOUT_CEILING_PERCENT: process.env.PKG_PAYOUT_CEILING_PERCENT ?? "40",
+  // Fee for a new AF ID, paid to the admin offline before the request is approved.
+  AF_ID_FEE_POINTS: process.env.AF_ID_FEE_POINTS ?? "250",
 };
 
 async function readAllSettings(): Promise<Record<SettingKey, number>> {
@@ -73,6 +76,7 @@ async function readAllSettings(): Promise<Record<SettingKey, number>> {
     "PKG_DAILY_CAP_MULTIPLIER",
     "PKG_CARRY_EXPIRY_DAYS",
     "PKG_PAYOUT_CEILING_PERCENT",
+    "AF_ID_FEE_POINTS",
   ];
   const rows = await prisma.setting.findMany({ where: { key: { in: keys } } });
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
