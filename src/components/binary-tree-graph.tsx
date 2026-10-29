@@ -332,7 +332,7 @@ export function BinaryTreeGraph({
   allowNodeClick?: boolean;
   // Base path the "Add member" placeholder slots link to. Defaults to the
   // 1000-pt registration (with referId + side prefilled). null renders open
-  // slots without a link (the AF tree, where only the admin places accounts).
+  // slots without a link.
   addMemberPath?: string | null;
   // When true, render only the raw SVG (no card, header, or inner
   // overflow-x-auto). Used by BinaryTreeZoomable, which supplies its own

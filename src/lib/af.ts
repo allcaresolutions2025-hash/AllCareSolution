@@ -1,11 +1,13 @@
 // AF Solution accounts.
 //
 // An AF account is a separate login (AF-prefixed ID, e.g. AF12345678) with its
-// own binary tree (User.afReferrerId / afSlot). Members never sign up for one
-// themselves: a main member raises an AfIdRequest from their dashboard, the
-// admin picks the placement and creates the account, and the requester gets
-// the AF ID back with the mobile number as the first password. Inside the AF
-// portal (/af/dashboard) the account requests packages — see package-plan.ts.
+// own binary tree (User.afReferrerId / afSlot). Accounts are created two ways:
+//  - a main member raises an AfIdRequest from their dashboard, the admin picks
+//    the placement and creates the account;
+//  - a signed-in AF account adds one directly into an open slot in its own AF
+//    downline (/af/dashboard/add-member).
+// Either way the first password is the mobile number. Inside the AF portal
+// (/af/dashboard) the account requests packages — see package-plan.ts.
 
 import bcrypt from "bcryptjs";
 import { customAlphabet } from "nanoid";
@@ -60,16 +62,25 @@ export async function createAfAccount(
     sponsorAfId: string | null;
     side: Slot | null;
     profileFromUserId: string;
+    // When set, the sponsor must be this account or sit in its AF downline
+    // (an AF account adding to its own tree).
+    withinDownlineOf?: string;
   },
 ): Promise<{ id: string; afId: string }> {
   let afReferrerId: string | null = null;
   let afSlot: Slot | null = null;
+  if (input.withinDownlineOf && !input.sponsorAfId) {
+    throw new AfPlacementError("Choose the AF ID to place the new account under.");
+  }
   if (input.sponsorAfId) {
     const sponsor = await tx.user.findUnique({
       where: { referralCode: input.sponsorAfId },
       select: { id: true, isAf: true },
     });
     if (!sponsor?.isAf) throw new AfPlacementError(`No AF account found with ID ${input.sponsorAfId}.`);
+    if (input.withinDownlineOf && !(await isInAfDownline(tx, input.withinDownlineOf, sponsor.id))) {
+      throw new AfPlacementError(`${input.sponsorAfId} is not in your AF tree.`);
+    }
     if (!input.side) throw new AfPlacementError("Choose LEFT or RIGHT under the sponsor.");
     const taken = await tx.user.findFirst({
       where: { afReferrerId: sponsor.id, afSlot: input.side },
@@ -116,6 +127,22 @@ export async function createAfAccount(
     select: { id: true },
   });
   return { id: user.id, afId };
+}
+
+/** True when `userId` is `rootUserId` itself or anywhere below it in the AF tree (no depth cap). */
+export async function isInAfDownline(tx: Prisma.TransactionClient, rootUserId: string, userId: string): Promise<boolean> {
+  if (rootUserId === userId) return true;
+  const rows = await tx.$queryRaw<{ found: boolean }[]>`
+    WITH RECURSIVE upline AS (
+      SELECT id, "afReferrerId" FROM "User" WHERE id = ${userId}
+      UNION ALL
+      SELECT u.id, u."afReferrerId"
+      FROM "User" u
+      JOIN upline up ON u.id = up."afReferrerId"
+    )
+    SELECT EXISTS (SELECT 1 FROM upline WHERE "afReferrerId" = ${rootUserId}) AS found
+  `;
+  return rows[0]?.found ?? false;
 }
 
 type AfDownlineRow = {

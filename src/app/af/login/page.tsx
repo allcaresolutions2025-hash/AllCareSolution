@@ -84,7 +84,7 @@ function AfLoginForm() {
         </form>
         <p className="text-xs text-center mt-6 text-muted-foreground">
           Don&apos;t have an AF ID? Sign in to your member account and request one from the{" "}
-          <strong>AF Solution</strong> section. The admin creates your AF ID and it appears there.
+          <strong>AF Solution</strong> section, or ask your AF upline to add you to their tree.
         </p>
       </div>
     </div>
