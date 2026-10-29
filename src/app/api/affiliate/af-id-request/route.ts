@@ -5,12 +5,12 @@ import { prisma } from "@/lib/db";
 import { notifyAdmins } from "@/lib/franchise";
 import { getSetting } from "@/lib/settings";
 import { PAISE_PER_POINT, pointsToPaise } from "@/lib/money";
-import { AF_ID_PATTERN, afBankSchema } from "@/lib/af";
+import { AF_ID_PATTERN, afDetailsSchema } from "@/lib/af";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = afBankSchema.extend({
+const bodySchema = afDetailsSchema.extend({
   name: z.string().trim().min(2, "Enter the account holder's name").max(80),
   mobile: z.string().trim().regex(/^[0-9]{10}$/, "Mobile must be 10 digits"),
   email: z.string().trim().email("Enter a valid email"),
@@ -64,6 +64,10 @@ export async function POST(req: Request) {
         email: d.email.toLowerCase(),
         sponsorAfId: d.sponsorAfId || null,
         side: d.sponsorAfId ? d.side ?? null : null,
+        nominee: d.nominee,
+        gender: d.gender,
+        address: d.address,
+        panNumber: d.panNumber,
         bankAccountName: d.bankAccountName,
         bankAccountNumber: d.bankAccountNumber,
         bankIfsc: d.bankIfsc,

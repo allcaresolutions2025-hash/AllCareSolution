@@ -44,7 +44,18 @@ export default async function AdminAfIdRequestsPage({
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
       include: {
         requester: {
-          select: { name: true, referralCode: true, bankAccountName: true, bankAccountNumber: true, bankIfsc: true, bankName: true },
+          select: {
+            name: true,
+            referralCode: true,
+            nominee: true,
+            gender: true,
+            address: true,
+            panNumber: true,
+            bankAccountName: true,
+            bankAccountNumber: true,
+            bankIfsc: true,
+            bankName: true,
+          },
         },
       },
       skip: (page - 1) * PAGE_SIZE,
@@ -122,7 +133,15 @@ export default async function AdminAfIdRequestsPage({
                     email: r.email,
                     sponsorAfId: r.sponsorAfId,
                     side: r.side,
-                    // Requests from before bank details were collected fall back to the requester's.
+                    // Requests from before these details were collected fall back to the requester's.
+                    profile: r.panNumber
+                      ? { nominee: r.nominee, gender: r.gender, address: r.address, panNumber: r.panNumber }
+                      : {
+                          nominee: r.requester.nominee,
+                          gender: r.requester.gender,
+                          address: r.requester.address,
+                          panNumber: r.requester.panNumber,
+                        },
                     bank: r.bankAccountNumber
                       ? {
                           bankAccountName: r.bankAccountName,

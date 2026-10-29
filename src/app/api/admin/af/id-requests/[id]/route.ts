@@ -3,13 +3,13 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { PAISE_PER_POINT } from "@/lib/money";
-import { AF_ID_PATTERN, AfPlacementError, afBankSchema, createAfAccount } from "@/lib/af";
+import { AF_ID_PATTERN, AfPlacementError, afDetailsSchema, createAfAccount } from "@/lib/af";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 const schema = z.discriminatedUnion("action", [
-  afBankSchema.extend({
+  afDetailsSchema.extend({
     action: z.literal("approve"),
     name: z.string().trim().min(2).max(80),
     mobile: z.string().trim().regex(/^[0-9]{10}$/, "Mobile must be 10 digits"),
@@ -93,8 +93,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         email: d.email,
         sponsorAfId: d.sponsorAfId || null,
         side: d.sponsorAfId ? d.side : null,
-        profileFromUserId: request.requesterId,
-        bank: {
+        details: {
+          nominee: d.nominee,
+          gender: d.gender,
+          address: d.address,
+          panNumber: d.panNumber,
           bankAccountName: d.bankAccountName,
           bankAccountNumber: d.bankAccountNumber,
           bankIfsc: d.bankIfsc,

@@ -5,32 +5,39 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { UserPlus, Clock } from "lucide-react";
 import { AfBankFields, emptyAfBank, type AfBankValue } from "@/components/af-bank-fields";
+import { AfProfileFields, emptyAfProfile, type AfProfileValue } from "@/components/af-profile-fields";
+
+/** An open LEFT/RIGHT position under `afId` in the requester's AF tree. */
+export type OpenSlot = { afId: string; name: string; side: "LEFT" | "RIGHT"; depth: number };
 
 export function AfAddMemberForm({
-  defaultSponsor,
-  defaultSide,
+  openSlots,
+  defaultSlot,
   feePoints,
+  defaultProfile,
   defaultBank,
 }: {
-  defaultSponsor: string;
-  defaultSide: "" | "LEFT" | "RIGHT";
+  openSlots: OpenSlot[];
+  defaultSlot: string; // "AF12345678:LEFT", or "" for none chosen
   feePoints: number;
+  defaultProfile: Parameters<typeof emptyAfProfile>[0];
   defaultBank: Partial<Record<keyof AfBankValue, string | null>>;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
-  const [sponsorAfId, setSponsorAfId] = useState(defaultSponsor);
-  const [side, setSide] = useState<"" | "LEFT" | "RIGHT">(defaultSide);
+  const [slot, setSlot] = useState(defaultSlot);
+  const [profile, setProfile] = useState<AfProfileValue>(() => emptyAfProfile(defaultProfile));
   const [bank, setBank] = useState<AfBankValue>(() => emptyAfBank(defaultBank));
   const [busy, setBusy] = useState(false);
   const [requested, setRequested] = useState<{ name: string; placement: string } | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!side) {
-      toast.error("Choose LEFT or RIGHT");
+    const [sponsorAfId, side] = slot.split(":");
+    if (!sponsorAfId || !side) {
+      toast.error("Choose where to place the new account");
       return;
     }
     setBusy(true);
@@ -38,12 +45,12 @@ export function AfAddMemberForm({
       const res = await fetch("/api/af/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, mobile, email, sponsorAfId: sponsorAfId.trim(), side, ...bank }),
+        body: JSON.stringify({ name, mobile, email, sponsorAfId, side, ...profile, ...bank }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not send the request");
       toast.success("AF ID request sent to the admin");
-      setRequested({ name, placement: `${side.toLowerCase()} of ${sponsorAfId.trim()}` });
+      setRequested({ name, placement: `${side.toLowerCase()} of ${sponsorAfId}` });
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not send the request");
@@ -72,7 +79,8 @@ export function AfAddMemberForm({
             setName("");
             setMobile("");
             setEmail("");
-            setSide("");
+            setSlot("");
+            setProfile(emptyAfProfile(defaultProfile));
             setBank(emptyAfBank(defaultBank));
           }}
         >
@@ -96,30 +104,20 @@ export function AfAddMemberForm({
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3">
-        <div>
-          <label className="label">Place under AF ID</label>
-          <input
-            className="input font-mono uppercase"
-            placeholder="AF12345678"
-            value={sponsorAfId}
-            onChange={(e) => setSponsorAfId(e.target.value.toUpperCase())}
-            required
-          />
-        </div>
-        <div>
-          <label className="label">Side</label>
-          <select
-            className="input"
-            value={side}
-            onChange={(e) => setSide(e.target.value as "" | "LEFT" | "RIGHT")}
-            required
-          >
-            <option value="">Choose side</option>
-            <option value="LEFT">Left</option>
-            <option value="RIGHT">Right</option>
-          </select>
-        </div>
+      <div>
+        <label className="label">Position (parent AF ID · side)</label>
+        <select className="input font-mono" value={slot} onChange={(e) => setSlot(e.target.value)} required>
+          <option value="">{openSlots.length ? "Choose an open position" : "No open positions in your tree"}</option>
+          {openSlots.map((o) => (
+            <option key={`${o.afId}:${o.side}`} value={`${o.afId}:${o.side}`}>
+              {o.afId} · {o.side === "LEFT" ? "Left" : "Right"} — {o.name}
+              {o.depth === 0 ? " (you)" : ` (level ${o.depth})`}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground mt-1">
+          The new account&apos;s parent is the AF ID you pick here. You can also click L+ / R+ on the AF tree.
+        </p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-3">
@@ -141,6 +139,16 @@ export function AfAddMemberForm({
       <div>
         <label className="label">Email</label>
         <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </div>
+
+      <div className="border-t pt-4 space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold">Personal details</h3>
+          <p className="text-xs text-muted-foreground">
+            Prefilled with yours. Change them to the new account holder&apos;s details.
+          </p>
+        </div>
+        <AfProfileFields value={profile} onChange={setProfile} />
       </div>
 
       <div className="border-t pt-4 space-y-3">

@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { AF_ID_PATTERN } from "@/lib/af";
+import { AF_ID_PATTERN, getAfDownline } from "@/lib/af";
 import { getSetting } from "@/lib/settings";
 import { formatDateShort } from "@/lib/date";
-import { AfAddMemberForm } from "./af-add-member-form";
+import { AfAddMemberForm, type OpenSlot } from "./af-add-member-form";
 import { UserPlus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +20,27 @@ export default async function AfAddMemberPage({ searchParams }: { searchParams: 
   const session = await getServerSession(authOptions);
   if (!session) return null;
 
-  const [me, requests, feePoints] = await Promise.all([
+  const [me, downline, pending, requests, feePoints] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { referralCode: true, bankAccountName: true, bankAccountNumber: true, bankIfsc: true, bankName: true },
+      select: {
+        id: true,
+        name: true,
+        referralCode: true,
+        nominee: true,
+        gender: true,
+        address: true,
+        panNumber: true,
+        bankAccountName: true,
+        bankAccountNumber: true,
+        bankIfsc: true,
+        bankName: true,
+      },
+    }),
+    getAfDownline(session.user.id),
+    prisma.afIdRequest.findMany({
+      where: { status: "PENDING", sponsorAfId: { not: null }, side: { not: null } },
+      select: { sponsorAfId: true, side: true },
     }),
     prisma.afIdRequest.findMany({
       where: { requesterId: session.user.id },
@@ -34,10 +51,28 @@ export default async function AfAddMemberPage({ searchParams }: { searchParams: 
   ]);
   if (!me) return null;
 
-  // Prefilled from the L+ / R+ slot clicked on the AF tree.
+  // Every open LEFT/RIGHT slot in my tree (me included), nearest first. A slot
+  // already in a pending request is not offered again.
+  const taken = new Set([
+    ...downline.map((n) => `${n.referrerId}:${n.slot}`),
+    ...pending.map((r) => `${r.sponsorAfId}:${r.side}`),
+  ]);
+  const openSlots: OpenSlot[] = [];
+  for (const n of [{ id: me.id, name: me.name, referralCode: me.referralCode, depth: 0 }, ...downline]) {
+    for (const side of ["LEFT", "RIGHT"] as const) {
+      // Filled slots are keyed by parent user id, pending requests by parent AF ID.
+      if (taken.has(`${n.id}:${side}`) || taken.has(`${n.referralCode}:${side}`)) continue;
+      openSlots.push({ afId: n.referralCode, name: n.name, side, depth: Number(n.depth) });
+    }
+  }
+
+  // Preselected from the L+ / R+ slot clicked on the AF tree.
   const referId = searchParams.referId?.toUpperCase();
-  const defaultSponsor = referId && AF_ID_PATTERN.test(referId) ? referId : me.referralCode;
-  const defaultSide = searchParams.side === "RIGHT" ? "RIGHT" : searchParams.side === "LEFT" ? "LEFT" : "";
+  const referSide = searchParams.side === "RIGHT" ? "RIGHT" : searchParams.side === "LEFT" ? "LEFT" : null;
+  const defaultSlot =
+    referId && AF_ID_PATTERN.test(referId) && referSide && openSlots.some((o) => o.afId === referId && o.side === referSide)
+      ? `${referId}:${referSide}`
+      : "";
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -46,17 +81,20 @@ export default async function AfAddMemberPage({ searchParams }: { searchParams: 
           <UserPlus className="h-6 w-6 text-af-600" /> Add AF Member
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Request a new AF account in an open slot under you or anyone in your AF tree. Each new AF ID costs{" "}
+          Request a new AF account in an open slot under you or anyone in your AF tree. Pick the position: the new
+          account is placed directly under that parent. Each new AF ID costs{" "}
           <strong>{feePoints} pts</strong>, paid to the admin. Once the admin confirms the payment and approves, the AF ID
-          appears below and the new member can sign in, build their tree and request packages. Bank details start as
-          yours. Change them if the new account holder banks elsewhere.
+          appears below and the new member can sign in, build their tree and request packages. PAN, nominee, address
+          and bank details start as yours. Change them to the new account holder&apos;s details. They can only be
+          changed by the admin later.
         </p>
       </div>
 
       <AfAddMemberForm
-        defaultSponsor={defaultSponsor}
-        defaultSide={defaultSide}
+        openSlots={openSlots}
+        defaultSlot={defaultSlot}
         feePoints={feePoints}
+        defaultProfile={{ nominee: me.nominee, gender: me.gender, address: me.address, panNumber: me.panNumber }}
         defaultBank={{
           bankAccountName: me.bankAccountName,
           bankAccountNumber: me.bankAccountNumber,

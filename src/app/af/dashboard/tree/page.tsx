@@ -103,7 +103,7 @@ export default async function AfTreePage({ searchParams }: { searchParams?: { ro
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Your AF binary tree. Each card shows that account&apos;s approved package points. Click an open L+ / R+ slot
-          to create a new AF account there. Tap an account with more below it to drill deeper.
+          to request a new AF account there. Tap an account with more below it to drill deeper.
         </p>
       </div>
 

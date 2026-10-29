@@ -37,6 +37,22 @@ export const afBankSchema = z.object({
 });
 export type AfBankDetails = z.infer<typeof afBankSchema>;
 
+/** Personal details for a new AF account (same rules as member registration). */
+export const afProfileSchema = z.object({
+  nominee: z.string().trim().min(2, "Enter the nominee's name").max(80),
+  gender: z.enum(["MALE", "FEMALE"], { errorMap: () => ({ message: "Choose a gender" }) }),
+  address: z.string().trim().min(3, "Enter the address").max(300),
+  panNumber: z
+    .string()
+    .trim()
+    .transform((s) => s.toUpperCase())
+    .refine((s) => /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(s), "Invalid PAN (e.g. ABCDE1234F)"),
+});
+
+/** Everything entered for a new AF account besides name, mobile and email. */
+export const afDetailsSchema = afProfileSchema.merge(afBankSchema);
+export type AfDetails = z.infer<typeof afDetailsSchema>;
+
 export async function generateUniqueAfId(tx: Prisma.TransactionClient): Promise<string> {
   for (let i = 0; i < 20; i++) {
     const code = "AF" + digits();
@@ -64,10 +80,9 @@ export class AfPlacementError extends Error {}
 
 /**
  * Create an AF account under `sponsorAfId` on `side` (or as a top-level
- * account when no sponsor is given). Profile details are copied from
- * `profileFromUserId`; bank details come from `bank` when given, otherwise
- * from that same user. The first password is the mobile number and must be
- * changed on first login.
+ * account when no sponsor is given) with the personal and bank `details`
+ * entered for it. The first password is the mobile number and must be changed
+ * on first login.
  */
 export async function createAfAccount(
   tx: Prisma.TransactionClient,
@@ -77,27 +92,12 @@ export async function createAfAccount(
     email: string;
     sponsorAfId: string | null;
     side: Slot | null;
-    profileFromUserId: string;
-    bank?: AfBankDetails;
+    details: AfDetails;
   },
 ): Promise<{ id: string; afId: string }> {
   const placement = await resolveAfPlacement(tx, input);
   const afReferrerId = placement?.sponsorId ?? null;
   const afSlot = placement?.side ?? null;
-
-  const profile = await tx.user.findUnique({
-    where: { id: input.profileFromUserId },
-    select: {
-      nominee: true,
-      gender: true,
-      address: true,
-      panNumber: true,
-      bankAccountName: true,
-      bankAccountNumber: true,
-      bankIfsc: true,
-      bankName: true,
-    },
-  });
 
   const afId = await generateUniqueAfId(tx);
   const user = await tx.user.create({
@@ -111,8 +111,7 @@ export async function createAfAccount(
       isAf: true,
       afReferrerId,
       afSlot,
-      ...profile,
-      ...input.bank,
+      ...input.details,
       wallet: { create: {} },
     },
     select: { id: true },

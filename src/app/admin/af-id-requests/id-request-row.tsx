@@ -4,6 +4,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { AfBankFields, emptyAfBank, type AfBankValue } from "@/components/af-bank-fields";
+import { AfProfileFields, emptyAfProfile, type AfProfileValue } from "@/components/af-profile-fields";
 import { PAISE_PER_POINT } from "@/lib/money";
 
 const BADGE: Record<string, string> = {
@@ -20,6 +21,7 @@ export type AfIdRequestRowData = {
   email: string;
   sponsorAfId: string | null;
   side: "LEFT" | "RIGHT" | null;
+  profile: Parameters<typeof emptyAfProfile>[0];
   bank: Partial<Record<keyof AfBankValue, string | null>>;
   note: string | null;
   fee: number; // paise; 0 on requests from before the fee
@@ -38,6 +40,7 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
   const [email, setEmail] = useState(row.email);
   const [sponsorAfId, setSponsorAfId] = useState(row.sponsorAfId ?? "");
   const [side, setSide] = useState<"LEFT" | "RIGHT">(row.side ?? "LEFT");
+  const [profile, setProfile] = useState<AfProfileValue>(() => emptyAfProfile(row.profile));
   const [bank, setBank] = useState<AfBankValue>(() => emptyAfBank(row.bank));
   const [feeReceived, setFeeReceived] = useState(false);
   const feePts = row.fee / PAISE_PER_POINT;
@@ -71,6 +74,7 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
       sponsorAfId: sponsor,
       side: sponsor ? side : null,
       feeReceived,
+      ...profile,
       ...bank,
     });
     if (data) {
@@ -104,6 +108,9 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
           <div className="text-xs text-muted-foreground">
             {row.mobile} · {row.email}
           </div>
+          {row.profile?.panNumber && (
+            <div className="text-xs text-muted-foreground mt-1 font-mono">PAN {row.profile.panNumber}</div>
+          )}
           {row.bank.bankAccountNumber && (
             <div className="text-xs text-muted-foreground mt-1 font-mono">
               {row.bank.bankName} · {row.bank.bankAccountNumber} · {row.bank.bankIfsc}
@@ -185,6 +192,9 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
                 </select>
               </div>
               <div className="sm:col-span-2 lg:col-span-3">
+                <AfProfileFields value={profile} onChange={setProfile} />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-3">
                 <AfBankFields value={bank} onChange={setBank} />
               </div>
               {row.fee > 0 && (
@@ -202,8 +212,8 @@ export function AfIdRequestRow({ row }: { row: AfIdRequestRowData }) {
                 {loading ? "Creating…" : "Create AF account"}
               </button>
               <p className="sm:col-span-2 lg:col-span-3 text-xs text-muted-foreground">
-                Leave the sponsor blank only for the first (top) AF account. Bank details are as requested; other profile
-                details are copied from the requesting member. The first password is the mobile number.
+                Leave the sponsor blank only for the first (top) AF account. Personal and bank details are as requested
+                (older requests start with the requester&apos;s). The first password is the mobile number.
               </p>
             </form>
           </td>

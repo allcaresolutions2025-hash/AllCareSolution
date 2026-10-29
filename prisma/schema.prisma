@@ -800,6 +800,12 @@ model AfIdRequest {
   email         String
   sponsorAfId   String?           // AF ID to place under, as requested
   side          Slot?             // preferred side under the sponsor
+  // Personal details for the new account (null on requests made before these
+  // were collected — the admin fills them in on approval).
+  nominee       String?
+  gender        Gender?
+  address       String?
+  panNumber     String?
   // Bank details for the new account (null on requests made before these
   // were collected — the requester's own details are used then).
   bankAccountName   String?

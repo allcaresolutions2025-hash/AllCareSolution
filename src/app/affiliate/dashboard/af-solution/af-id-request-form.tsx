@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { UserPlus } from "lucide-react";
 import { AfBankFields, emptyAfBank, type AfBankValue } from "@/components/af-bank-fields";
+import { AfProfileFields, emptyAfProfile, type AfProfileValue } from "@/components/af-profile-fields";
 
 export function AfIdRequestForm({
   defaults,
+  defaultProfile,
   defaultBank,
   hasPending,
 }: {
   defaults: { name: string; mobile: string; email: string };
+  defaultProfile: Parameters<typeof emptyAfProfile>[0];
   defaultBank: Partial<Record<keyof AfBankValue, string | null>>;
   hasPending: boolean;
 }) {
@@ -22,6 +25,7 @@ export function AfIdRequestForm({
   const [sponsorAfId, setSponsorAfId] = useState("");
   const [side, setSide] = useState<"" | "LEFT" | "RIGHT">("");
   const [note, setNote] = useState("");
+  const [profile, setProfile] = useState<AfProfileValue>(() => emptyAfProfile(defaultProfile));
   const [bank, setBank] = useState<AfBankValue>(() => emptyAfBank(defaultBank));
   const [busy, setBusy] = useState(false);
 
@@ -39,6 +43,7 @@ export function AfIdRequestForm({
           sponsorAfId: sponsorAfId.trim() || undefined,
           side: side || undefined,
           note: note.trim() || undefined,
+          ...profile,
           ...bank,
         }),
       });
@@ -95,6 +100,14 @@ export function AfIdRequestForm({
       <div>
         <label className="label">Email</label>
         <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </div>
+
+      <div className="space-y-2">
+        <div>
+          <h3 className="text-sm font-semibold">Personal details for the AF account</h3>
+          <p className="text-xs text-muted-foreground">Prefilled with yours. Change them if the account is for someone else.</p>
+        </div>
+        <AfProfileFields value={profile} onChange={setProfile} />
       </div>
 
       <div className="space-y-2">
