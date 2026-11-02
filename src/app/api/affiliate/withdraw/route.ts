@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { pointsToPaise, PAISE_PER_POINT } from "@/lib/money";
+import { minWithdrawPoints } from "@/lib/withdraw";
 import { z } from "zod";
 
 // Manual points withdrawal — a member asks admin to cash out their earning
@@ -12,10 +13,6 @@ import { z } from "zod";
 // deduction is forfeited, matching the daily payout. Admin disburses the net
 // offline and marks the request paid from the admin Payouts page. A rejected
 // request refunds the full held amount.
-
-// Minimum balance (in displayed points) a member must withdraw at once.
-const MIN_WITHDRAW_POINTS = 500;
-const MIN_WITHDRAW_PAISE = MIN_WITHDRAW_POINTS * PAISE_PER_POINT;
 
 // Deduction taken on every withdrawal — member receives (1 - rate) of the amount.
 const WITHDRAW_DEDUCTION_RATE = 0.1; // 10%
@@ -32,9 +29,10 @@ export async function POST(req: Request) {
   }
 
   const amountPaise = pointsToPaise(parsed.data.points);
-  if (amountPaise < MIN_WITHDRAW_PAISE) {
+  const minPoints = minWithdrawPoints(session.user.isAf);
+  if (amountPaise < minPoints * PAISE_PER_POINT) {
     return NextResponse.json(
-      { error: `Minimum withdrawal is ${MIN_WITHDRAW_POINTS} pts.` },
+      { error: `Minimum withdrawal is ${minPoints} pts.` },
       { status: 400 },
     );
   }

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatPoints } from "@/lib/money";
+import { minWithdrawPoints } from "@/lib/withdraw";
 import { Pagination } from "@/components/pagination";
 import { Clock, CheckCircle2, XCircle } from "lucide-react";
 import { WithdrawForm } from "./withdraw-form";
@@ -15,6 +16,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: { p
   if (!session) return null;
 
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const minPoints = minWithdrawPoints(session.user.isAf);
 
   const [user, kyc, wallet, pending, total, requests] = await Promise.all([
     prisma.user.findUnique({
@@ -53,7 +55,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: { p
         <h1 className="text-2xl font-bold">Withdraw Points</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Request admin to withdraw your earning points to your bank. Minimum{" "}
-          <strong>500 pts</strong> must be available. The full amount is held immediately; a{" "}
+          <strong>{minPoints.toLocaleString("en-IN")} pts</strong> must be available. The full amount is held immediately; a{" "}
           <strong>10% deduction</strong> applies and you receive <strong>90%</strong> offline by admin
           once approved.
         </p>
@@ -61,6 +63,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: { p
 
       <div className="grid md:grid-cols-2 gap-4">
         <WithdrawForm
+          minPoints={minPoints}
           balanceAvailable={balanceAvailable}
           hasBankDetails={hasBankDetails}
           hasPending={Boolean(pending)}

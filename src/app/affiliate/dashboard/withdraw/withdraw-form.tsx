@@ -6,14 +6,15 @@ import toast from "react-hot-toast";
 import { BadgeIndianRupee } from "lucide-react";
 import { formatPoints } from "@/lib/money";
 
-const MIN_WITHDRAW = 500;
 const DEDUCTION_RATE = 0.1; // 10% deducted; member receives 90%
 
 export function WithdrawForm({
+  minPoints,
   balanceAvailable,
   hasBankDetails,
   hasPending,
 }: {
+  minPoints: number;
   balanceAvailable: number; // paise
   hasBankDetails: boolean;
   hasPending: boolean;
@@ -28,7 +29,7 @@ export function WithdrawForm({
   const canSubmit =
     !hasPending &&
     hasBankDetails &&
-    points >= MIN_WITHDRAW &&
+    points >= minPoints &&
     points * 100 <= balanceAvailable;
 
   async function submit(e: React.FormEvent) {
@@ -84,15 +85,15 @@ export function WithdrawForm({
           value={points || ""}
           onChange={(e) => setPoints(Math.max(0, parseInt(e.target.value, 10) || 0))}
           className="input"
-          placeholder={`e.g. ${MIN_WITHDRAW}`}
+          placeholder={`e.g. ${minPoints}`}
           disabled={hasPending || !hasBankDetails}
         />
         <p className="mt-1 text-xs text-muted-foreground">
-          Minimum <strong>{MIN_WITHDRAW.toLocaleString("en-IN")} pts</strong> per request (1 point = ₹1).
+          Minimum <strong>{minPoints.toLocaleString("en-IN")} pts</strong> per request (1 point = ₹1).
           A <strong>10% deduction</strong> applies — the full amount is held from your balance and you
           receive 90%. You can withdraw up to <strong>{maxPoints.toLocaleString("en-IN")} pts</strong>.
         </p>
-        {points >= MIN_WITHDRAW && points * 100 <= balanceAvailable && (
+        {points >= minPoints && points * 100 <= balanceAvailable && (
           <div className="mt-2 rounded-lg bg-muted/40 border px-3 py-2 text-xs space-y-0.5">
             <div className="flex justify-between"><span>Withdrawing</span><span className="tabular-nums">{points.toLocaleString("en-IN")} pts</span></div>
             <div className="flex justify-between text-muted-foreground"><span>Deduction (10%)</span><span className="tabular-nums">−{deduction.toLocaleString("en-IN")} pts</span></div>
@@ -104,8 +105,8 @@ export function WithdrawForm({
       <button type="submit" disabled={submitting || !canSubmit} className="btn-primary w-full">
         {submitting
           ? "Submitting…"
-          : points > 0 && points < MIN_WITHDRAW
-            ? `Minimum ${MIN_WITHDRAW} pts`
+          : points > 0 && points < minPoints
+            ? `Minimum ${minPoints} pts`
             : points * 100 > balanceAvailable
               ? "Not enough points"
               : "Request withdrawal"}
