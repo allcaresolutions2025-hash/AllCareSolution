@@ -35,6 +35,7 @@ import { prisma } from "./db";
 import { getAllBusinessSettings } from "./settings";
 import { istDateString } from "./daily-payout";
 import { PAISE_PER_POINT } from "./money";
+import { daysBetween } from "./af";
 
 type Tx = Prisma.TransactionClient;
 
@@ -288,6 +289,93 @@ export async function rejectPackagePurchase(purchaseId: string, reviewerId: stri
       },
     });
   });
+}
+
+/**
+ * Remove an APPROVED package from its account. The account itself keeps its
+ * login, wallets and tree placement — only this package stops counting:
+ *  - packageTotal / personalBv are recomputed from the packages still
+ *    approved, so the daily cap shrinks; with none left the account goes
+ *    inactive (no more DIRECT or matching income until a new package).
+ *  - BV this package sent up the tree that has not been matched yet is taken
+ *    back off every ancestor's leg. BV already matched, and income already
+ *    paid from it, is not clawed back.
+ *  - It drops out of the 30-day payout-ceiling pool (that counts APPROVED only).
+ * Product stock and delivery are left as they are.
+ */
+export async function removePackagePurchase(purchaseId: string, adminId: string, reason: string | null) {
+  return prisma.$transaction(
+    async (tx) => {
+      await lockMatching(tx);
+      const purchase = await tx.packagePurchase.findUnique({ where: { id: purchaseId } });
+      if (!purchase) throw new PackageError("Package not found.");
+
+      const now = new Date();
+      const flipped = await tx.packagePurchase.updateMany({
+        where: { id: purchaseId, status: "APPROVED" },
+        data: { status: "REMOVED", removedAt: now, removedById: adminId, removeReason: reason },
+      });
+      if (flipped.count === 0) throw new PackageError("Only an active (approved) package can be removed.");
+
+      const left = await tx.packagePurchase.aggregate({
+        where: { userId: purchase.userId, status: "APPROVED" },
+        _sum: { amount: true, bv: true },
+        _count: true,
+      });
+      await tx.packageAccount.update({
+        where: { userId: purchase.userId },
+        data: {
+          packageTotal: left._sum.amount ?? 0,
+          personalBv: left._sum.bv ?? 0,
+          active: left._count > 0,
+        },
+      });
+
+      // Take this package's unmatched BV back off the upline legs.
+      const lots = { purchaseId, remaining: { gt: 0 } };
+      const groups = await tx.packageBvEntry.groupBy({ by: ["userId", "side"], where: lots, _sum: { remaining: true } });
+      let bvWithdrawn = 0;
+      if (groups.length > 0) {
+        await tx.packageBvEntry.updateMany({ where: lots, data: { remaining: 0 } });
+        for (const g of groups) {
+          const bv = g._sum.remaining ?? 0;
+          bvWithdrawn += bv;
+          await tx.packageAccount.update({
+            where: { userId: g.userId },
+            data: g.side === "LEFT" ? { leftBv: { decrement: bv } } : { rightBv: { decrement: bv } },
+          });
+        }
+      }
+
+      const daysActive = purchase.reviewedAt ? daysBetween(purchase.reviewedAt, now) : 0;
+      await tx.notification.create({
+        data: {
+          userId: purchase.userId,
+          title: "Package removed",
+          body: `Your ${purchase.amount / PAISE_PER_POINT}-pt package (${purchase.productName}) has been removed by the admin after ${daysActive} day${daysActive === 1 ? "" : "s"} active.${reason ? ` Reason: ${reason}` : ""}`,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: adminId,
+          action: "PACKAGE_REMOVED",
+          target: purchase.id,
+          metadata: JSON.stringify({
+            userId: purchase.userId,
+            amount: purchase.amount,
+            bv: purchase.bv,
+            daysActive,
+            bvWithdrawn,
+            packagesLeft: left._count,
+            reason,
+          }),
+        },
+      });
+
+      return { daysActive, bvWithdrawn, packagesLeft: left._count };
+    },
+    { maxWait: 10_000, timeout: 60_000 },
+  );
 }
 
 export type PackageMatchingResult = {

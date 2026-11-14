@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "AF Solution" };
 
 const PAGE_SIZE = 20;
-const STATUSES = ["PENDING", "APPROVED", "REJECTED"] as const;
+const STATUSES = ["PENDING", "APPROVED", "REJECTED", "REMOVED"] as const;
 type Status = (typeof STATUSES)[number];
 
 export default async function AdminAfSolutionPage({
@@ -165,7 +165,7 @@ export default async function AdminAfSolutionPage({
                     status: p.status,
                     deliveryStatus: p.deliveryStatus,
                     trackingNumber: p.trackingNumber,
-                    adminNote: p.adminNote,
+                    adminNote: p.status === "REMOVED" && p.removeReason ? p.removeReason : p.adminNote,
                     createdAt: p.createdAt.toISOString(),
                   }}
                 />

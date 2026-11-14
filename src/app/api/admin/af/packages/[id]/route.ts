@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
-import { approvePackagePurchase, rejectPackagePurchase, PackageError } from "@/lib/package-plan";
+import { approvePackagePurchase, rejectPackagePurchase, removePackagePurchase, PackageError } from "@/lib/package-plan";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 const schema = z.object({
-  action: z.enum(["approve", "reject", "ship", "deliver"]),
+  action: z.enum(["approve", "reject", "remove", "ship", "deliver"]),
   note: z.string().max(500).optional(),
   trackingNumber: z.string().max(100).optional(),
 });
@@ -15,6 +15,7 @@ const schema = z.object({
 // Admin review of an AF package request.
 //  - approve → activates the package points and pushes BV up the AF tree
 //  - reject  → declines the request
+//  - remove  → takes an APPROVED package off the account (the account stays)
 //  - ship / deliver → product fulfilment on an APPROVED package
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const auth = await requireAdmin();
@@ -36,6 +37,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (action === "reject") {
       await rejectPackagePurchase(params.id, reviewerId, note);
       return NextResponse.json({ ok: true });
+    }
+    if (action === "remove") {
+      const result = await removePackagePurchase(params.id, reviewerId, note);
+      return NextResponse.json({ ok: true, ...result });
     }
   } catch (e) {
     if (e instanceof PackageError) return NextResponse.json({ error: e.message }, { status: 400 });

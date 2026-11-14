@@ -682,6 +682,7 @@ enum PackageStatus {
   PENDING
   APPROVED
   REJECTED
+  REMOVED // was APPROVED; an admin took the package off the account
 }
 
 enum PackageDeliveryStatus {
@@ -712,6 +713,9 @@ model PackagePurchase {
   reviewedAt     DateTime?
   shippedAt      DateTime?
   deliveredAt    DateTime?
+  removedAt      DateTime? // when an admin removed the approved package
+  removedById    String?
+  removeReason   String?               @db.Text
 
   @@index([userId, createdAt])
   @@index([status, createdAt])

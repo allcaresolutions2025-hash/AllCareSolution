@@ -8,6 +8,7 @@ const STATUS_BADGE: Record<string, string> = {
   PENDING: "badge-amber",
   APPROVED: "badge-green",
   REJECTED: "badge-red",
+  REMOVED: "badge-gray",
 };
 const DELIVERY_BADGE: Record<string, string> = {
   PENDING: "badge-gray",
@@ -24,7 +25,7 @@ export type PackageRowData = {
   shipName: string;
   shipPhone: string;
   shipAddress: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "REMOVED";
   deliveryStatus: "PENDING" | "SHIPPED" | "DELIVERED";
   trackingNumber: string | null;
   adminNote: string | null;

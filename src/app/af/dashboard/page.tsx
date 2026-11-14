@@ -16,6 +16,7 @@ const STATUS_BADGE: Record<string, string> = {
   PENDING: "badge-amber",
   APPROVED: "badge-green",
   REJECTED: "badge-red",
+  REMOVED: "badge-gray",
 };
 const DELIVERY_BADGE: Record<string, string> = {
   PENDING: "badge-gray",
@@ -166,7 +167,11 @@ export default async function AfDashboardPage() {
                   <td className="px-4 py-3">{p.productName}</td>
                   <td className="px-4 py-3">
                     <span className={STATUS_BADGE[p.status]}>{p.status}</span>
-                    {p.adminNote && <div className="text-xs text-muted-foreground mt-1 max-w-[200px]">“{p.adminNote}”</div>}
+                    {p.status === "REMOVED" && p.removeReason ? (
+                      <div className="text-xs text-muted-foreground mt-1 max-w-[200px]">“{p.removeReason}”</div>
+                    ) : (
+                      p.adminNote && <div className="text-xs text-muted-foreground mt-1 max-w-[200px]">“{p.adminNote}”</div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {p.status === "APPROVED" ? (
