@@ -15,7 +15,19 @@ export type AfAccountRowData = {
   afWallet: number;
   eWallet: number;
   createdAt: string;
+  isActive: boolean;
+  removedAt: string | null;
+  daysActive: number | null; // days from AF ID creation to today, or to removal
+  firstPackageAt: string | null; // first approved package
 };
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function plural(n: number, word: string) {
+  return `${n.toLocaleString("en-IN")} ${word}${n === 1 ? "" : "s"}`;
+}
 
 export function AfAccountRow({ row }: { row: AfAccountRowData }) {
   const router = useRouter();
@@ -23,6 +35,36 @@ export function AfAccountRow({ row }: { row: AfAccountRowData }) {
   const [points, setPoints] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
+  const [accessLoading, setAccessLoading] = useState(false);
+
+  async function toggleAccess() {
+    const active = !row.isActive;
+    let reason: string | undefined;
+    if (active) {
+      if (!confirm(`Restore AF access for ${row.name} (${row.afId})?`)) return;
+    } else {
+      const days = row.daysActive === null ? "" : ` It has been active for ${plural(row.daysActive, "day")}.`;
+      const input = prompt(
+        `Remove AF access for ${row.name} (${row.afId})?${days}\n\nThe account will be signed out and can no longer use the AF portal or withdraw. You can restore it later.\n\nReason (optional, shown to the account):`,
+      );
+      if (input === null) return;
+      reason = input.trim() || undefined;
+    }
+    setAccessLoading(true);
+    const res = await fetch(`/api/admin/af/accounts/${row.id}/access`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active, reason }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setAccessLoading(false);
+    if (!res.ok) {
+      toast.error(data.error || "Could not update AF access");
+      return;
+    }
+    toast.success(active ? `AF access restored for ${row.afId}` : `AF access removed for ${row.afId}`);
+    router.refresh();
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,27 +92,60 @@ export function AfAccountRow({ row }: { row: AfAccountRowData }) {
 
   return (
     <>
-      <tr className="border-t align-top">
+      <tr className={`border-t align-top ${row.isActive ? "" : "bg-red-50/40"}`}>
         <td className="px-4 py-3">
-          <div className="font-medium">{row.name}</div>
+          <div className="font-medium">
+            {row.name}
+            {!row.isActive && (
+              <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-red-700">
+                Access removed
+              </span>
+            )}
+          </div>
           <div className="text-xs font-mono text-muted-foreground">{row.afId}</div>
           {row.phone && <div className="text-xs text-muted-foreground">{row.phone}</div>}
         </td>
         <td className="px-4 py-3 text-xs">
           {row.placement ? <span className="font-mono">{row.placement}</span> : <span className="text-muted-foreground">Top level</span>}
         </td>
+        <td className="px-4 py-3 text-xs">
+          <div className="text-sm font-semibold tabular-nums">
+            {row.daysActive === null ? "—" : plural(row.daysActive, "day")}
+          </div>
+          <div className="text-muted-foreground">
+            {fmtDate(row.createdAt)} → {row.isActive ? "today" : row.removedAt ? fmtDate(row.removedAt) : "removed"}
+          </div>
+          <div className="text-muted-foreground">
+            {row.firstPackageAt ? `1st package ${fmtDate(row.firstPackageAt)}` : "No package yet"}
+          </div>
+        </td>
         <td className="px-4 py-3 tabular-nums">{formatPoints(row.packageTotal)}</td>
         <td className="px-4 py-3 tabular-nums font-semibold text-af-700">{formatPoints(row.afWallet)}</td>
         <td className="px-4 py-3 tabular-nums text-muted-foreground">{formatPoints(row.eWallet)}</td>
         <td className="px-4 py-3">
-          <button onClick={() => setOpen((v) => !v)} className="btn-primary text-xs px-3 py-1">
-            {open ? "Close" : "Add points"}
-          </button>
+          <div className="flex flex-col items-start gap-1.5">
+            {row.isActive && (
+              <button onClick={() => setOpen((v) => !v)} className="btn-primary text-xs px-3 py-1">
+                {open ? "Close" : "Add points"}
+              </button>
+            )}
+            <button
+              onClick={toggleAccess}
+              disabled={accessLoading}
+              className={
+                row.isActive
+                  ? "rounded-lg border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                  : "btn-outline text-xs px-3 py-1"
+              }
+            >
+              {accessLoading ? "Saving…" : row.isActive ? "Remove access" : "Restore access"}
+            </button>
+          </div>
         </td>
       </tr>
-      {open && (
+      {open && row.isActive && (
         <tr className="bg-af-50/40">
-          <td colSpan={6} className="px-4 py-4">
+          <td colSpan={7} className="px-4 py-4">
             <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[160px_1fr_auto] items-end">
               <div>
                 <label className="label">Points to add</label>

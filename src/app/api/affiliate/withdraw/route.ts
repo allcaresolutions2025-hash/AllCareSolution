@@ -41,6 +41,7 @@ export async function POST(req: Request) {
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
+        isActive: true,
         bankAccountName: true,
         bankAccountNumber: true,
         bankIfsc: true,
@@ -54,6 +55,10 @@ export async function POST(req: Request) {
       select: { id: true },
     }),
   ]);
+
+  if (!user?.isActive) {
+    return NextResponse.json({ error: "This account has been deactivated." }, { status: 403 });
+  }
 
   if (pending) {
     return NextResponse.json(

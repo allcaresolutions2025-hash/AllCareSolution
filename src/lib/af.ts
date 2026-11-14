@@ -62,6 +62,25 @@ export async function generateUniqueAfId(tx: Prisma.TransactionClient): Promise<
   throw new Error("Could not generate a unique AF ID after 20 attempts");
 }
 
+export const AF_ACCESS_REMOVED_MESSAGE = "Your AF access has been removed by the admin.";
+
+/**
+ * Whether an AF account may still use the AF portal. The admin removes AF
+ * access by deactivating the account (User.isActive = false), which also
+ * blocks sign-in; see /api/admin/af/accounts/[id]/access.
+ */
+export async function isAfAccessActive(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isActive: true } });
+  return Boolean(user?.isActive);
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Whole days from `from` to `to` (an account created today is on day 0). */
+export function daysBetween(from: Date, to: Date = new Date()): number {
+  return Math.max(0, Math.floor((to.getTime() - from.getTime()) / DAY_MS));
+}
+
 type AfAuth = { ok: true; session: Session } | { ok: false; response: NextResponse };
 
 /** Guard for /api/af/* — only signed-in AF accounts pass. */
@@ -72,6 +91,10 @@ export async function requireAfAccount(): Promise<AfAuth> {
   }
   if (!session.user.isAf) {
     return { ok: false, response: NextResponse.json({ error: "AF accounts only" }, { status: 403 }) };
+  }
+  // Sessions are JWTs that outlive an admin removing AF access, so re-check.
+  if (!(await isAfAccessActive(session.user.id))) {
+    return { ok: false, response: NextResponse.json({ error: AF_ACCESS_REMOVED_MESSAGE }, { status: 403 }) };
   }
   return { ok: true, session };
 }

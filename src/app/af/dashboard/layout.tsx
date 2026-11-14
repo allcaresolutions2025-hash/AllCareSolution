@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import { isAfAccessActive } from "@/lib/af";
 import { DashboardShell, type DashboardNavItem } from "@/components/dashboard-shell";
 import { LayoutDashboard, PackagePlus, GitFork, UserPlus, HandCoins, ScrollText, Settings as SettingsIcon } from "lucide-react";
 
@@ -20,6 +21,8 @@ export default async function AfDashboardLayout({ children }: { children: React.
   const session = await getServerSession(authOptions);
   if (!session) redirect("/af/login");
   if (!session.user.isAf) redirect("/");
+  // Admin removed AF access — the login page signs the stale session out.
+  if (!(await isAfAccessActive(session.user.id))) redirect("/af/login?removed=1");
 
   return (
     <DashboardShell title="AF Solution" description="Product packages & binary income" nav={nav} variant="af">

@@ -1,8 +1,8 @@
 "use client";
 
-import { signIn, getSession } from "next-auth/react";
+import { signIn, signOut, getSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import toast from "react-hot-toast";
 import { Crown } from "lucide-react";
 import { loginDestination } from "@/lib/post-login";
@@ -14,6 +14,12 @@ function AfLoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const callbackUrl = search.get("callbackUrl");
+  // Set by the AF dashboard when the admin has removed this account's access.
+  const removed = search.get("removed") === "1";
+
+  useEffect(() => {
+    if (removed) signOut({ redirect: false });
+  }, [removed]);
   const [afId, setAfId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,6 +51,11 @@ function AfLoginForm() {
           <h1 className="text-2xl font-bold">AF Login</h1>
           <p className="text-sm text-muted-foreground">Sign in to your AF Solution account</p>
         </div>
+        {removed && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            Your AF access has been removed by the admin. Please contact the admin if you think this is a mistake.
+          </div>
+        )}
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="label">AF ID</label>
